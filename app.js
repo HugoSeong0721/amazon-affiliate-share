@@ -70,7 +70,7 @@ async function lookupProductEstimate() {
   return null;
 }
 
-form.addEventListener("submit", (event) => {
+form.addEventListener("submit", async (event) => {
   event.preventDefault();
 
   try {
