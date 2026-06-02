@@ -1,0 +1,290 @@
+:root {
+  color-scheme: light;
+  font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  background: #f6f7f9;
+  color: #18202a;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+}
+
+.app-shell {
+  width: min(1180px, calc(100vw - 32px));
+  margin: 0 auto;
+  padding: 32px 0;
+}
+
+.hero {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 280px;
+  gap: 24px;
+  align-items: stretch;
+  margin-bottom: 24px;
+}
+
+.eyebrow {
+  margin: 0 0 8px;
+  color: #54616f;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+}
+
+h1,
+h2,
+p {
+  margin-top: 0;
+}
+
+h1 {
+  max-width: 850px;
+  margin-bottom: 14px;
+  font-size: clamp(32px, 4vw, 52px);
+  line-height: 1.04;
+  letter-spacing: 0;
+}
+
+h2 {
+  margin-bottom: 6px;
+  font-size: 21px;
+}
+
+.hero-copy,
+.panel-heading p {
+  margin-bottom: 0;
+  color: #657180;
+  line-height: 1.6;
+}
+
+.status-card,
+.panel {
+  border: 1px solid #dde3ea;
+  border-radius: 8px;
+  background: #fff;
+  box-shadow: 0 12px 28px rgba(24, 32, 42, .07);
+}
+
+.status-card {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 24px;
+}
+
+.status-card span,
+.cashback span {
+  color: #657180;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.status-card strong,
+.cashback strong {
+  display: block;
+  margin: 8px 0;
+  font-size: 36px;
+}
+
+.status-card small,
+.cashback small {
+  color: #6a7582;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(360px, .8fr);
+  gap: 24px;
+  margin-bottom: 24px;
+}
+
+.panel {
+  padding: 22px;
+}
+
+.panel-heading {
+  margin-bottom: 20px;
+}
+
+label {
+  display: grid;
+  gap: 8px;
+  margin-bottom: 16px;
+  color: #303b47;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+input,
+select,
+textarea {
+  width: 100%;
+  border: 1px solid #cbd4dd;
+  border-radius: 8px;
+  background: #fff;
+  color: #18202a;
+  padding: 12px 13px;
+  outline: none;
+}
+
+input:focus,
+select:focus,
+textarea:focus {
+  border-color: #2374ab;
+  box-shadow: 0 0 0 3px rgba(35, 116, 171, .16);
+}
+
+textarea {
+  resize: vertical;
+}
+
+.affiliate-note {
+  display: grid;
+  gap: 6px;
+  border: 1px solid #c8e2d2;
+  border-radius: 8px;
+  background: #f1faf4;
+  color: #253d2e;
+  margin-bottom: 16px;
+  padding: 13px;
+}
+
+.affiliate-note span {
+  color: #526458;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.two-col {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+
+button,
+.actions a {
+  display: inline-flex;
+  min-height: 44px;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  border-radius: 8px;
+  background: #146c43;
+  color: #fff;
+  padding: 0 18px;
+  font-weight: 800;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+button:hover,
+.actions a:hover {
+  background: #0f5836;
+}
+
+button:disabled {
+  cursor: not-allowed;
+  opacity: .45;
+}
+
+button.secondary {
+  background: #26384c;
+}
+
+button.secondary:hover {
+  background: #1c2b3b;
+}
+
+button.danger {
+  background: #b42318;
+}
+
+button.danger:hover {
+  background: #922018;
+}
+
+.result-empty {
+  display: flex;
+  min-height: 280px;
+  align-items: center;
+  justify-content: center;
+  border: 1px dashed #bdc8d3;
+  border-radius: 8px;
+  color: #657180;
+  line-height: 1.6;
+  padding: 24px;
+  text-align: center;
+}
+
+.cashback {
+  border-radius: 8px;
+  background: #eef8f2;
+  padding: 18px;
+  margin-bottom: 18px;
+}
+
+.actions,
+.toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.settlement {
+  margin-bottom: 32px;
+}
+
+.table-wrap {
+  overflow-x: auto;
+  margin: 18px 0;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  min-width: 720px;
+}
+
+th,
+td {
+  border-bottom: 1px solid #e3e8ee;
+  padding: 12px 10px;
+  text-align: left;
+  vertical-align: top;
+}
+
+th {
+  color: #596675;
+  font-size: 13px;
+}
+
+td a {
+  color: #2374ab;
+  word-break: break-all;
+}
+
+@media (max-width: 840px) {
+  .hero,
+  .grid,
+  .two-col {
+    grid-template-columns: 1fr;
+  }
+
+  .app-shell {
+    width: min(100vw - 20px, 1180px);
+    padding: 20px 0;
+  }
+}
