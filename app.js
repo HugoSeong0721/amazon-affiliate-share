@@ -1,4 +1,7 @@
 const OWNER_AFFILIATE_TAG = "soulful02-20";
+const FRIEND_TRACKING_IDS = {
+  celina: "celina001-20",
+};
 const DEFAULT_COMMISSION_RATE = 0.03;
 const DEFAULT_TAX_RESERVE = 0.25;
 const DEFAULT_REBATE_SPLIT = 0.5;
@@ -20,6 +23,12 @@ const rebateDetail = document.querySelector("#rebateDetail");
 const statusMessage = document.querySelector("#statusMessage");
 
 const AMAZON_HOSTS = ["amazon.com", "a.co", "amzn.to"];
+
+function getTrackingId() {
+  const friendKey = new URLSearchParams(window.location.search).get("friend");
+  if (!friendKey) return OWNER_AFFILIATE_TAG;
+  return FRIEND_TRACKING_IDS[friendKey.trim().toLowerCase()] || OWNER_AFFILIATE_TAG;
+}
 
 function extractAsin(pathname) {
   const match = pathname.match(/(?:\/dp\/|\/gp\/product\/)([A-Z0-9]{10})(?:[/?#]|$)/i);
@@ -47,11 +56,11 @@ function makeAffiliateLink(rawUrl) {
 
   if (asin) {
     const cleanUrl = new URL(`https://www.amazon.com/dp/${asin}`);
-    cleanUrl.searchParams.set("tag", OWNER_AFFILIATE_TAG);
+    cleanUrl.searchParams.set("tag", getTrackingId());
     return cleanUrl.toString();
   }
 
-  url.searchParams.set("tag", OWNER_AFFILIATE_TAG);
+  url.searchParams.set("tag", getTrackingId());
   return url.toString();
 }
 
