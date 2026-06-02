@@ -9,6 +9,7 @@ const money = new Intl.NumberFormat("en-US", {
 });
 
 const form = document.querySelector("#linkForm");
+const amazonUrl = document.querySelector("#amazonUrl");
 const affiliateLink = document.querySelector("#affiliateLink");
 const openAmazon = document.querySelector("#openAmazon");
 const copyLink = document.querySelector("#copyLink");
@@ -70,11 +71,17 @@ async function lookupProductEstimate() {
   return null;
 }
 
-form.addEventListener("submit", async (event) => {
-  event.preventDefault();
-
+async function updateAffiliateLink() {
   try {
-    const link = makeAffiliateLink(document.querySelector("#amazonUrl").value);
+    const rawUrl = amazonUrl.value.trim();
+
+    if (!rawUrl) {
+      result.hidden = true;
+      estimateBox.hidden = true;
+      return;
+    }
+
+    const link = makeAffiliateLink(rawUrl);
 
     affiliateLink.value = link;
     openAmazon.href = link;
@@ -99,9 +106,15 @@ form.addEventListener("submit", async (event) => {
   } catch (error) {
     result.hidden = true;
     estimateBox.hidden = true;
-    alert(error.message);
   }
+}
+
+form.addEventListener("submit", (event) => {
+  event.preventDefault();
+  updateAffiliateLink();
 });
+
+amazonUrl.addEventListener("input", updateAffiliateLink);
 
 copyLink.addEventListener("click", async () => {
   await navigator.clipboard.writeText(affiliateLink.value);
