@@ -48,6 +48,33 @@ body {
   padding-top: 22px;
 }
 
+.estimate-box {
+  border: 1px solid #c8e2d2;
+  border-radius: 8px;
+  background: #f1faf4;
+  margin-bottom: 18px;
+  padding: 18px;
+}
+
+.estimate-box span {
+  color: #526458;
+  font-size: 14px;
+  font-weight: 800;
+}
+
+.estimate-box strong {
+  display: block;
+  color: #146c43;
+  font-size: 38px;
+  line-height: 1;
+  margin: 10px 0;
+}
+
+.estimate-box small {
+  color: #526458;
+  line-height: 1.5;
+}
+
 .fine-print {
   color: #6a7582;
   font-size: 13px;

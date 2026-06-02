@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="ko">
+<html lang="en">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -10,34 +10,45 @@
   <main class="friend-shell">
     <section class="friend-card">
       <p class="eyebrow">Amazon link maker</p>
-      <h1>Amazon 상품 링크를 넣어주세요.</h1>
+      <h1>Paste an Amazon product link.</h1>
       <p class="hero-copy">
-        아래에 사고 싶은 Amazon 상품 링크를 붙여넣고 버튼을 누르면, 구매하러 갈 수 있는 새 링크가 만들어집니다.
+        Add the Amazon item you want to buy. We will create a new shopping link and show an estimated rebate when you enter the item price.
       </p>
 
       <form id="linkForm" class="friend-form">
         <label>
-          Amazon 상품 링크
+          Amazon product link
           <input id="amazonUrl" type="url" placeholder="https://www.amazon.com/dp/B0..." required>
         </label>
 
-        <button type="submit">링크 만들기</button>
+        <label>
+          Item price for estimated rebate
+          <input id="itemPrice" type="number" min="0" step="0.01" placeholder="Optional, e.g. 129.99">
+        </label>
+
+        <button type="submit">Create my Amazon link</button>
       </form>
 
       <section class="friend-result" id="result" hidden aria-live="polite">
+        <div class="estimate-box" id="estimateBox" hidden>
+          <span>Estimated rebate if purchased with this link</span>
+          <strong id="rebateAmount">$0.00</strong>
+          <small id="rebateDetail">Estimate only. Final amount may change after Amazon confirms the commission.</small>
+        </div>
+
         <label>
-          생성된 링크
+          Your shopping link
           <textarea id="affiliateLink" readonly rows="3"></textarea>
         </label>
 
         <div class="actions">
-          <a id="openAmazon" href="#" target="_blank" rel="noopener">이 링크로 Amazon 열기</a>
-          <button type="button" class="secondary" id="copyLink">링크 복사</button>
+          <a id="openAmazon" href="#" target="_blank" rel="noopener">Open Amazon with this link</a>
+          <button type="button" class="secondary" id="copyLink">Copy link</button>
         </div>
       </section>
 
       <p class="fine-print">
-        링크가 제대로 만들어지면 Amazon 상품 페이지로 이동합니다. 가격과 재고는 Amazon에서 확인해주세요.
+        Rebate estimates are not guaranteed. Price, availability, and final eligible commission are confirmed by Amazon.
       </p>
     </section>
   </main>
