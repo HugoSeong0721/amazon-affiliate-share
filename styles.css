@@ -335,6 +335,10 @@ button.danger:hover {
   gap: 10px;
 }
 
+.friend-result .actions a {
+  width: 100%;
+}
+
 .settlement {
   margin-bottom: 32px;
 }
