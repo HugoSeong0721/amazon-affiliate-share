@@ -42,6 +42,10 @@ body {
   width: 100%;
 }
 
+.friend-input-grid label {
+  margin-bottom: 16px;
+}
+
 .friend-result {
   border-top: 1px solid #e3e8ee;
   margin-top: 22px;

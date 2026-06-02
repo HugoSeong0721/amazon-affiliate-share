@@ -23,7 +23,28 @@
 
         <label>
           Item price for estimated rebate
-          <input id="itemPrice" type="number" min="0" step="0.01" placeholder="Optional, e.g. 129.99">
+          <input id="itemPrice" type="number" min="0" step="0.01" placeholder="e.g. 129.99" required>
+        </label>
+
+        <div class="two-col friend-input-grid">
+          <label>
+            Estimated Amazon commission rate
+            <input id="commissionRate" type="number" min="0" max="20" step="0.1" value="3" required>
+          </label>
+
+          <label>
+            Estimated tax reserve
+            <input id="taxReserve" type="number" min="0" max="60" step="1" value="25" required>
+          </label>
+        </div>
+
+        <label>
+          Rebate split after estimated tax
+          <select id="friendShare">
+            <option value="50" selected>50% split</option>
+            <option value="40">40% split</option>
+            <option value="60">60% split</option>
+          </select>
         </label>
 
         <button type="submit">Create my Amazon link</button>
@@ -48,7 +69,7 @@
       </section>
 
       <p class="fine-print">
-        Rebate estimates are not guaranteed. Price, availability, and final eligible commission are confirmed by Amazon.
+        Rebate estimates use the commission rate shown above, subtract an estimated tax reserve, then split the remaining amount. Final eligible commission is confirmed by Amazon.
       </p>
     </section>
   </main>

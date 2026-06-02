@@ -1,6 +1,4 @@
 const OWNER_AFFILIATE_TAG = "soulful02-20";
-const COMMISSION_RATE = 0.03;
-const FRIEND_SHARE = 0.5;
 
 const money = new Intl.NumberFormat("en-US", {
   style: "currency",
@@ -48,18 +46,24 @@ form.addEventListener("submit", (event) => {
   try {
     const link = makeAffiliateLink(document.querySelector("#amazonUrl").value);
     const itemPrice = Number(document.querySelector("#itemPrice").value);
+    const commissionRate = Number(document.querySelector("#commissionRate").value);
+    const taxReserve = Number(document.querySelector("#taxReserve").value);
+    const friendShare = Number(document.querySelector("#friendShare").value);
 
     affiliateLink.value = link;
     openAmazon.href = link;
     result.hidden = false;
 
-    if (itemPrice > 0) {
-      const estimatedCommission = itemPrice * COMMISSION_RATE;
-      const estimatedRebate = estimatedCommission * FRIEND_SHARE;
+    if (itemPrice > 0 && commissionRate > 0) {
+      const estimatedCommission = itemPrice * (commissionRate / 100);
+      const afterTaxEstimate = estimatedCommission * (1 - taxReserve / 100);
+      const estimatedRebate = afterTaxEstimate * (friendShare / 100);
 
       rebateAmount.textContent = money.format(estimatedRebate);
       rebateDetail.textContent =
-        `${money.format(itemPrice)} x 3% commission x 50% share. Estimate only; final amount may change.`;
+        `${money.format(itemPrice)} x ${commissionRate}% Amazon commission = ${money.format(estimatedCommission)}. ` +
+        `After ${taxReserve}% estimated tax reserve: ${money.format(afterTaxEstimate)}. ` +
+        `${friendShare}% split = ${money.format(estimatedRebate)} estimated rebate.`;
       estimateBox.hidden = false;
     } else {
       estimateBox.hidden = true;
