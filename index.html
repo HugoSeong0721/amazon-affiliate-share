@@ -12,7 +12,7 @@
       <p class="eyebrow">Amazon link maker</p>
       <h1>Paste an Amazon product link.</h1>
       <p class="hero-copy">
-        Add the Amazon item you want to buy. We will create a new shopping link and show an estimated rebate when you enter the item price.
+        Add the Amazon item you want to buy. We will create a shopping link and show an estimated rebate below it.
       </p>
 
       <form id="linkForm" class="friend-form">
@@ -21,40 +21,14 @@
           <input id="amazonUrl" type="url" placeholder="https://www.amazon.com/dp/B0..." required>
         </label>
 
-        <label>
-          Item price for estimated rebate
-          <input id="itemPrice" type="number" min="0" step="0.01" placeholder="e.g. 129.99" required>
-        </label>
-
-        <div class="two-col friend-input-grid">
-          <label>
-            Estimated Amazon commission rate
-            <input id="commissionRate" type="number" min="0" max="20" step="0.1" value="3" required>
-          </label>
-
-          <label>
-            Estimated tax reserve
-            <input id="taxReserve" type="number" min="0" max="60" step="1" value="25" required>
-          </label>
-        </div>
-
-        <label>
-          Rebate split after estimated tax
-          <select id="friendShare">
-            <option value="50" selected>50% split</option>
-            <option value="40">40% split</option>
-            <option value="60">60% split</option>
-          </select>
-        </label>
-
         <button type="submit">Create my Amazon link</button>
       </form>
 
       <section class="friend-result" id="result" hidden aria-live="polite">
-        <div class="estimate-box" id="estimateBox" hidden>
+        <div class="estimate-box" id="estimateBox">
           <span>Estimated rebate if purchased with this link</span>
           <strong id="rebateAmount">$0.00</strong>
-          <small id="rebateDetail">Estimate only. Final amount may change after Amazon confirms the commission.</small>
+          <small id="rebateDetail"></small>
         </div>
 
         <label>
@@ -69,7 +43,7 @@
       </section>
 
       <p class="fine-print">
-        Rebate estimates use the commission rate shown above, subtract an estimated tax reserve, then split the remaining amount. Final eligible commission is confirmed by Amazon.
+        Rebate estimates are based on Amazon price and commission data when available. Final eligible commission is confirmed by Amazon.
       </p>
     </section>
   </main>
