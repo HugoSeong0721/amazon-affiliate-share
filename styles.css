@@ -42,6 +42,26 @@ body {
   width: 100%;
 }
 
+.status-message {
+  border-radius: 8px;
+  background: #eef3f7;
+  color: #52606f;
+  font-size: 13px;
+  line-height: 1.5;
+  margin: -4px 0 0;
+  padding: 10px 12px;
+}
+
+.status-message.success {
+  background: #eef8f2;
+  color: #146c43;
+}
+
+.status-message.error {
+  background: #fff2f0;
+  color: #b42318;
+}
+
 .friend-input-grid label {
   margin-bottom: 16px;
 }

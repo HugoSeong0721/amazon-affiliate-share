@@ -18,8 +18,9 @@
       <form id="linkForm" class="friend-form">
         <label>
           Amazon product link
-          <input id="amazonUrl" type="url" placeholder="https://www.amazon.com/dp/B0..." required>
+          <input id="amazonUrl" type="text" inputmode="url" autocomplete="off" placeholder="Paste an Amazon link here" required>
         </label>
+        <p class="status-message" id="statusMessage">Paste a full Amazon, a.co, or amzn.to link to generate your shopping link.</p>
       </form>
 
       <section class="friend-result" id="result" hidden aria-live="polite">

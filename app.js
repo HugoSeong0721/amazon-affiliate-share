@@ -17,18 +17,30 @@ const result = document.querySelector("#result");
 const estimateBox = document.querySelector("#estimateBox");
 const rebateAmount = document.querySelector("#rebateAmount");
 const rebateDetail = document.querySelector("#rebateDetail");
+const statusMessage = document.querySelector("#statusMessage");
+
+const AMAZON_HOSTS = ["amazon.com", "a.co", "amzn.to"];
 
 function extractAsin(pathname) {
   const match = pathname.match(/(?:\/dp\/|\/gp\/product\/)([A-Z0-9]{10})(?:[/?#]|$)/i);
   return match ? match[1].toUpperCase() : null;
 }
 
+function normalizeUrl(rawUrl) {
+  if (/^https?:\/\//i.test(rawUrl)) return rawUrl;
+  return `https://${rawUrl}`;
+}
+
+function isSupportedAmazonHost(host) {
+  return AMAZON_HOSTS.some((amazonHost) => host === amazonHost || host.endsWith(`.${amazonHost}`));
+}
+
 function makeAffiliateLink(rawUrl) {
-  const url = new URL(rawUrl);
+  const url = new URL(normalizeUrl(rawUrl));
   const host = url.hostname.replace(/^www\./, "");
 
-  if (!host.endsWith("amazon.com")) {
-    throw new Error("Please paste an amazon.com product link.");
+  if (!isSupportedAmazonHost(host)) {
+    throw new Error("Paste an Amazon, a.co, or amzn.to product link.");
   }
 
   const asin = extractAsin(url.pathname);
@@ -39,7 +51,6 @@ function makeAffiliateLink(rawUrl) {
     return cleanUrl.toString();
   }
 
-  url.hostname = "www.amazon.com";
   url.searchParams.set("tag", OWNER_AFFILIATE_TAG);
   return url.toString();
 }
@@ -78,6 +89,8 @@ async function updateAffiliateLink() {
     if (!rawUrl) {
       result.hidden = true;
       estimateBox.hidden = true;
+      statusMessage.textContent = "Paste a full Amazon, a.co, or amzn.to link to generate your shopping link.";
+      statusMessage.className = "status-message";
       return;
     }
 
@@ -89,6 +102,8 @@ async function updateAffiliateLink() {
     rebateAmount.textContent = "Calculating";
     rebateDetail.textContent = "Checking the item price and commission estimate for this Amazon link.";
     estimateBox.hidden = false;
+    statusMessage.textContent = "Your Amazon shopping link is ready below.";
+    statusMessage.className = "status-message success";
 
     const estimate = estimateRebateFromProductData(await lookupProductEstimate(link));
 
@@ -106,6 +121,8 @@ async function updateAffiliateLink() {
   } catch (error) {
     result.hidden = true;
     estimateBox.hidden = true;
+    statusMessage.textContent = error.message;
+    statusMessage.className = "status-message error";
   }
 }
 
@@ -115,6 +132,13 @@ form.addEventListener("submit", (event) => {
 });
 
 amazonUrl.addEventListener("input", updateAffiliateLink);
+amazonUrl.addEventListener("change", updateAffiliateLink);
+amazonUrl.addEventListener("paste", () => {
+  setTimeout(() => {
+    updateAffiliateLink();
+    result.scrollIntoView({ behavior: "smooth", block: "nearest" });
+  }, 50);
+});
 
 copyLink.addEventListener("click", async () => {
   await navigator.clipboard.writeText(affiliateLink.value);
