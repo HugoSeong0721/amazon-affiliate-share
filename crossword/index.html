@@ -286,6 +286,7 @@
     padding: 13px 0; cursor: pointer;
   }
   .modal button.secondary { background: var(--card); color: var(--ink); }
+  .modal button.share { background: var(--highlight); color: #262a35; }
   button:focus-visible { outline: 3px solid var(--highlight); outline-offset: 2px; }
   .hidden { display: none !important; }
 </style>
@@ -305,7 +306,7 @@
       <div class="progress-track"><div class="progress-fill" id="homeProgressFill"></div></div>
     </div>
     <div class="level-list" id="levelList"></div>
-    <footer><button id="resetBtn"></button></footer>
+    <footer><button id="resetBtn"></button> · <a id="privacyLink" href="privacy.html" style="color:inherit">Privacy</a></footer>
   </section>
 
   <!-- Puzzle -->
@@ -336,6 +337,7 @@
     <div class="emoji" id="modalEmoji">🎉</div>
     <h2 id="modalTitle"></h2>
     <p id="modalText"></p>
+    <button class="share hidden" id="modalShareBtn"></button>
     <button id="modalBtn"></button>
     <button class="secondary" id="modalSecondaryBtn"></button>
   </div>
@@ -375,6 +377,10 @@
       payThanksText: (to) => 'Everything up to level ' + to + ' is yours. Have fun!',
       payNotSet: 'Payments are not live yet — coming soon!',
       payOk: "Let's go!",
+      shareBtn: '\ud83d\udce4 Challenge a friend',
+      shareText: (l) => 'I just cleared Level ' + l + ' on Slang Crossword \ud83e\udde9 Think you know your slang?',
+      copied: 'Copied! Paste it anywhere to challenge a friend.',
+      privacy: 'Privacy Policy',
     },
     ko: {
       title: '요즘 영어 크로스워드 🧩',
@@ -404,6 +410,10 @@
       payThanksText: (to) => '레벨 ' + to + '까지 열렸어요. 즐겁게 플레이하세요!',
       payNotSet: '결제 연결 준비 중이에요 — 곧 열립니다!',
       payOk: '바로 시작!',
+      shareBtn: '\ud83d\udce4 친구에게 도전장 보내기',
+      shareText: (l) => '나 Slang Crossword 레벨 ' + l + ' 클리어! \ud83e\udde9 요즘 영어 얼마나 알아?',
+      copied: '복사 완료! 어디든 붙여넣어서 친구에게 보내세요.',
+      privacy: '개인정보처리방침',
     },
   };
 
@@ -584,6 +594,7 @@
   } catch (e) { /* URL/storage 사용 불가 환경 */ }
 
   function showPaywall() {
+    $('modalShareBtn').classList.add('hidden');
     const from = firstLockedIdx() + 1; // 1-based
     const to = Math.min(from + PAY.pack - 1, LEVELS.length);
     $('modalEmoji').textContent = '💎';
@@ -606,6 +617,7 @@
   }
 
   function showThanks(openLv) {
+    $('modalShareBtn').classList.add('hidden');
     $('modalEmoji').textContent = '💎';
     $('modalTitle').textContent = S().payThanksTitle;
     $('modalText').textContent = S().payThanksText(paidUp);
@@ -776,6 +788,7 @@
     $('appSubtitle').innerHTML = S().subtitle;
     $('langBtn').textContent = S().langBtn;
     $('resetBtn').textContent = S().reset;
+    $('privacyLink').textContent = S().privacy;
     $('acrossLabel').textContent = S().across;
     $('downLabel').textContent = S().down;
   }
@@ -1018,6 +1031,21 @@
     checkEntry(curEntry);
   }
 
+  // ---------- share ----------
+  const GAME_URL = 'https://hugoseong0721.github.io/amazon-affiliate-share/crossword/';
+  function shareResult() {
+    const msg = S().shareText(currentLevel + 1) + '\n' + GAME_URL;
+    if (navigator.share) {
+      navigator.share({ text: msg }).catch(() => { /* 사용자가 취소 */ });
+    } else if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(msg)
+        .then(() => alert(S().copied))
+        .catch(() => window.prompt('Copy:', msg));
+    } else {
+      window.prompt('Copy:', msg);
+    }
+  }
+
   function win() {
     if (currentLevel === clearedCount) {
       clearedCount++;
@@ -1030,6 +1058,10 @@
     const main = $('modalBtn');
     const sec = $('modalSecondaryBtn');
     sec.classList.remove('hidden');
+    const shareBtn = $('modalShareBtn');
+    shareBtn.textContent = S().shareBtn;
+    shareBtn.classList.remove('hidden');
+    shareBtn.onclick = shareResult;
     const nextIdx = currentLevel + 1;
     if (!allDone && nextIdx < LEVELS.length && isUnlocked(nextIdx)) {
       main.textContent = S().nextLevel;

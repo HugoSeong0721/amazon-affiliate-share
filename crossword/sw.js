@@ -1,7 +1,7 @@
 // Slang Crossword 서비스워커
 // 전략: 페이지 이동은 네트워크 우선(항상 최신), 실패 시 캐시(오프라인 지원).
 // 정적 자원은 캐시 우선.
-const CACHE = 'slang-crossword-v1';
+const CACHE = 'slang-crossword-v2';
 const ASSETS = [
   './',
   './index.html',
@@ -10,6 +10,7 @@ const ASSETS = [
   './icon-512.png',
   './icon-maskable-512.png',
   './apple-touch-icon.png',
+  './privacy.html',
 ];
 
 self.addEventListener('install', (e) => {
