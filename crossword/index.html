@@ -359,11 +359,11 @@
       quitConfirm: 'Leave this puzzle? Progress on this grid will be lost.',
       langBtn: '🌐 한국어',
       payTitle: 'Skip ahead? 💎',
-      payText: (price, lvl) => 'Levels unlock in order as you clear them — for free. In a hurry? Unlock <strong>Level ' + lvl + '</strong> (and everything before it) right now for <strong>' + price + '</strong>.',
-      payBtn: (price) => 'Unlock now — ' + price,
+      payText: (price, from, to) => 'Levels unlock in order as you clear them — for free. In a hurry? Unlock ' + (from === to ? '<strong>level ' + from + '</strong>' : '<strong>levels ' + from + '–' + to + '</strong>') + ' right now for <strong>' + price + '</strong>.',
+      payBtn: (price, n) => (n > 1 ? 'Unlock ' + n + ' levels — ' : 'Unlock — ') + price,
       payLater: "I'll earn it",
       payThanksTitle: 'Unlocked! 💎',
-      payThanksText: (lvl) => 'Level ' + lvl + ' is yours. Have fun!',
+      payThanksText: (to) => 'Everything up to level ' + to + ' is yours. Have fun!',
       payNotSet: 'Payments are not live yet — coming soon!',
       payOk: "Let's go!",
     },
@@ -388,11 +388,11 @@
       quitConfirm: '퍼즐을 나갈까요? 지금 판의 진행은 사라져요.',
       langBtn: '🌐 English',
       payTitle: '건너뛰고 바로 할래요? 💎',
-      payText: (price, lvl) => '레벨은 클리어하면 순서대로 무료로 열려요. 기다리기 싫다면 <strong>레벨 ' + lvl + '</strong>까지 지금 바로 <strong>' + price + '</strong>에 열 수 있어요.',
-      payBtn: (price) => price + '에 바로 열기',
+      payText: (price, from, to) => '레벨은 클리어하면 순서대로 무료로 열려요. 기다리기 싫다면 ' + (from === to ? '<strong>레벨 ' + from + '</strong>' : '<strong>레벨 ' + from + '~' + to + '</strong>') + '을 지금 바로 <strong>' + price + '</strong>에 열 수 있어요.',
+      payBtn: (price, n) => price + '에 ' + (n > 1 ? n + '개 레벨 열기' : '바로 열기'),
       payLater: '그냥 깨서 갈게요',
       payThanksTitle: '잠금 해제! 💎',
-      payThanksText: (lvl) => '레벨 ' + lvl + '이(가) 열렸어요. 즐겁게 플레이하세요!',
+      payThanksText: (to) => '레벨 ' + to + '까지 열렸어요. 즐겁게 플레이하세요!',
       payNotSet: '결제 연결 준비 중이에요 — 곧 열립니다!',
       payOk: '바로 시작!',
     },
@@ -546,9 +546,10 @@
     try { localStorage.setItem(STORAGE_KEY, JSON.stringify({ cleared: clearedCount, paidUp })); } catch (e) { /* private mode */ }
   }
 
-  // ---------- paywall (skip-ahead) ----------
+  // ---------- paywall (skip-ahead, 3-level pack) ----------
   const PAY = {
-    price: 'US$0.49',
+    price: 'US$0.99',
+    pack: 3, // 결제 1회로 열리는 레벨 수
     // 결제 서비스(Stripe Payment Link 등)의 링크를 붙여넣으세요.
     // 결제 완료 후 이 게임 주소 + ?paid=1 로 리디렉션되도록 설정해야 합니다.
     url: '',
@@ -556,14 +557,16 @@
   const PENDING_KEY = 'slang-crossword-pending-unlock';
   // 레벨 i(0-based) 플레이 가능 여부: 순차 진행 또는 결제로 해제
   const isUnlocked = (i) => i <= clearedCount || i < paidUp;
-  let justPaidLevel = 0;
+  // 아직 잠긴 첫 레벨의 0-based 인덱스
+  const firstLockedIdx = () => Math.max(clearedCount + 1, paidUp);
+  let justPaidOpen = 0; // 결제 직후 열어줄 레벨 (1-based)
   try {
     const qs = new URLSearchParams(location.search);
     if (qs.get('paid') === '1') {
-      let lv = parseInt(qs.get('lv') || localStorage.getItem(PENDING_KEY) || '0', 10);
-      if (lv >= 1 && lv <= LEVELS.length) {
-        paidUp = Math.max(paidUp, lv);
-        justPaidLevel = lv;
+      const target = parseInt(qs.get('lv') || localStorage.getItem(PENDING_KEY) || '0', 10);
+      if (target >= 1 && target <= LEVELS.length && target > paidUp) {
+        justPaidOpen = firstLockedIdx() + 1;
+        paidUp = target;
         saveProgress();
       }
       localStorage.removeItem(PENDING_KEY);
@@ -571,16 +574,18 @@
     }
   } catch (e) { /* URL/storage 사용 불가 환경 */ }
 
-  function showPaywall(levelIdx) {
+  function showPaywall() {
+    const from = firstLockedIdx() + 1; // 1-based
+    const to = Math.min(from + PAY.pack - 1, LEVELS.length);
     $('modalEmoji').textContent = '💎';
     $('modalTitle').textContent = S().payTitle;
-    $('modalText').innerHTML = S().payText(PAY.price, levelIdx + 1);
+    $('modalText').innerHTML = S().payText(PAY.price, from, to);
     const main = $('modalBtn'), sec = $('modalSecondaryBtn');
     sec.classList.remove('hidden');
-    main.textContent = S().payBtn(PAY.price);
+    main.textContent = S().payBtn(PAY.price, to - from + 1);
     main.onclick = () => {
       if (PAY.url) {
-        try { localStorage.setItem(PENDING_KEY, String(levelIdx + 1)); } catch (e) { /* 결제 후 lv 파라미터로도 복구 가능 */ }
+        try { localStorage.setItem(PENDING_KEY, String(to)); } catch (e) { /* 결제 후 lv 파라미터로도 복구 가능 */ }
         location.href = PAY.url;
       } else {
         alert(S().payNotSet);
@@ -591,13 +596,13 @@
     $('overlay').classList.remove('hidden');
   }
 
-  function showThanks(lv) {
+  function showThanks(openLv) {
     $('modalEmoji').textContent = '💎';
     $('modalTitle').textContent = S().payThanksTitle;
-    $('modalText').textContent = S().payThanksText(lv);
+    $('modalText').textContent = S().payThanksText(paidUp);
     const main = $('modalBtn'), sec = $('modalSecondaryBtn');
     main.textContent = S().payOk;
-    main.onclick = () => { $('overlay').classList.add('hidden'); openLevel(lv - 1); };
+    main.onclick = () => { $('overlay').classList.add('hidden'); openLevel(openLv - 1); };
     sec.textContent = S().backHome;
     sec.classList.remove('hidden');
     sec.onclick = () => { $('overlay').classList.add('hidden'); renderHome(); show('home'); };
@@ -785,14 +790,14 @@
         '<span class="info"><span class="name">' + lv.name[lang] + '</span>' +
         '<span class="words-preview">' + (unlocked ? preview + ' …' : '🔒 ' + PAY.price) + '</span></span>' +
         '<span class="state">' + (cleared ? '✅' : unlocked ? '▶️' : '💎') + '</span>';
-      btn.addEventListener('click', () => { if (unlocked) openLevel(i); else showPaywall(i); });
+      btn.addEventListener('click', () => { if (unlocked) openLevel(i); else showPaywall(); });
       list.appendChild(btn);
     });
   }
 
   // ---------- puzzle ----------
   function openLevel(levelIdx) {
-    if (!isUnlocked(levelIdx)) { showPaywall(levelIdx); return; }
+    if (!isUnlocked(levelIdx)) { showPaywall(); return; }
     currentLevel = levelIdx;
     layout = buildLayout(LEVELS[levelIdx].words);
     cellVals = new Map();
@@ -1022,7 +1027,7 @@
       main.onclick = () => { $('overlay').classList.add('hidden'); openLevel(nextIdx); };
     } else if (nextIdx < LEVELS.length && !isUnlocked(nextIdx)) {
       main.textContent = S().nextLevel + ' 💎';
-      main.onclick = () => { showPaywall(nextIdx); };
+      main.onclick = () => { showPaywall(); };
     } else {
       main.textContent = S().replay;
       main.onclick = () => { $('overlay').classList.add('hidden'); openLevel(currentLevel); };
@@ -1084,7 +1089,7 @@
 
   applyLang();
   renderHome();
-  if (justPaidLevel) showThanks(justPaidLevel);
+  if (justPaidOpen) showThanks(justPaidOpen);
 })();
 </script>
 </body>
