@@ -287,6 +287,9 @@
   }
   .modal button.secondary { background: var(--card); color: var(--ink); }
   .modal button.share { background: var(--highlight); color: #262a35; }
+  #modalChoices { display: flex; flex-direction: column; gap: 8px; }
+  #modalChoices.hidden { display: none; }
+  .modal #modalChoices button { background: var(--card); color: var(--ink); text-align: left; padding: 13px 14px; font-size: 14px; }
   button:focus-visible { outline: 3px solid var(--highlight); outline-offset: 2px; }
   .hidden { display: none !important; }
 </style>
@@ -306,7 +309,10 @@
       <div class="progress-track"><div class="progress-fill" id="homeProgressFill"></div></div>
     </div>
     <div class="level-list" id="levelList"></div>
-    <footer><button id="resetBtn"></button> · <a id="privacyLink" href="privacy.html" style="color:inherit">Privacy</a></footer>
+    <footer>
+      <div>📚 <span id="dataDate"></span></div>
+      <div style="margin-top:5px"><button id="ageBtn"></button> · <button id="resetBtn"></button> · <a id="privacyLink" href="privacy.html" style="color:inherit">Privacy</a></div>
+    </footer>
   </section>
 
   <!-- Puzzle -->
@@ -337,6 +343,7 @@
     <div class="emoji" id="modalEmoji">🎉</div>
     <h2 id="modalTitle"></h2>
     <p id="modalText"></p>
+    <div id="modalChoices" class="hidden"></div>
     <button class="share hidden" id="modalShareBtn"></button>
     <button id="modalBtn"></button>
     <button class="secondary" id="modalSecondaryBtn"></button>
@@ -377,6 +384,13 @@
       payThanksText: (to) => 'Everything up to level ' + to + ' is yours. Have fun!',
       payNotSet: 'Payments are not live yet — coming soon!',
       payOk: "Let's go!",
+      ageTitle: 'Quick question! 👋',
+      ageText: "What's your age group? We'll set your starting point — you can change it anytime.",
+      age20: '🔥 Teens–20s · skip ahead to Gen Z slang',
+      age30: '💼 30s · quick basics, then the good stuff',
+      age40: '📚 40s+ · from the very basics',
+      ageBtn: 'Change age group',
+      dataDate: 'Slang data updated: Jul 2026 · refreshed every 6 months',
       shareBtn: '\ud83d\udce4 Challenge a friend',
       shareText: (l) => 'I just cleared Level ' + l + ' on Slang Crossword \ud83e\udde9 Think you know your slang?',
       copied: 'Copied! Paste it anywhere to challenge a friend.',
@@ -410,6 +424,13 @@
       payThanksText: (to) => '레벨 ' + to + '까지 열렸어요. 즐겁게 플레이하세요!',
       payNotSet: '결제 연결 준비 중이에요 — 곧 열립니다!',
       payOk: '바로 시작!',
+      ageTitle: '시작 전에 하나만! 👋',
+      ageText: '연령대를 알려주세요. 시작 지점을 맞춰드려요 — 언제든 바꿀 수 있어요.',
+      age20: '🔥 10~20대 · 기본은 건너뛰고 슬랭부터',
+      age30: '💼 30대 · 기초 빠르게, 바로 본론으로',
+      age40: '📚 40대 이상 · 기초부터 차근차근',
+      ageBtn: '연령대 변경',
+      dataDate: '단어 데이터: 2026년 7월 기준 · 6개월마다 업데이트',
       shareBtn: '\ud83d\udce4 친구에게 도전장 보내기',
       shareText: (l) => '나 Slang Crossword 레벨 ' + l + ' 클리어! \ud83e\udde9 요즘 영어 얼마나 알아?',
       copied: '복사 완료! 어디든 붙여넣어서 친구에게 보내세요.',
@@ -538,6 +559,16 @@
       { a: 'LOOKSMAXXING', c: { en: 'maximizing your appearance', ko: '외모를 최대치로 끌어올리기' } },
       { a: 'SIXSEVEN', c: { en: 'the meaningless "6 7" chant (spelled out)', ko: '뜻 없는 "6 7" 밈 (영어로 풀어서)' } },
     ]},
+    { name: { en: '2026 Fresh Drops', ko: '2026 신상 슬랭' }, words: [
+      { a: 'SYBAU', c: { en: 'rudely telling someone to hush (viral acronym — spicy!)', ko: '조용히 좀 해!! (거친 비속어 줄임말)' } },
+      { a: 'GLOWUP', c: { en: 'a dramatic improvement in looks or life (2 words)', ko: '몰라보게 예뻐지고 발전함 (두 단어)' } },
+      { a: 'EXTRA', c: { en: 'over the top, way too dramatic', ko: '오버하는, 과한' } },
+      { a: 'SHEESH', c: { en: 'drawn-out exclamation when impressed', ko: '우와 대박~ (길게 빼는 감탄사)' } },
+      { a: 'CLUTCH', c: { en: 'coming through in a critical moment', ko: '결정적 순간에 해내는' } },
+      { a: 'SIDEQUEST', c: { en: 'a random detour from your main plans (2 words)', ko: '본업 제쳐두고 떠나는 딴짓 모험 (두 단어)' } },
+      { a: 'BRUH', c: { en: '"dude..." — disbelief in one word', ko: '헐, 야... (어이없을 때)' } },
+      { a: 'AFK', c: { en: 'away from keyboard', ko: '자리 비움 (게임/채팅)' } },
+    ]},
   ];
 
   const hintsForLevel = (i) => (i < 4 ? 3 : i < 9 ? 2 : 1);
@@ -595,6 +626,8 @@
 
   function showPaywall() {
     $('modalShareBtn').classList.add('hidden');
+    $('modalChoices').classList.add('hidden');
+    $('modalBtn').classList.remove('hidden');
     const from = firstLockedIdx() + 1; // 1-based
     const to = Math.min(from + PAY.pack - 1, LEVELS.length);
     $('modalEmoji').textContent = '💎';
@@ -616,8 +649,38 @@
     $('overlay').classList.remove('hidden');
   }
 
+  const AGE_KEY = 'slang-crossword-age';
+  function showAgeGate() {
+    $('modalShareBtn').classList.add('hidden');
+    $('modalBtn').classList.add('hidden');
+    $('modalSecondaryBtn').classList.add('hidden');
+    $('modalEmoji').textContent = '👋';
+    $('modalTitle').textContent = S().ageTitle;
+    $('modalText').textContent = S().ageText;
+    const box = $('modalChoices');
+    box.innerHTML = '';
+    box.classList.remove('hidden');
+    [['20', S().age20, 5], ['30', S().age30, 3], ['40', S().age40, 1]].forEach(([key, label, unlock]) => {
+      const b = document.createElement('button');
+      b.textContent = label;
+      b.onclick = () => {
+        try { localStorage.setItem(AGE_KEY, key); } catch (e) { /* 저장 불가 환경 */ }
+        if (unlock > 1) { paidUp = Math.max(paidUp, unlock); saveProgress(); }
+        box.classList.add('hidden');
+        $('modalBtn').classList.remove('hidden');
+        $('modalSecondaryBtn').classList.remove('hidden');
+        $('overlay').classList.add('hidden');
+        renderHome();
+      };
+      box.appendChild(b);
+    });
+    $('overlay').classList.remove('hidden');
+  }
+
   function showThanks(openLv) {
     $('modalShareBtn').classList.add('hidden');
+    $('modalChoices').classList.add('hidden');
+    $('modalBtn').classList.remove('hidden');
     $('modalEmoji').textContent = '💎';
     $('modalTitle').textContent = S().payThanksTitle;
     $('modalText').textContent = S().payThanksText(paidUp);
@@ -789,6 +852,8 @@
     $('langBtn').textContent = S().langBtn;
     $('resetBtn').textContent = S().reset;
     $('privacyLink').textContent = S().privacy;
+    $('dataDate').textContent = S().dataDate;
+    $('ageBtn').textContent = S().ageBtn;
     $('acrossLabel').textContent = S().across;
     $('downLabel').textContent = S().down;
   }
@@ -1058,6 +1123,8 @@
     const main = $('modalBtn');
     const sec = $('modalSecondaryBtn');
     sec.classList.remove('hidden');
+    $('modalChoices').classList.add('hidden');
+    main.classList.remove('hidden');
     const shareBtn = $('modalShareBtn');
     shareBtn.textContent = S().shareBtn;
     shareBtn.classList.remove('hidden');
@@ -1121,6 +1188,7 @@
       renderHome();
     }
   });
+  $('ageBtn').addEventListener('click', showAgeGate);
   $('langBtn').addEventListener('click', () => {
     lang = lang === 'en' ? 'ko' : 'en';
     try { localStorage.setItem(LANG_KEY, lang); } catch (e) { /* private mode */ }
@@ -1130,7 +1198,13 @@
 
   applyLang();
   renderHome();
-  if (justPaidOpen) showThanks(justPaidOpen);
+  if (justPaidOpen) {
+    showThanks(justPaidOpen);
+  } else {
+    let savedAge = null;
+    try { savedAge = localStorage.getItem(AGE_KEY); } catch (e) { /* 무시 */ }
+    if (!savedAge) showAgeGate();
+  }
 
   // ---------- PWA ----------
   if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost')) {
