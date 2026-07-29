@@ -145,7 +145,7 @@
     transition: transform 0.08s ease;
   }
   .level-card:active { transform: translate(2px, 2px); box-shadow: 2px 2px 0 var(--shadow); }
-  .level-card.locked { opacity: 0.45; cursor: not-allowed; box-shadow: none; }
+  .level-card.locked { opacity: 0.55; box-shadow: 2px 2px 0 var(--shadow); }
   .level-card .num {
     flex-shrink: 0; width: 42px; height: 42px;
     display: flex; align-items: center; justify-content: center;
@@ -358,6 +358,14 @@
       replay: 'Play again (new layout)',
       quitConfirm: 'Leave this puzzle? Progress on this grid will be lost.',
       langBtn: '🌐 한국어',
+      payTitle: 'Skip ahead? 💎',
+      payText: (price, lvl) => 'Levels unlock in order as you clear them — for free. In a hurry? Unlock <strong>Level ' + lvl + '</strong> (and everything before it) right now for <strong>' + price + '</strong>.',
+      payBtn: (price) => 'Unlock now — ' + price,
+      payLater: "I'll earn it",
+      payThanksTitle: 'Unlocked! 💎',
+      payThanksText: (lvl) => 'Level ' + lvl + ' is yours. Have fun!',
+      payNotSet: 'Payments are not live yet — coming soon!',
+      payOk: "Let's go!",
     },
     ko: {
       title: '요즘 영어 크로스워드 🧩',
@@ -379,6 +387,14 @@
       replay: '다시 풀기 (새 배치)',
       quitConfirm: '퍼즐을 나갈까요? 지금 판의 진행은 사라져요.',
       langBtn: '🌐 English',
+      payTitle: '건너뛰고 바로 할래요? 💎',
+      payText: (price, lvl) => '레벨은 클리어하면 순서대로 무료로 열려요. 기다리기 싫다면 <strong>레벨 ' + lvl + '</strong>까지 지금 바로 <strong>' + price + '</strong>에 열 수 있어요.',
+      payBtn: (price) => price + '에 바로 열기',
+      payLater: '그냥 깨서 갈게요',
+      payThanksTitle: '잠금 해제! 💎',
+      payThanksText: (lvl) => '레벨 ' + lvl + '이(가) 열렸어요. 즐겁게 플레이하세요!',
+      payNotSet: '결제 연결 준비 중이에요 — 곧 열립니다!',
+      payOk: '바로 시작!',
     },
   };
 
@@ -520,12 +536,72 @@
   // ---------- progress ----------
   const STORAGE_KEY = 'slang-crossword-progress';
   let clearedCount = 0;
+  let paidUp = 0; // 결제로 열어둔 최고 레벨 (1-based: 레벨 paidUp까지 플레이 가능)
   try {
     const saved = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}');
     if (saved.cleared >= 0) clearedCount = Math.min(saved.cleared, LEVELS.length);
+    if (saved.paidUp >= 0) paidUp = Math.min(saved.paidUp, LEVELS.length);
   } catch (e) { /* ignore */ }
   function saveProgress() {
-    try { localStorage.setItem(STORAGE_KEY, JSON.stringify({ cleared: clearedCount })); } catch (e) { /* private mode */ }
+    try { localStorage.setItem(STORAGE_KEY, JSON.stringify({ cleared: clearedCount, paidUp })); } catch (e) { /* private mode */ }
+  }
+
+  // ---------- paywall (skip-ahead) ----------
+  const PAY = {
+    price: 'US$0.49',
+    // 결제 서비스(Stripe Payment Link 등)의 링크를 붙여넣으세요.
+    // 결제 완료 후 이 게임 주소 + ?paid=1 로 리디렉션되도록 설정해야 합니다.
+    url: '',
+  };
+  const PENDING_KEY = 'slang-crossword-pending-unlock';
+  // 레벨 i(0-based) 플레이 가능 여부: 순차 진행 또는 결제로 해제
+  const isUnlocked = (i) => i <= clearedCount || i < paidUp;
+  let justPaidLevel = 0;
+  try {
+    const qs = new URLSearchParams(location.search);
+    if (qs.get('paid') === '1') {
+      let lv = parseInt(qs.get('lv') || localStorage.getItem(PENDING_KEY) || '0', 10);
+      if (lv >= 1 && lv <= LEVELS.length) {
+        paidUp = Math.max(paidUp, lv);
+        justPaidLevel = lv;
+        saveProgress();
+      }
+      localStorage.removeItem(PENDING_KEY);
+      history.replaceState(null, '', location.pathname);
+    }
+  } catch (e) { /* URL/storage 사용 불가 환경 */ }
+
+  function showPaywall(levelIdx) {
+    $('modalEmoji').textContent = '💎';
+    $('modalTitle').textContent = S().payTitle;
+    $('modalText').innerHTML = S().payText(PAY.price, levelIdx + 1);
+    const main = $('modalBtn'), sec = $('modalSecondaryBtn');
+    sec.classList.remove('hidden');
+    main.textContent = S().payBtn(PAY.price);
+    main.onclick = () => {
+      if (PAY.url) {
+        try { localStorage.setItem(PENDING_KEY, String(levelIdx + 1)); } catch (e) { /* 결제 후 lv 파라미터로도 복구 가능 */ }
+        location.href = PAY.url;
+      } else {
+        alert(S().payNotSet);
+      }
+    };
+    sec.textContent = S().payLater;
+    sec.onclick = () => $('overlay').classList.add('hidden');
+    $('overlay').classList.remove('hidden');
+  }
+
+  function showThanks(lv) {
+    $('modalEmoji').textContent = '💎';
+    $('modalTitle').textContent = S().payThanksTitle;
+    $('modalText').textContent = S().payThanksText(lv);
+    const main = $('modalBtn'), sec = $('modalSecondaryBtn');
+    main.textContent = S().payOk;
+    main.onclick = () => { $('overlay').classList.add('hidden'); openLevel(lv - 1); };
+    sec.textContent = S().backHome;
+    sec.classList.remove('hidden');
+    sec.onclick = () => { $('overlay').classList.add('hidden'); renderHome(); show('home'); };
+    $('overlay').classList.remove('hidden');
   }
 
   // ---------- generator (criss-cross, multi-cluster) ----------
@@ -700,22 +776,23 @@
       const btn = document.createElement('button');
       btn.className = 'level-card';
       const cleared = i < clearedCount;
-      const unlocked = i <= clearedCount;
+      const unlocked = isUnlocked(i);
       if (cleared) btn.classList.add('cleared');
-      if (!unlocked) { btn.classList.add('locked'); btn.disabled = true; }
+      if (!unlocked) btn.classList.add('locked');
       const preview = lv.words.slice(0, 4).map((w) => w.a).join(' · ');
       btn.innerHTML =
         '<span class="num">' + (i + 1) + '</span>' +
         '<span class="info"><span class="name">' + lv.name[lang] + '</span>' +
-        '<span class="words-preview">' + (unlocked ? preview + ' …' : '🔒') + '</span></span>' +
-        '<span class="state">' + (cleared ? '✅' : unlocked ? '▶️' : '🔒') + '</span>';
-      btn.addEventListener('click', () => { if (unlocked) openLevel(i); });
+        '<span class="words-preview">' + (unlocked ? preview + ' …' : '🔒 ' + PAY.price) + '</span></span>' +
+        '<span class="state">' + (cleared ? '✅' : unlocked ? '▶️' : '💎') + '</span>';
+      btn.addEventListener('click', () => { if (unlocked) openLevel(i); else showPaywall(i); });
       list.appendChild(btn);
     });
   }
 
   // ---------- puzzle ----------
   function openLevel(levelIdx) {
+    if (!isUnlocked(levelIdx)) { showPaywall(levelIdx); return; }
     currentLevel = levelIdx;
     layout = buildLayout(LEVELS[levelIdx].words);
     cellVals = new Map();
@@ -938,9 +1015,14 @@
     $('modalText').innerHTML = S().clearText(mistakes, hintsUsed) + (allDone ? '<br><br>' + S().allClearText : '');
     const main = $('modalBtn');
     const sec = $('modalSecondaryBtn');
-    if (!allDone && currentLevel === clearedCount - 1) {
+    sec.classList.remove('hidden');
+    const nextIdx = currentLevel + 1;
+    if (!allDone && nextIdx < LEVELS.length && isUnlocked(nextIdx)) {
       main.textContent = S().nextLevel;
-      main.onclick = () => { $('overlay').classList.add('hidden'); openLevel(clearedCount); };
+      main.onclick = () => { $('overlay').classList.add('hidden'); openLevel(nextIdx); };
+    } else if (nextIdx < LEVELS.length && !isUnlocked(nextIdx)) {
+      main.textContent = S().nextLevel + ' 💎';
+      main.onclick = () => { showPaywall(nextIdx); };
     } else {
       main.textContent = S().replay;
       main.onclick = () => { $('overlay').classList.add('hidden'); openLevel(currentLevel); };
@@ -1002,6 +1084,7 @@
 
   applyLang();
   renderHome();
+  if (justPaidLevel) showThanks(justPaidLevel);
 })();
 </script>
 </body>
