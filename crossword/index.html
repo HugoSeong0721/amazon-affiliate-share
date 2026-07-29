@@ -287,9 +287,6 @@
   }
   .modal button.secondary { background: var(--card); color: var(--ink); }
   .modal button.share { background: var(--highlight); color: #262a35; }
-  #modalChoices { display: flex; flex-direction: column; gap: 8px; }
-  #modalChoices.hidden { display: none; }
-  .modal #modalChoices button { background: var(--card); color: var(--ink); text-align: left; padding: 13px 14px; font-size: 14px; }
   button:focus-visible { outline: 3px solid var(--highlight); outline-offset: 2px; }
   .hidden { display: none !important; }
 </style>
@@ -311,7 +308,7 @@
     <div class="level-list" id="levelList"></div>
     <footer>
       <div>📚 <span id="dataDate"></span></div>
-      <div style="margin-top:5px"><button id="ageBtn"></button> · <button id="resetBtn"></button> · <a id="privacyLink" href="privacy.html" style="color:inherit">Privacy</a></div>
+      <div style="margin-top:5px"><button id="resetBtn"></button> · <a id="privacyLink" href="privacy.html" style="color:inherit">Privacy</a></div>
     </footer>
   </section>
 
@@ -343,7 +340,6 @@
     <div class="emoji" id="modalEmoji">🎉</div>
     <h2 id="modalTitle"></h2>
     <p id="modalText"></p>
-    <div id="modalChoices" class="hidden"></div>
     <button class="share hidden" id="modalShareBtn"></button>
     <button id="modalBtn"></button>
     <button class="secondary" id="modalSecondaryBtn"></button>
@@ -384,12 +380,6 @@
       payThanksText: (to) => 'Everything up to level ' + to + ' is yours. Have fun!',
       payNotSet: 'Payments are not live yet — coming soon!',
       payOk: "Let's go!",
-      ageTitle: 'Quick question! 👋',
-      ageText: "What's your age group? We'll set your starting point — you can change it anytime.",
-      age20: '🔥 Teens–20s · skip ahead to Gen Z slang',
-      age30: '💼 30s · quick basics, then the good stuff',
-      age40: '📚 40s+ · from the very basics',
-      ageBtn: 'Change age group',
       dataDate: 'Slang data updated: Jul 2026 · refreshed every 6 months',
       shareBtn: '\ud83d\udce4 Challenge a friend',
       shareText: (l) => 'I just cleared Level ' + l + ' on Slang Crossword \ud83e\udde9 Think you know your slang?',
@@ -424,12 +414,6 @@
       payThanksText: (to) => '레벨 ' + to + '까지 열렸어요. 즐겁게 플레이하세요!',
       payNotSet: '결제 연결 준비 중이에요 — 곧 열립니다!',
       payOk: '바로 시작!',
-      ageTitle: '시작 전에 하나만! 👋',
-      ageText: '연령대를 알려주세요. 시작 지점을 맞춰드려요 — 언제든 바꿀 수 있어요.',
-      age20: '🔥 10~20대 · 기본은 건너뛰고 슬랭부터',
-      age30: '💼 30대 · 기초 빠르게, 바로 본론으로',
-      age40: '📚 40대 이상 · 기초부터 차근차근',
-      ageBtn: '연령대 변경',
       dataDate: '단어 데이터: 2026년 7월 기준 · 6개월마다 업데이트',
       shareBtn: '\ud83d\udce4 친구에게 도전장 보내기',
       shareText: (l) => '나 Slang Crossword 레벨 ' + l + ' 클리어! \ud83e\udde9 요즘 영어 얼마나 알아?',
@@ -626,8 +610,6 @@
 
   function showPaywall() {
     $('modalShareBtn').classList.add('hidden');
-    $('modalChoices').classList.add('hidden');
-    $('modalBtn').classList.remove('hidden');
     const from = firstLockedIdx() + 1; // 1-based
     const to = Math.min(from + PAY.pack - 1, LEVELS.length);
     $('modalEmoji').textContent = '💎';
@@ -649,38 +631,8 @@
     $('overlay').classList.remove('hidden');
   }
 
-  const AGE_KEY = 'slang-crossword-age';
-  function showAgeGate() {
-    $('modalShareBtn').classList.add('hidden');
-    $('modalBtn').classList.add('hidden');
-    $('modalSecondaryBtn').classList.add('hidden');
-    $('modalEmoji').textContent = '👋';
-    $('modalTitle').textContent = S().ageTitle;
-    $('modalText').textContent = S().ageText;
-    const box = $('modalChoices');
-    box.innerHTML = '';
-    box.classList.remove('hidden');
-    [['20', S().age20, 5], ['30', S().age30, 3], ['40', S().age40, 1]].forEach(([key, label, unlock]) => {
-      const b = document.createElement('button');
-      b.textContent = label;
-      b.onclick = () => {
-        try { localStorage.setItem(AGE_KEY, key); } catch (e) { /* 저장 불가 환경 */ }
-        if (unlock > 1) { paidUp = Math.max(paidUp, unlock); saveProgress(); }
-        box.classList.add('hidden');
-        $('modalBtn').classList.remove('hidden');
-        $('modalSecondaryBtn').classList.remove('hidden');
-        $('overlay').classList.add('hidden');
-        renderHome();
-      };
-      box.appendChild(b);
-    });
-    $('overlay').classList.remove('hidden');
-  }
-
   function showThanks(openLv) {
     $('modalShareBtn').classList.add('hidden');
-    $('modalChoices').classList.add('hidden');
-    $('modalBtn').classList.remove('hidden');
     $('modalEmoji').textContent = '💎';
     $('modalTitle').textContent = S().payThanksTitle;
     $('modalText').textContent = S().payThanksText(paidUp);
@@ -853,7 +805,6 @@
     $('resetBtn').textContent = S().reset;
     $('privacyLink').textContent = S().privacy;
     $('dataDate').textContent = S().dataDate;
-    $('ageBtn').textContent = S().ageBtn;
     $('acrossLabel').textContent = S().across;
     $('downLabel').textContent = S().down;
   }
@@ -1123,8 +1074,6 @@
     const main = $('modalBtn');
     const sec = $('modalSecondaryBtn');
     sec.classList.remove('hidden');
-    $('modalChoices').classList.add('hidden');
-    main.classList.remove('hidden');
     const shareBtn = $('modalShareBtn');
     shareBtn.textContent = S().shareBtn;
     shareBtn.classList.remove('hidden');
@@ -1188,7 +1137,6 @@
       renderHome();
     }
   });
-  $('ageBtn').addEventListener('click', showAgeGate);
   $('langBtn').addEventListener('click', () => {
     lang = lang === 'en' ? 'ko' : 'en';
     try { localStorage.setItem(LANG_KEY, lang); } catch (e) { /* private mode */ }
@@ -1198,13 +1146,7 @@
 
   applyLang();
   renderHome();
-  if (justPaidOpen) {
-    showThanks(justPaidOpen);
-  } else {
-    let savedAge = null;
-    try { savedAge = localStorage.getItem(AGE_KEY); } catch (e) { /* 무시 */ }
-    if (!savedAge) showAgeGate();
-  }
+  if (justPaidOpen) showThanks(justPaidOpen);
 
   // ---------- PWA ----------
   if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost')) {
