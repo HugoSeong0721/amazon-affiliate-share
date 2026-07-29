@@ -1,0 +1,19 @@
+{
+  "name": "Slang Crossword — Learn Modern English",
+  "short_name": "Slang Crossword",
+  "description": "Learn modern slang and texting acronyms by solving crossword puzzles. 12 levels, gets harder as you go.",
+  "id": "./",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#fdf8ef",
+  "theme_color": "#f4506b",
+  "lang": "en",
+  "categories": ["games", "education", "word"],
+  "icons": [
+    { "src": "icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png" },
+    { "src": "icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}

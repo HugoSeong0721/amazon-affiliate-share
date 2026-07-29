@@ -2,8 +2,17 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 <title>Slang Crossword — Learn Modern English</title>
+<meta name="description" content="Learn modern slang and texting acronyms by solving crossword puzzles. 12 levels, gets harder as you go.">
+<meta name="theme-color" content="#f4506b">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Slang Crossword">
 <style>
   :root {
     --bg: #fdf8ef;
@@ -1090,6 +1099,11 @@
   applyLang();
   renderHome();
   if (justPaidOpen) showThanks(justPaidOpen);
+
+  // ---------- PWA ----------
+  if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost')) {
+    navigator.serviceWorker.register('sw.js').catch(() => { /* 미지원 환경 무시 */ });
+  }
 })();
 </script>
 </body>
