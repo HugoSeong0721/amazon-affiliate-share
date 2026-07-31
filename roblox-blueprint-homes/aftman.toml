@@ -1,0 +1,6 @@
+# Toolchain for syncing this project into Roblox Studio.
+# Install aftman (https://github.com/LPGhatguy/aftman), then run:
+#   aftman install
+#   rojo serve
+[tools]
+rojo = "rojo-rbx/rojo@7.4.4"
