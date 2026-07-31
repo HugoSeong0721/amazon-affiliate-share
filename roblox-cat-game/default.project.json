@@ -1,0 +1,27 @@
+{
+  "name": "roblox-cat-game",
+  "tree": {
+    "$className": "DataModel",
+    "ReplicatedStorage": {
+      "$className": "ReplicatedStorage",
+      "CatConfig": {
+        "$path": "src/ReplicatedStorage/CatConfig.lua"
+      }
+    },
+    "ServerScriptService": {
+      "$className": "ServerScriptService",
+      "CatGameServer": {
+        "$path": "src/ServerScriptService/CatGameServer.server.lua"
+      }
+    },
+    "StarterPlayer": {
+      "$className": "StarterPlayer",
+      "StarterPlayerScripts": {
+        "$className": "StarterPlayerScripts",
+        "CatGameClient": {
+          "$path": "src/StarterPlayerScripts/CatGameClient.client.lua"
+        }
+      }
+    }
+  }
+}
