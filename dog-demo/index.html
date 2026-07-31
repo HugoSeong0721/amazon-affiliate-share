@@ -1,0 +1,1091 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>멍멍 하우스! 강아지 키우기 — 웹 데모</title>
+</head>
+<body>
+<style>
+  /* ==============================================================
+     멍멍 하우스! 강아지 키우기 — playable web demo
+     따뜻한 공원 테마: 크림 하늘 + 잔디 + 오렌지 포인트
+     ============================================================== */
+  :root {
+    --orange: #f09436;
+    --orange-deep: #ce7018;
+    --sky: #60b0f4;
+    --ink: #5c3e20;
+    --ink-soft: #967656;
+    --green: #58be78;
+    --pink: #f47296;
+    --panel: #fffaf0;
+    --panel-soft: #fdf1dd;
+    --line: #f3ddba;
+    --bad: #e25858;
+    --font-round: ui-rounded, "Arial Rounded MT Bold", "Trebuchet MS", "Segoe UI", system-ui, sans-serif;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    font-family: var(--font-round);
+    color: var(--ink);
+    background:
+      radial-gradient(1100px 500px at 12% -8%, #ffe9c9 0%, transparent 60%),
+      radial-gradient(900px 550px at 108% 12%, #d9f0ff 0%, transparent 55%),
+      linear-gradient(165deg, #fff3dd 0%, #ffeccc 50%, #e2f3ff 100%);
+    min-height: 100vh;
+    touch-action: manipulation;
+  }
+  button { font-family: inherit; cursor: pointer; }
+  button:focus-visible, [tabindex]:focus-visible { outline: 3px solid var(--sky); outline-offset: 2px; }
+
+  .wrap { max-width: 1080px; margin: 0 auto; padding: 14px 16px 40px; }
+
+  /* ---------- top bar ---------- */
+  header { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 8px 2px 14px; }
+  .logo {
+    font-size: clamp(22px, 4vw, 32px);
+    font-weight: 900; letter-spacing: 0.5px; color: #fff;
+    text-shadow: 0 2px 0 var(--orange-deep), 0 4px 14px rgba(240, 148, 54, 0.55);
+    -webkit-text-stroke: 1.5px var(--orange);
+  }
+  .logo .paw { display: inline-block; animation: wiggle 2s ease-in-out infinite; }
+  @keyframes wiggle { 0%,100% { transform: rotate(-8deg); } 50% { transform: rotate(14deg) scale(1.15); } }
+
+  .coinbar {
+    display: flex; align-items: center; gap: 8px;
+    background: var(--panel);
+    border: 3px solid var(--orange);
+    border-radius: 999px;
+    padding: 7px 18px 7px 12px;
+    font-size: 21px; font-weight: 900;
+    box-shadow: 0 4px 0 rgba(92, 62, 32, 0.12);
+    font-variant-numeric: tabular-nums;
+  }
+  .coinbar .bump { animation: coinbump 0.4s ease; }
+  @keyframes coinbump { 40% { transform: scale(1.3); } }
+
+  /* ---------- layout ---------- */
+  main { display: grid; grid-template-columns: 1fr 380px; gap: 18px; align-items: start; }
+  @media (max-width: 880px) { main { grid-template-columns: 1fr; } }
+
+  /* ---------- 공원 무대 ---------- */
+  .stage-card {
+    border-radius: 26px; padding: 12px;
+    background: var(--panel);
+    box-shadow: 0 10px 30px rgba(92, 62, 32, 0.14);
+  }
+  .namecard {
+    display: flex; align-items: center; justify-content: center; gap: 10px;
+    padding: 2px 4px 10px; flex-wrap: wrap;
+  }
+  .namecard .dogname { font-size: 22px; font-weight: 900; }
+  .namecard .lv {
+    background: var(--sky); color: #fff; border-radius: 999px;
+    font-size: 14px; font-weight: 900; padding: 3px 12px;
+  }
+  .namecard .edit {
+    border: none; background: var(--panel-soft); border-radius: 999px;
+    font-size: 13px; font-weight: 900; color: var(--ink-soft); padding: 5px 12px;
+  }
+  .expwrap { padding: 0 8px 10px; }
+  .expbar { height: 10px; border-radius: 999px; background: var(--line); overflow: hidden; }
+  .expbar > div { height: 100%; width: 0%; border-radius: 999px; background: linear-gradient(90deg, #7fc8ff, var(--sky)); transition: width 0.4s ease; }
+
+  .stage {
+    position: relative; border-radius: 18px; overflow: hidden;
+    min-height: 430px;
+    border: 4px solid #ffd9a0;
+    background: linear-gradient(180deg, #a8ddff 0%, #d4efff 52%, #8fd47c 52.5%, #6dbd62 100%);
+    display: flex; align-items: flex-end; justify-content: center;
+  }
+  .sun {
+    position: absolute; top: 26px; left: 34px; width: 58px; height: 58px;
+    border-radius: 50%; background: #ffd94d;
+    box-shadow: 0 0 40px 12px rgba(255, 217, 77, 0.65);
+  }
+  .cloud { position: absolute; font-size: 30px; opacity: 0.9; animation: drift 9s ease-in-out infinite; }
+  @keyframes drift { 0%,100% { transform: translateX(0); } 50% { transform: translateX(22px); } }
+  .bush { position: absolute; bottom: 8%; font-size: 34px; }
+
+  .doll-holder {
+    position: relative; z-index: 3;
+    padding-bottom: 12px;
+    transition: transform 0.55s ease;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .doll-holder svg { display: block; height: min(46vh, 330px); width: auto; filter: drop-shadow(0 10px 10px rgba(60, 40, 10, 0.25)); }
+  .doll-holder.hop { animation: hop 0.5s ease; }
+  @keyframes hop { 35% { transform: translateY(-26px); } }
+
+  .tail { transform-origin: 176px 168px; animation: wag var(--wagdur, 0.7s) ease-in-out infinite alternate; }
+  @keyframes wag { from { transform: rotate(-14deg); } to { transform: rotate(22deg); } }
+
+  @media (prefers-reduced-motion: reduce) {
+    .tail, .cloud, .logo .paw, .doll-holder.hop { animation: none !important; }
+  }
+
+  /* 공 & 하트 & 거품 */
+  .ball {
+    position: absolute; z-index: 4; font-size: 30px;
+    left: 44%; bottom: 20%;
+    transition: left 0.7s cubic-bezier(.3,.6,.4,1), bottom 0.7s cubic-bezier(.3,-0.4,.6,1.4), opacity 0.3s;
+    opacity: 0; pointer-events: none;
+  }
+  .floatie {
+    position: absolute; z-index: 6; font-size: 24px; pointer-events: none;
+    animation: floatup 1s ease forwards;
+  }
+  @keyframes floatup { to { transform: translateY(-70px) scale(1.4); opacity: 0; } }
+
+  .catchhint {
+    position: absolute; z-index: 6; left: 50%; transform: translateX(-50%);
+    bottom: 62%;
+    background: var(--pink); color: #fff; font-weight: 900; font-size: 16px;
+    border-radius: 999px; padding: 8px 16px;
+    box-shadow: 0 4px 12px rgba(244, 114, 150, 0.5);
+    animation: pulse 0.5s ease infinite alternate;
+    display: none;
+  }
+  @keyframes pulse { to { transform: translateX(-50%) scale(1.12); } }
+
+  .sleepveil {
+    position: absolute; inset: 0; z-index: 5;
+    background: rgba(30, 22, 60, 0.55);
+    display: none; align-items: center; justify-content: center;
+    color: #fff; font-size: 40px; font-weight: 900;
+    text-shadow: 0 2px 12px rgba(0,0,0,0.5);
+  }
+
+  /* ---------- 행동 버튼 ---------- */
+  .stage-actions { display: flex; gap: 10px; justify-content: center; padding-top: 12px; flex-wrap: wrap; }
+  .act {
+    border: none; border-radius: 18px;
+    width: 84px; padding: 10px 4px 8px;
+    background: var(--panel-soft);
+    border: 3px solid var(--line);
+    display: flex; flex-direction: column; align-items: center; gap: 2px;
+    transition: transform 0.08s ease;
+    position: relative;
+  }
+  .act:active { transform: scale(0.94); }
+  .act .ico { font-size: 30px; }
+  .act .txt { font-size: 13.5px; font-weight: 900; color: var(--ink); }
+  .act .sub { font-size: 11.5px; font-weight: 900; color: var(--ink-soft); }
+  .act[disabled] { opacity: 0.55; }
+  .act .cd {
+    position: absolute; inset: 0; border-radius: 15px;
+    background: rgba(92, 62, 32, 0.55); color: #fff;
+    font-size: 22px; font-weight: 900;
+    display: none; align-items: center; justify-content: center;
+  }
+
+  /* ---------- 옆 패널: 상태 + 상점 ---------- */
+  .panel {
+    background: var(--panel); border-radius: 26px; padding: 14px;
+    box-shadow: 0 10px 30px rgba(92, 62, 32, 0.14);
+  }
+  .panel h2 { margin: 2px 6px 10px; font-size: 19px; }
+  .statrow { margin: 0 4px 10px; }
+  .statrow .lab { display: flex; justify-content: space-between; font-size: 14.5px; font-weight: 900; margin-bottom: 4px; }
+  .statrow .lab .val { color: var(--ink-soft); font-variant-numeric: tabular-nums; }
+  .bar { height: 14px; border-radius: 999px; background: var(--line); overflow: hidden; }
+  .bar > div { height: 100%; border-radius: 999px; transition: width 0.5s ease, background 0.3s; }
+
+  .tabs { display: flex; gap: 6px; margin: 14px 0 12px; }
+  .tab {
+    border: none; border-radius: 999px;
+    background: var(--panel-soft); color: var(--ink);
+    padding: 8px 14px; font-size: 15px; font-weight: 800;
+  }
+  .tab[aria-selected="true"] { background: var(--orange); color: #fff; box-shadow: 0 3px 0 var(--orange-deep); }
+
+  .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+  .cell {
+    border: 3px solid var(--line); border-radius: 16px; background: #fff;
+    padding: 6px 6px 8px;
+    display: flex; flex-direction: column; align-items: center; gap: 4px;
+  }
+  .cell.on { border-color: var(--orange); background: #fff7ea; }
+  .cell .preview {
+    width: 100%; aspect-ratio: 1; border-radius: 10px;
+    background: linear-gradient(160deg, #fdf1dd, #e8f4ff);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 34px; overflow: hidden;
+  }
+  .cell .swatch { width: 100%; aspect-ratio: 1; border-radius: 10px; border: 2px solid rgba(92,62,32,0.15); }
+  .cell .tag { font-size: 13px; font-weight: 900; line-height: 1.15; text-align: center; }
+  .tag.free { color: #14a06d; }
+  .tag.price { color: var(--ink-soft); }
+  .tag.onlabel { color: var(--orange-deep); }
+
+  /* ---------- 말풍선 ---------- */
+  .bubble {
+    position: absolute; z-index: 6;
+    left: 50%; transform: translateX(-50%); bottom: 72%;
+    background: #fff; color: var(--ink);
+    font-weight: 900; font-size: 16px;
+    border-radius: 16px; padding: 9px 15px;
+    box-shadow: 0 6px 16px rgba(60, 40, 10, 0.25);
+    opacity: 0; transition: opacity 0.25s ease;
+    pointer-events: none;
+    max-width: 80%;
+  }
+  .bubble::after {
+    content: ""; position: absolute; left: 50%; bottom: -8px; transform: translateX(-50%);
+    border: 9px solid transparent; border-top-color: #fff; border-bottom: none;
+  }
+  .bubble.show { opacity: 1; }
+
+  /* ---------- 모달 / 토스트 ---------- */
+  .veil[hidden] { display: none; }
+  .veil {
+    position: fixed; inset: 0; z-index: 50;
+    background: rgba(70, 44, 14, 0.45);
+    display: flex; align-items: center; justify-content: center; padding: 20px;
+  }
+  .modal {
+    background: #fff; border-radius: 24px;
+    padding: 22px 22px 18px;
+    width: min(380px, 92vw);
+    text-align: center;
+    box-shadow: 0 20px 50px rgba(60, 35, 5, 0.35);
+  }
+  .modal h3 { margin: 0 0 6px; font-size: 25px; }
+  .modal p { margin: 4px 0 14px; font-size: 18px; font-weight: 800; color: var(--ink-soft); }
+  .modal .row { display: flex; gap: 10px; justify-content: center; }
+  .modal .preview-big {
+    width: 110px; height: 110px; margin: 0 auto 8px;
+    border-radius: 16px; background: var(--panel-soft);
+    display: flex; align-items: center; justify-content: center; font-size: 56px;
+  }
+  .modal input {
+    width: 100%; border: 3px solid var(--line); border-radius: 14px;
+    font-family: inherit; font-size: 20px; font-weight: 900; color: var(--ink);
+    padding: 12px 14px; text-align: center; margin-bottom: 14px;
+  }
+  .modal input:focus { outline: none; border-color: var(--orange); }
+  .big-btn {
+    border: none; border-radius: 999px;
+    padding: 13px 28px;
+    font-size: 20px; font-weight: 900; color: #fff;
+    background: linear-gradient(180deg, #ffb35c, var(--orange));
+    box-shadow: 0 5px 0 var(--orange-deep), 0 10px 18px rgba(240, 148, 54, 0.4);
+    transition: transform 0.08s ease;
+  }
+  .big-btn:active { transform: translateY(3px); box-shadow: 0 2px 0 var(--orange-deep); }
+  .btn-soft {
+    border: none; border-radius: 999px; padding: 12px 24px;
+    font-size: 18px; font-weight: 900; color: var(--ink);
+    background: #f2e9da;
+  }
+
+  #toast {
+    position: fixed; left: 50%; top: 18px; transform: translateX(-50%);
+    z-index: 60;
+    background: var(--ink); color: #fff;
+    font-weight: 900; font-size: 17px;
+    padding: 12px 24px; border-radius: 999px;
+    box-shadow: 0 8px 20px rgba(60, 35, 5, 0.35);
+    opacity: 0; pointer-events: none;
+    transition: opacity 0.25s ease, top 0.25s ease;
+    max-width: 90vw;
+  }
+  #toast.show { opacity: 1; top: 26px; }
+  #toast.warn { background: var(--bad); }
+
+  footer { margin-top: 26px; text-align: center; font-size: 14px; font-weight: 700; color: var(--ink-soft); line-height: 1.7; }
+</style>
+
+<div class="wrap">
+  <header>
+    <div class="logo">멍멍 하우스! <span class="paw">🐾</span></div>
+    <div class="coinbar"><span>🦴</span><span id="coins">0</span></div>
+  </header>
+
+  <main>
+    <section class="stage-card" aria-label="우리 강아지">
+      <div class="namecard">
+        <span class="dogname" id="dogName">멍멍이</span>
+        <span class="lv" id="dogLv">Lv.1</span>
+        <button class="edit" id="renameBtn">✏️ 이름</button>
+      </div>
+      <div class="expwrap"><div class="expbar"><div id="expFill"></div></div></div>
+
+      <div class="stage" id="stage">
+        <div class="sun"></div>
+        <span class="cloud" style="top:8%; left:52%;">☁️</span>
+        <span class="cloud" style="top:20%; left:76%; animation-delay:2s;">☁️</span>
+        <span class="cloud" style="top:16%; left:24%; animation-delay:4s;">🌤️</span>
+        <span class="bush" style="left:4%;">🌳</span>
+        <span class="bush" style="right:5%; bottom:12%;">🌷</span>
+        <span class="bush" style="right:16%; bottom:4%;">🌼</span>
+
+        <div class="doll-holder" id="dogHolder" role="button" tabindex="0" aria-label="강아지 쓰다듬기">
+          <svg id="dog" viewBox="0 0 260 240" role="img" aria-label="우리 강아지"></svg>
+        </div>
+
+        <div class="ball" id="ball">🎾</div>
+        <div class="catchhint" id="catchHint">지금 쓰다듬어 주세요! ✋</div>
+        <div class="bubble" id="bubble"></div>
+        <div class="sleepveil" id="sleepVeil">💤 쿨쿨...</div>
+      </div>
+
+      <div class="stage-actions">
+        <button class="act" id="actFeed"><span class="ico">🍖</span><span class="txt">밥주기</span><span class="sub">무료</span><span class="cd"></span></button>
+        <button class="act" id="actTreat"><span class="ico">🦴</span><span class="txt">간식</span><span class="sub">10🦴</span><span class="cd"></span></button>
+        <button class="act" id="actFetch"><span class="ico">🎾</span><span class="txt">공놀이</span><span class="sub">코인 획득!</span><span class="cd"></span></button>
+        <button class="act" id="actBath"><span class="ico">🛁</span><span class="txt">목욕</span><span class="sub">반짝반짝</span><span class="cd"></span></button>
+        <button class="act" id="actNap"><span class="ico">💤</span><span class="txt">낮잠</span><span class="sub">에너지 회복</span><span class="cd"></span></button>
+      </div>
+    </section>
+
+    <section class="panel" aria-label="상태와 상점">
+      <h2>💛 상태</h2>
+      <div class="statrow" data-stat="hunger">
+        <div class="lab"><span>🍖 배고픔</span><span class="val">80</span></div>
+        <div class="bar"><div style="background:var(--orange)"></div></div>
+      </div>
+      <div class="statrow" data-stat="happy">
+        <div class="lab"><span>💖 행복</span><span class="val">80</span></div>
+        <div class="bar"><div style="background:var(--pink)"></div></div>
+      </div>
+      <div class="statrow" data-stat="energy">
+        <div class="lab"><span>⚡ 에너지</span><span class="val">100</span></div>
+        <div class="bar"><div style="background:var(--green)"></div></div>
+      </div>
+      <div class="statrow" data-stat="clean">
+        <div class="lab"><span>🫧 청결</span><span class="val">90</span></div>
+        <div class="bar"><div style="background:var(--sky)"></div></div>
+      </div>
+
+      <h2 style="margin-top:16px;">🏪 강아지 상점</h2>
+      <div class="tabs" role="tablist" id="tabs"></div>
+      <div class="grid" id="grid"></div>
+    </section>
+  </main>
+
+  <footer>
+    웹 데모 버전 · 실제 게임은 Roblox로 개발 중 (저장소의 <b>roblox-dog-game</b> 폴더 참고)<br>
+    코인은 게임 속 가상 재화입니다 (실제 결제 없음)
+  </footer>
+</div>
+
+<div class="veil" id="veil" hidden>
+  <div class="modal" id="modalBox" role="dialog" aria-modal="true"></div>
+</div>
+<div id="toast" role="status"></div>
+
+<script>
+"use strict";
+
+/* =====================================================================
+   품종 / 악세서리 카탈로그
+   ===================================================================== */
+const BREEDS = [
+  { id:"mix", name:"믹스견", price:0,
+    body:"#9a6e46", ear:"#785230", muzzle:"#d6b58f", patch:"#f0e4d0", earStyle:"floppy" },
+  { id:"shiba", name:"시바견", price:150,
+    body:"#e29044", ear:"#c4722e", muzzle:"#f8ead4", patch:"#faf0e0", earStyle:"pointy" },
+  { id:"corgi", name:"웰시코기", price:250,
+    body:"#eba854", ear:"#d28838", muzzle:"#faf2e2", patch:"#fcf6ea", earStyle:"pointy" },
+  { id:"poodle", name:"푸들", price:400,
+    body:"#eedcbe", ear:"#dec6a0", muzzle:"#f6ead4", patch:"#fcf4e4", earStyle:"floppy" },
+  { id:"dalmatian", name:"달마시안", price:600,
+    body:"#f5f5f5", ear:"#282828", muzzle:"#fafafa", patch:"#ffffff", earStyle:"floppy", spots:true },
+];
+
+const ACCESSORIES = [
+  { id:"bow", name:"리본", price:60, icon:"🎀" },
+  { id:"cap", name:"고깔모자", price:80, icon:"🎉" },
+  { id:"scarf", name:"스카프", price:100, icon:"🧣" },
+  { id:"glasses", name:"안경", price:120, icon:"🕶️" },
+];
+
+/* =====================================================================
+   상태 (이 브라우저에 저장)
+   ===================================================================== */
+const DEFAULTS = {
+  coins: 60,
+  name: "멍멍이",
+  named: false,
+  breed: "mix",
+  level: 1,
+  exp: 0,
+  ownedBreeds: { mix: true },
+  ownedAcc: {},
+  acc: { bow:false, cap:false, scarf:false, glasses:false },
+  stats: { hunger: 80, happy: 80, energy: 100, clean: 90 },
+  lastSeen: 0,
+};
+
+function storageGet() {
+  try { return JSON.parse(localStorage.getItem("dog-demo-kr") || "{}"); }
+  catch (err) { return {}; }
+}
+let state = Object.assign({}, DEFAULTS, storageGet());
+state.stats = Object.assign({}, DEFAULTS.stats, state.stats);
+state.ownedBreeds = Object.assign({}, DEFAULTS.ownedBreeds, state.ownedBreeds);
+state.ownedAcc = state.ownedAcc || {};
+state.acc = Object.assign({}, DEFAULTS.acc, state.acc);
+
+function save() {
+  state.lastSeen = Date.now();
+  try { localStorage.setItem("dog-demo-kr", JSON.stringify(state)); }
+  catch (err) { /* 저장 불가여도 계속 플레이 */ }
+}
+
+function breedOf(id) { return BREEDS.find(b => b.id === id) || BREEDS[0]; }
+const clamp = (v) => Math.max(0, Math.min(100, v));
+
+/* =====================================================================
+   효과음 (WebAudio, 에셋 없음)
+   ===================================================================== */
+let audioCtx = null;
+function blip(freq, dur, type, vol) {
+  try {
+    audioCtx = audioCtx || new (window.AudioContext || window.webkitAudioContext)();
+    const osc = audioCtx.createOscillator(), gain = audioCtx.createGain();
+    osc.type = type || "sine"; osc.frequency.value = freq;
+    gain.gain.setValueAtTime(vol || 0.1, audioCtx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + dur);
+    osc.connect(gain).connect(audioCtx.destination);
+    osc.start(); osc.stop(audioCtx.currentTime + dur);
+  } catch (err) { /* 소리는 선택사항 */ }
+}
+const sndBark = () => { blip(420, 0.08, "square", 0.07); setTimeout(() => blip(330, 0.1, "square", 0.07), 90); };
+const sndMunch = () => { blip(200, 0.08, "triangle"); setTimeout(() => blip(160, 0.08, "triangle"), 110); };
+const sndCoin = () => { blip(880, 0.09, "triangle"); setTimeout(() => blip(1318, 0.14, "triangle"), 70); };
+const sndTap = () => blip(660, 0.07, "triangle", 0.06);
+const sndSplash = () => { blip(500, 0.2, "sine"); setTimeout(() => blip(320, 0.25, "sine"), 100); };
+
+/* =====================================================================
+   강아지 SVG 그리기
+   ===================================================================== */
+const dogSvg = document.getElementById("dog");
+const dogHolder = document.getElementById("dogHolder");
+
+function currentMood() {
+  if (napping) return "sleep";
+  const s = state.stats;
+  if (s.hunger < 25) return "sad";
+  if (s.energy < 20) return "sleepy";
+  if (s.happy >= 70) return "happy";
+  return "normal";
+}
+
+function dogSVG() {
+  const b = breedOf(state.breed);
+  const mood = currentMood();
+  const dirty = state.stats.clean < 35;
+
+  // 귀
+  let earsBack = "", earsFront = "";
+  if (b.earStyle === "pointy") {
+    earsFront = `
+      <path d="M92 56 L72 10 L116 36 Z" fill="${b.ear}"/>
+      <path d="M168 56 L188 10 L144 36 Z" fill="${b.ear}"/>
+      <path d="M92 48 L80 22 L106 38 Z" fill="#f9b8c4"/>
+      <path d="M168 48 L180 22 L154 38 Z" fill="#f9b8c4"/>`;
+  } else {
+    earsBack = `
+      <ellipse cx="74" cy="82" rx="20" ry="36" fill="${b.ear}" transform="rotate(-20 74 82)"/>
+      <ellipse cx="186" cy="82" rx="20" ry="36" fill="${b.ear}" transform="rotate(20 186 82)"/>`;
+  }
+
+  // 눈
+  let eyes = "";
+  if (mood === "sleep" || mood === "sleepy") {
+    eyes = `
+      <path d="M96 88 Q104 95 112 88" fill="none" stroke="#3a2e28" stroke-width="5" stroke-linecap="round"/>
+      <path d="M148 88 Q156 95 164 88" fill="none" stroke="#3a2e28" stroke-width="5" stroke-linecap="round"/>`;
+  } else if (mood === "happy") {
+    eyes = `
+      <path d="M96 88 Q104 78 112 88" fill="none" stroke="#3a2e28" stroke-width="5" stroke-linecap="round"/>
+      <path d="M148 88 Q156 78 164 88" fill="none" stroke="#3a2e28" stroke-width="5" stroke-linecap="round"/>`;
+  } else {
+    const brows = mood === "sad"
+      ? `<path d="M94 72 L112 79" stroke="#3a2e28" stroke-width="4" stroke-linecap="round"/>
+         <path d="M166 72 L148 79" stroke="#3a2e28" stroke-width="4" stroke-linecap="round"/>`
+      : "";
+    eyes = `${brows}
+      <circle cx="104" cy="87" r="7.5" fill="#3a2e28"/>
+      <circle cx="156" cy="87" r="7.5" fill="#3a2e28"/>
+      <circle cx="106.5" cy="84" r="2.6" fill="#fff"/>
+      <circle cx="158.5" cy="84" r="2.6" fill="#fff"/>`;
+  }
+
+  // 입
+  let mouth = "";
+  if (mood === "sad") {
+    mouth = `<path d="M116 132 Q130 123 144 132" fill="none" stroke="#7a5a40" stroke-width="4" stroke-linecap="round"/>`;
+  } else if (mood === "happy") {
+    mouth = `
+      <path d="M112 124 Q121 133 130 124 Q139 133 148 124" fill="none" stroke="#7a5a40" stroke-width="4" stroke-linecap="round"/>
+      <path d="M122 128 Q130 148 138 128 Z" fill="#ff8296"/>`;
+  } else {
+    mouth = `<path d="M116 126 Q130 136 144 126" fill="none" stroke="#7a5a40" stroke-width="4" stroke-linecap="round"/>`;
+  }
+
+  // 달마시안 점 / 흙탕물
+  const spots = b.spots ? `
+    <circle cx="106" cy="58" r="8" fill="#333"/>
+    <circle cx="164" cy="150" r="9" fill="#333"/>
+    <circle cx="100" cy="172" r="7" fill="#333"/>
+    <circle cx="152" cy="196" r="6" fill="#333"/>` : "";
+  const dirt = dirty ? `
+    <ellipse cx="152" cy="62" rx="11" ry="6" fill="#7a5c3c" opacity="0.6" transform="rotate(-16 152 62)"/>
+    <ellipse cx="98" cy="150" rx="12" ry="7" fill="#7a5c3c" opacity="0.6" transform="rotate(12 98 150)"/>
+    <ellipse cx="160" cy="196" rx="9" ry="5" fill="#7a5c3c" opacity="0.55"/>` : "";
+
+  // 악세서리
+  let accSvg = "";
+  if (state.acc.scarf) accSvg += `
+    <rect x="99" y="137" width="62" height="15" rx="7.5" fill="#ff7b54"/>
+    <rect x="136" y="147" width="15" height="28" rx="7" fill="#ff7b54"/>
+    <line x1="139" y1="153" x2="148" y2="153" stroke="#e05a34" stroke-width="3"/>
+    <line x1="139" y1="163" x2="148" y2="163" stroke="#e05a34" stroke-width="3"/>`;
+  if (state.acc.bow) accSvg += `
+    <path d="M170 34 L150 44 L170 54 Z" fill="#ff5d8f"/>
+    <path d="M190 34 L210 44 L190 54 Z" fill="#ff5d8f"/>
+    <circle cx="180" cy="44" r="8" fill="#e23a6e"/>`;
+  if (state.acc.cap) accSvg += `
+    <path d="M130 -2 L104 42 L156 42 Z" fill="#60b0f4"/>
+    <path d="M130 -2 L117 20 L143 20 Z" fill="#8fd0ff"/>
+    <circle cx="130" cy="0" r="7" fill="#ffd94d"/>`;
+  if (state.acc.glasses) accSvg += `
+    <circle cx="104" cy="87" r="13" fill="rgba(80,60,120,0.25)" stroke="#3a2e28" stroke-width="4"/>
+    <circle cx="156" cy="87" r="13" fill="rgba(80,60,120,0.25)" stroke="#3a2e28" stroke-width="4"/>
+    <line x1="117" y1="87" x2="143" y2="87" stroke="#3a2e28" stroke-width="4"/>`;
+
+  const zzz = mood === "sleep" ? `<text x="196" y="46" font-size="26" font-weight="900" fill="#5c3e20">Z z z</text>` : "";
+
+  return `
+    <g class="tail"><path d="M176 172 Q212 158 216 122" fill="none" stroke="${b.ear}" stroke-width="15" stroke-linecap="round"/></g>
+    ${earsBack}
+    <ellipse cx="130" cy="180" rx="54" ry="44" fill="${b.body}"/>
+    <ellipse cx="130" cy="190" rx="30" ry="27" fill="${b.patch}"/>
+    <rect x="105" y="172" width="15" height="46" rx="7.5" fill="${b.body}"/>
+    <rect x="140" y="172" width="15" height="46" rx="7.5" fill="${b.body}"/>
+    <ellipse cx="112.5" cy="219" rx="11" ry="7" fill="${b.ear}"/>
+    <ellipse cx="147.5" cy="219" rx="11" ry="7" fill="${b.ear}"/>
+    <circle cx="130" cy="92" r="56" fill="${b.body}"/>
+    ${earsFront}
+    <ellipse cx="130" cy="118" rx="27" ry="20" fill="${b.muzzle}"/>
+    <path d="M119 105 Q130 98 141 105 Q141 114 130 118 Q119 114 119 105 Z" fill="#3a2e28"/>
+    ${mouth}
+    ${eyes}
+    <ellipse cx="95" cy="109" rx="9" ry="5" fill="#ff9ec2" opacity="0.55"/>
+    <ellipse cx="165" cy="109" rx="9" ry="5" fill="#ff9ec2" opacity="0.55"/>
+    ${spots}
+    ${dirt}
+    ${accSvg}
+    ${zzz}`;
+}
+
+function dogScale() { return Math.min(1 + (state.level - 1) * 0.03, 1.3); }
+
+function renderDog() {
+  dogSvg.innerHTML = dogSVG();
+  dogHolder.style.transform = fetchOffset
+    ? `translateX(${fetchOffset}px) scale(${dogScale()})`
+    : `scale(${dogScale()})`;
+  const wag = currentMood() === "happy" ? 0.4 : currentMood() === "sad" ? 1.4 : 0.8;
+  dogHolder.style.setProperty("--wagdur", wag + "s");
+}
+
+/* =====================================================================
+   화면 갱신 (코인/이름/레벨/상태 바)
+   ===================================================================== */
+const coinsEl = document.getElementById("coins");
+function renderCoins(bump) {
+  coinsEl.textContent = Math.floor(state.coins);
+  if (bump) { coinsEl.classList.remove("bump"); void coinsEl.offsetWidth; coinsEl.classList.add("bump"); }
+}
+
+function renderHeader() {
+  document.getElementById("dogName").textContent = state.name;
+  document.getElementById("dogLv").textContent = "Lv." + state.level;
+  document.getElementById("expFill").style.width = Math.min(100, state.exp / expNeed() * 100) + "%";
+}
+
+function renderStats() {
+  document.querySelectorAll(".statrow").forEach(row => {
+    const key = row.dataset.stat;
+    const value = state.stats[key];
+    row.querySelector(".val").textContent = Math.round(value);
+    const fill = row.querySelector(".bar > div");
+    fill.style.width = value + "%";
+    const baseColor = { hunger:"var(--orange)", happy:"var(--pink)", energy:"var(--green)", clean:"var(--sky)" }[key];
+    fill.style.background = value < 25 ? "var(--bad)" : baseColor;
+  });
+}
+
+/* =====================================================================
+   토스트 / 모달
+   ===================================================================== */
+const toastEl = document.getElementById("toast");
+let toastTimer = null;
+function toast(msg, warn) {
+  toastEl.textContent = msg;
+  toastEl.classList.toggle("warn", !!warn);
+  toastEl.classList.add("show");
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => toastEl.classList.remove("show"), 2300);
+}
+
+const veil = document.getElementById("veil");
+const modalBox = document.getElementById("modalBox");
+function openModal(html) { modalBox.innerHTML = html; veil.hidden = false; }
+function closeModal() { veil.hidden = true; modalBox.innerHTML = ""; }
+veil.addEventListener("click", (e) => { if (e.target === veil) closeModal(); });
+
+/* =====================================================================
+   말풍선 / 이펙트
+   ===================================================================== */
+const bubbleEl = document.getElementById("bubble");
+let bubbleTimer = null;
+function speak(text, ms) {
+  bubbleEl.textContent = text;
+  bubbleEl.classList.add("show");
+  clearTimeout(bubbleTimer);
+  bubbleTimer = setTimeout(() => bubbleEl.classList.remove("show"), ms || 2400);
+}
+
+const stage = document.getElementById("stage");
+function floatie(emoji) {
+  const el = document.createElement("span");
+  el.className = "floatie";
+  el.textContent = emoji;
+  el.style.left = (44 + Math.random() * 12) + "%";
+  el.style.bottom = "52%";
+  stage.appendChild(el);
+  setTimeout(() => el.remove(), 1000);
+}
+
+function hop() {
+  dogHolder.classList.remove("hop"); void dogHolder.offsetWidth; dogHolder.classList.add("hop");
+}
+
+/* =====================================================================
+   경험치 / 레벨
+   ===================================================================== */
+function expNeed() { return state.level * 60; }
+function addExp(amount) {
+  state.exp += amount;
+  while (state.exp >= expNeed()) {
+    state.exp -= expNeed();
+    state.level += 1;
+    state.coins += 20;
+    sndCoin(); hop(); floatie("🎉");
+    toast(`🎉 레벨 업! ${state.name} Lv.${state.level} (+20🦴)`);
+  }
+  renderHeader(); renderCoins(true);
+}
+
+/* =====================================================================
+   행동들
+   ===================================================================== */
+let busy = false;       // 공놀이/낮잠 중 잠금
+let napping = false;
+let fetchOffset = 0;    // 공놀이 때 강아지 이동량(px)
+
+const buttons = {
+  feed: document.getElementById("actFeed"),
+  treat: document.getElementById("actTreat"),
+  fetch: document.getElementById("actFetch"),
+  bath: document.getElementById("actBath"),
+  nap: document.getElementById("actNap"),
+};
+
+function startCooldown(btn, seconds) {
+  const cover = btn.querySelector(".cd");
+  btn.disabled = true;
+  cover.style.display = "flex";
+  let remain = seconds;
+  cover.textContent = remain;
+  const timer = setInterval(() => {
+    remain -= 1;
+    if (remain <= 0) {
+      clearInterval(timer);
+      cover.style.display = "none";
+      btn.disabled = false;
+    } else {
+      cover.textContent = remain;
+    }
+  }, 1000);
+}
+
+// 🍖 밥주기
+buttons.feed.addEventListener("click", () => {
+  if (busy) return;
+  state.stats.hunger = clamp(state.stats.hunger + 26);
+  sndMunch(); hop(); floatie("🍖");
+  speak("냠냠! 맛있어요 🍖");
+  addExp(3);
+  renderAll(); save();
+  startCooldown(buttons.feed, 15);
+});
+
+// 🦴 간식
+buttons.treat.addEventListener("click", () => {
+  if (busy) return;
+  if (state.coins < 10) { toast("뼈다귀 코인이 부족해요! 공놀이로 모아보세요 🎾", true); return; }
+  state.coins -= 10;
+  state.stats.hunger = clamp(state.stats.hunger + 10);
+  state.stats.happy = clamp(state.stats.happy + 12);
+  sndMunch(); hop(); floatie("💖");
+  speak("간식 최고! 🦴");
+  addExp(5);
+  renderAll(); save();
+  startCooldown(buttons.treat, 8);
+});
+
+// 🎾 공놀이 (물어오기 + 타이밍 보너스)
+const ballEl = document.getElementById("ball");
+const catchHint = document.getElementById("catchHint");
+let catchWindow = false;
+
+buttons.fetch.addEventListener("click", () => {
+  if (busy) return;
+  if (state.stats.energy < 12) { toast(`${state.name}가 너무 피곤해요. 낮잠을 재워주세요 💤`, true); return; }
+  busy = true;
+  state.stats.energy = clamp(state.stats.energy - 12);
+  renderStats();
+  sndTap();
+  speak("공이다!! 🎾", 1500);
+
+  // 1) 공이 날아감
+  ballEl.style.transition = "none";
+  ballEl.style.left = "46%"; ballEl.style.bottom = "30%"; ballEl.style.opacity = "1";
+  requestAnimationFrame(() => requestAnimationFrame(() => {
+    ballEl.style.transition = "left 0.7s cubic-bezier(.3,.6,.4,1), bottom 0.7s cubic-bezier(.3,-0.4,.6,1.4)";
+    ballEl.style.left = "80%"; ballEl.style.bottom = "12%";
+  }));
+
+  // 2) 강아지가 쫓아감
+  setTimeout(() => {
+    fetchOffset = Math.min(stage.clientWidth * 0.3, 150);
+    dogHolder.style.transition = "transform 0.8s ease";
+    renderDog();
+  }, 500);
+
+  // 3) 공 물고 돌아옴
+  setTimeout(() => {
+    ballEl.style.opacity = "0";
+    fetchOffset = 0;
+    renderDog();
+  }, 1700);
+
+  // 4) 도착: 보상 + 보너스 찬스
+  setTimeout(() => {
+    dogHolder.style.transition = "transform 0.55s ease";
+    state.coins += 7;
+    state.stats.happy = clamp(state.stats.happy + 8);
+    sndCoin(); sndBark(); hop(); floatie("🦴");
+    renderCoins(true);
+    addExp(6);
+    speak("물어왔어요! +7🦴");
+
+    catchWindow = true;
+    catchHint.style.display = "block";
+    setTimeout(() => {
+      catchWindow = false;
+      catchHint.style.display = "none";
+      busy = false;
+      renderAll(); save();
+    }, 1400);
+  }, 2600);
+
+  startCooldown(buttons.fetch, 9);
+});
+
+// 🛁 목욕
+buttons.bath.addEventListener("click", () => {
+  if (busy) return;
+  state.stats.clean = 100;
+  state.stats.happy = clamp(state.stats.happy + 6);
+  sndSplash(); hop();
+  floatie("🫧"); floatie("🫧"); floatie("💦");
+  speak("반짝반짝! 🫧");
+  addExp(4);
+  renderAll(); save();
+  startCooldown(buttons.bath, 20);
+});
+
+// 💤 낮잠
+const sleepVeil = document.getElementById("sleepVeil");
+buttons.nap.addEventListener("click", () => {
+  if (busy) return;
+  if (state.stats.energy >= 95) { toast("지금은 하나도 안 졸려요! ⚡", true); return; }
+  busy = true; napping = true;
+  sleepVeil.style.display = "flex";
+  renderDog();
+  speak("쿨쿨... 💤", 5000);
+  setTimeout(() => {
+    napping = false; busy = false;
+    sleepVeil.style.display = "none";
+    state.stats.energy = 100;
+    state.stats.hunger = clamp(state.stats.hunger - 6);
+    hop(); sndBark();
+    toast(`⚡ ${state.name}가 개운하게 일어났어요!`);
+    renderAll(); save();
+  }, 6000);
+  startCooldown(buttons.nap, 30);
+});
+
+// 🤚 쓰다듬기: 강아지를 직접 탭
+let lastPet = 0;
+dogHolder.addEventListener("click", () => {
+  if (napping) return;
+  if (catchWindow) {
+    // 공놀이 보너스 타이밍!
+    catchWindow = false;
+    catchHint.style.display = "none";
+    state.coins += 7;
+    state.stats.happy = clamp(state.stats.happy + 8);
+    sndCoin(); floatie("✨"); floatie("💖");
+    renderCoins(true);
+    addExp(5);
+    toast("완벽한 캐치! 보너스 +7🦴");
+    return;
+  }
+  const now = Date.now();
+  if (now - lastPet < 2000) return;
+  lastPet = now;
+  state.stats.happy = clamp(state.stats.happy + 3);
+  sndBark(); hop(); floatie("💖");
+  const lines = ["멍멍! 🐾", "히히 좋아요~", "최고의 주인님! 💛", "한 번 더요!"];
+  speak(lines[Math.floor(Math.random() * lines.length)], 1600);
+  addExp(1);
+  renderAll(); save();
+});
+dogHolder.addEventListener("keydown", (e) => {
+  if (e.key === "Enter" || e.key === " ") { e.preventDefault(); dogHolder.click(); }
+});
+
+/* =====================================================================
+   상점 (품종 / 악세서리)
+   ===================================================================== */
+const tabsEl = document.getElementById("tabs");
+const gridEl = document.getElementById("grid");
+const SHOP_TABS = [
+  { key:"breed", label:"🐶 품종" },
+  { key:"acc", label:"🎀 악세서리" },
+];
+let activeTab = SHOP_TABS[0];
+
+function renderTabs() {
+  tabsEl.innerHTML = "";
+  SHOP_TABS.forEach(tab => {
+    const b = document.createElement("button");
+    b.className = "tab"; b.setAttribute("role", "tab");
+    b.setAttribute("aria-selected", String(tab === activeTab));
+    b.textContent = tab.label;
+    b.addEventListener("click", () => { sndTap(); activeTab = tab; renderTabs(); renderGrid(); });
+    tabsEl.appendChild(b);
+  });
+}
+
+function miniDogPreview(breed) {
+  return `<svg viewBox="55 0 150 160" aria-hidden="true">
+    ${breed.earStyle === "pointy"
+      ? `<path d="M92 56 L72 10 L116 36 Z" fill="${breed.ear}"/><path d="M168 56 L188 10 L144 36 Z" fill="${breed.ear}"/>`
+      : `<ellipse cx="74" cy="82" rx="20" ry="36" fill="${breed.ear}" transform="rotate(-20 74 82)"/><ellipse cx="186" cy="82" rx="20" ry="36" fill="${breed.ear}" transform="rotate(20 186 82)"/>`}
+    <circle cx="130" cy="92" r="56" fill="${breed.body}"/>
+    <ellipse cx="130" cy="118" rx="27" ry="20" fill="${breed.muzzle}"/>
+    <path d="M119 105 Q130 98 141 105 Q141 114 130 118 Q119 114 119 105 Z" fill="#3a2e28"/>
+    <circle cx="104" cy="87" r="7.5" fill="#3a2e28"/><circle cx="156" cy="87" r="7.5" fill="#3a2e28"/>
+    ${breed.spots ? '<circle cx="106" cy="58" r="8" fill="#333"/>' : ""}
+  </svg>`;
+}
+
+function renderGrid() {
+  gridEl.innerHTML = "";
+  if (activeTab.key === "breed") {
+    BREEDS.forEach(breed => {
+      const isOn = state.breed === breed.id;
+      const owned = breed.price === 0 || state.ownedBreeds[breed.id];
+      const cell = document.createElement("button");
+      cell.className = "cell" + (isOn ? " on" : "");
+      const tag = isOn ? '<span class="tag onlabel">✅ 함께!</span>'
+        : owned ? '<span class="tag">보유중 ✔</span>'
+        : `<span class="tag price">🦴 ${breed.price}</span>`;
+      cell.innerHTML = `<div class="preview">${miniDogPreview(breed)}</div>${tag}<span class="tag">${breed.name}</span>`;
+      cell.addEventListener("click", () => onBuyBreed(breed));
+      gridEl.appendChild(cell);
+    });
+  } else {
+    ACCESSORIES.forEach(item => {
+      const isOn = state.acc[item.id];
+      const owned = state.ownedAcc[item.id];
+      const cell = document.createElement("button");
+      cell.className = "cell" + (isOn ? " on" : "");
+      const tag = isOn ? '<span class="tag onlabel">✅ 착용중</span>'
+        : owned ? '<span class="tag">보유중 ✔</span>'
+        : `<span class="tag price">🦴 ${item.price}</span>`;
+      cell.innerHTML = `<div class="preview">${item.icon}</div>${tag}<span class="tag">${item.name}</span>`;
+      cell.addEventListener("click", () => onBuyAcc(item));
+      gridEl.appendChild(cell);
+    });
+  }
+}
+
+function confirmBuy(title, price, previewHtml, onYes) {
+  openModal(`
+    ${previewHtml}
+    <h3>${title}</h3>
+    <p>🦴 ${price} 코인으로 데려올까요?</p>
+    <div class="row">
+      <button class="big-btn" id="mYes">좋아요! 🧡</button>
+      <button class="btn-soft" id="mNo">다음에</button>
+    </div>`);
+  document.getElementById("mNo").addEventListener("click", () => { sndTap(); closeModal(); });
+  document.getElementById("mYes").addEventListener("click", () => {
+    if (state.coins < price) {
+      closeModal();
+      toast("코인이 부족해요! 공놀이와 레벨업으로 모아보세요 🎾", true);
+      return;
+    }
+    state.coins -= price;
+    sndCoin(); renderCoins(true);
+    closeModal();
+    onYes();
+  });
+}
+
+function onBuyBreed(breed) {
+  sndTap();
+  const owned = breed.price === 0 || state.ownedBreeds[breed.id];
+  if (owned) {
+    if (state.breed !== breed.id) {
+      state.breed = breed.id;
+      hop(); sndBark();
+      speak(`${breed.name}(으)로 변신! 🐶`, 2000);
+      renderAll(); save();
+    }
+    return;
+  }
+  confirmBuy(breed.name, breed.price, `<div class="preview-big">${miniDogPreview(breed)}</div>`, () => {
+    state.ownedBreeds[breed.id] = true;
+    state.breed = breed.id;
+    hop(); sndBark(); floatie("🎉");
+    toast(`🎉 ${breed.name} 입양 완료!`);
+    renderAll(); save();
+  });
+}
+
+function onBuyAcc(item) {
+  sndTap();
+  if (state.ownedAcc[item.id]) {
+    state.acc[item.id] = !state.acc[item.id];
+    hop();
+    renderAll(); save();
+    return;
+  }
+  confirmBuy(item.name, item.price, `<div class="preview-big">${item.icon}</div>`, () => {
+    state.ownedAcc[item.id] = true;
+    state.acc[item.id] = true;
+    toast(`${item.icon} ${item.name} 장착 완료!`);
+    renderAll(); save();
+  });
+}
+
+/* =====================================================================
+   이름 짓기
+   ===================================================================== */
+function openNameModal(firstTime) {
+  openModal(`
+    <div class="preview-big">🐶</div>
+    <h3>${firstTime ? "강아지를 만났어요!" : "이름 바꾸기"}</h3>
+    <p>${firstTime ? "우리 강아지의 이름을 지어주세요" : "새 이름을 지어주세요"}</p>
+    <input id="nameInput" maxlength="10" placeholder="예: 초코, 보리, 콩이" value="${firstTime ? "" : state.name}">
+    <div class="row">
+      <button class="big-btn" id="mSave">이름 정하기 🐾</button>
+    </div>`);
+  const input = document.getElementById("nameInput");
+  input.focus();
+  const submit = () => {
+    const name = input.value.trim() || "멍멍이";
+    state.name = name.slice(0, 10);
+    state.named = true;
+    sndBark(); hop();
+    closeModal();
+    speak(`${state.name}! 멍멍! 🐾`, 2500);
+    renderAll(); save();
+  };
+  document.getElementById("mSave").addEventListener("click", submit);
+  input.addEventListener("keydown", (e) => { if (e.key === "Enter") submit(); });
+}
+document.getElementById("renameBtn").addEventListener("click", () => { sndTap(); openNameModal(false); });
+
+/* =====================================================================
+   게임 틱: 수치 감소 / 혼잣말
+   ===================================================================== */
+function decayTick(seconds) {
+  const s = state.stats;
+  s.hunger = clamp(s.hunger - 0.2 * seconds);
+  s.clean = clamp(s.clean - 0.09 * seconds);
+  let happyDrop = 0.1 * seconds;
+  if (s.hunger < 25) happyDrop += 0.22 * seconds;
+  if (s.clean < 25) happyDrop += 0.15 * seconds;
+  s.happy = clamp(s.happy - happyDrop);
+  if (!busy) s.energy = clamp(s.energy + 0.12 * seconds);
+}
+
+setInterval(() => {
+  decayTick(1);
+  renderStats();
+  renderDog();
+  if (Math.floor(Date.now() / 1000) % 30 === 0) save();
+}, 1000);
+
+// 12초마다 기분에 따라 한마디
+setInterval(() => {
+  if (busy || !veil.hidden) return;
+  const s = state.stats;
+  if (s.hunger < 25) speak("배고파요... 🥺");
+  else if (s.clean < 25) speak("몸이 꼬질꼬질해요 🫧");
+  else if (s.energy < 20) speak("졸려요... 💤");
+  else if (s.happy >= 80 && Math.random() < 0.5) speak("멍멍! 오늘 최고예요! 🐾");
+}, 12000);
+
+/* =====================================================================
+   시작: 부재중 시간 반영 + 첫 이름 짓기
+   ===================================================================== */
+function applyOfflineTime() {
+  if (!state.lastSeen) return;
+  const elapsed = (Date.now() - state.lastSeen) / 1000;
+  if (elapsed < 90) return;
+  const s = state.stats;
+  const capped = Math.min(elapsed, 60 * 60 * 8); // 최대 8시간치만
+  decayTick(capped * 0.25); // 부재중엔 천천히
+  s.hunger = Math.max(s.hunger, 15);
+  s.happy = Math.max(s.happy, 15);
+  s.clean = Math.max(s.clean, 15);
+  s.energy = 100;
+  setTimeout(() => {
+    toast(`🐾 ${state.name}가 기다리고 있었어요!`);
+    speak("보고 싶었어요!! 🥹", 3000);
+  }, 600);
+}
+
+function renderAll() {
+  renderCoins(false);
+  renderHeader();
+  renderStats();
+  renderDog();
+  renderTabs();
+  renderGrid();
+}
+
+applyOfflineTime();
+renderAll();
+save();
+if (!state.named) setTimeout(() => openNameModal(true), 400);
+</script>
+
+</body>
+</html>
