@@ -505,15 +505,43 @@ for _, category in Config.Categories do
 	end)
 end
 
-closetButton.MouseButton1Click:Connect(function()
-	closetPanel.Visible = not closetPanel.Visible
-	-- Nudge the camera sideways while the closet is open so the panel
-	-- doesn't cover the character.
+-- Fitting-room mode: freeze in place and frame the whole character on the
+-- left half of the screen so the closet panel never covers them.
+local savedWalkSpeed = 16
+
+local function setCloset(open: boolean)
+	if closetPanel.Visible == open then
+		return
+	end
+	closetPanel.Visible = open
 	local character = player.Character
 	local humanoid = character and character:FindFirstChildOfClass("Humanoid")
-	if humanoid then
-		humanoid.CameraOffset = closetPanel.Visible and Vector3.new(2.4, 0.3, 0) or Vector3.zero
+	local root = character and character:FindFirstChild("HumanoidRootPart") :: BasePart?
+	local camera = workspace.CurrentCamera
+	if not humanoid or not root then
+		return
 	end
+	if open then
+		if humanoid.WalkSpeed > 0 then
+			savedWalkSpeed = humanoid.WalkSpeed
+		end
+		humanoid.WalkSpeed = 0
+		camera.CameraType = Enum.CameraType.Scriptable
+		local look = root.CFrame.LookVector
+		local left = -root.CFrame.RightVector
+		local target = CFrame.lookAt(
+			root.Position + look * 7.5 + left * 1.8 + Vector3.new(0, 1.4, 0),
+			root.Position + left * 1.8 + Vector3.new(0, 0.6, 0)
+		)
+		TweenService:Create(camera, TweenInfo.new(0.4, Enum.EasingStyle.Quad), { CFrame = target }):Play()
+	else
+		humanoid.WalkSpeed = savedWalkSpeed
+		camera.CameraType = Enum.CameraType.Custom
+	end
+end
+
+closetButton.MouseButton1Click:Connect(function()
+	setCloset(not closetPanel.Visible)
 	if closetPanel.Visible then
 		refreshGrid()
 	end
@@ -655,7 +683,7 @@ local function takePhoto()
 		return
 	end
 	photoBusy = true
-	closetPanel.Visible = false
+	setCloset(false)
 
 	local camera = workspace.CurrentCamera
 	local originalType = camera.CameraType
@@ -674,6 +702,7 @@ local function takePhoto()
 		task.wait(0.7)
 	end
 	countdownLabel.Visible = false
+	poseBar.Visible = false -- hide only at the moment of the shot
 	photoOverlay.Visible = true
 	task.wait(0.1)
 
@@ -715,7 +744,8 @@ local goButton = create("TextButton", {
 }, { round(25) })
 
 goButton.MouseButton1Click:Connect(function()
-	poseBar.Visible = false
+	-- Keep the pose bar up through the 3-2-1 countdown so kids can still
+	-- switch poses; takePhoto hides it right before the shot.
 	takePhoto()
 end)
 

@@ -107,11 +107,13 @@ Config.Categories = {
 		avatarAssetTypes = {
 			Enum.AvatarAssetType.FaceAccessory,
 			Enum.AvatarAssetType.NeckAccessory,
+			Enum.AvatarAssetType.ShoulderAccessory,
+			Enum.AvatarAssetType.FrontAccessory,
 			Enum.AvatarAssetType.BackAccessory,
 			Enum.AvatarAssetType.WaistAccessory,
 		},
-		assetTypeIds = { 42, 43, 46, 47 },
-		searches = { "kawaii glasses", "aesthetic necklace", "cute wings" },
+		assetTypeIds = { 42, 43, 44, 45, 46, 47 },
+		searches = { "kawaii glasses", "aesthetic necklace", "cute wings", "lightstick", "toy microphone" },
 	},
 	{
 		key = "Skin",
