@@ -142,6 +142,54 @@ local function toast(message: string)
 end
 
 ----------------------------------------------------------------------
+-- Juice: sounds, sparkles, pop-in animations
+----------------------------------------------------------------------
+
+local function sfx(speed: number?, volume: number?)
+	local sound = Instance.new("Sound")
+	sound.SoundId = "rbxasset://sounds/electronicpingshort.wav"
+	sound.PlaybackSpeed = speed or 1
+	sound.Volume = volume or 0.35
+	sound.Parent = gui
+	sound:Play()
+	task.delay(2, function()
+		sound:Destroy()
+	end)
+end
+
+local function sparkleBurst(count: number, color: Color3?)
+	local character = player.Character
+	local root = character and character:FindFirstChild("HumanoidRootPart")
+	if not root or not root:IsA("BasePart") then
+		return
+	end
+	local attachment = Instance.new("Attachment")
+	attachment.Parent = root
+	local emitter = Instance.new("ParticleEmitter")
+	emitter.Texture = "rbxasset://textures/particles/sparkles_main.dds"
+	emitter.Rate = 0
+	emitter.Speed = NumberRange.new(5, 10)
+	emitter.Lifetime = NumberRange.new(0.5, 1.1)
+	emitter.SpreadAngle = Vector2.new(180, 180)
+	emitter.Color = ColorSequence.new(color or Color3.fromRGB(255, 160, 210))
+	emitter.Parent = attachment
+	emitter:Emit(count)
+	task.delay(1.5, function()
+		attachment:Destroy()
+	end)
+end
+
+local function popIn(frame: GuiObject)
+	local scale = frame:FindFirstChildOfClass("UIScale")
+	if not scale then
+		scale = Instance.new("UIScale")
+		scale.Parent = frame
+	end
+	scale.Scale = 0.85
+	TweenService:Create(scale, TweenInfo.new(0.22, Enum.EasingStyle.Back, Enum.EasingDirection.Out), { Scale = 1 }):Play()
+end
+
+----------------------------------------------------------------------
 -- Bottom action buttons
 ----------------------------------------------------------------------
 
@@ -289,7 +337,9 @@ local function equipItem(assetId: any, categoryKey: string)
 			equipped[categoryKey] = nil
 		else
 			equipped[categoryKey] = assetId
+			sparkleBurst(16)
 		end
+		sfx(1.1)
 		refreshGrid()
 	elseif result and result.message then
 		toast(result.message)
@@ -311,6 +361,11 @@ buyYes.MouseButton1Click:Connect(function()
 			setCoins(result.coins)
 		end
 		toast("You got it! \u{1F389}")
+		sfx(0.7)
+		task.delay(0.12, function()
+			sfx(1.25)
+		end)
+		sparkleBurst(26, Color3.fromRGB(255, 214, 74))
 		equipItem(purchase.item.id, purchase.categoryKey)
 	elseif result and result.message then
 		toast(result.message)
@@ -463,6 +518,7 @@ local function renderPropsTab()
 				buyThumb.Image = ""
 				buyText.Text = `{prop.icon} Buy for \u{1F496} {prop.price}?`
 				buyPopup.Visible = true
+				popIn(buyPopup)
 			end
 		end)
 	end
@@ -514,6 +570,7 @@ local function renderItemTab(category: Config.Category)
 				buyThumb.Image = thumb.Image
 				buyText.Text = `Buy for \u{1F496} {price}?`
 				buyPopup.Visible = true
+				popIn(buyPopup)
 			end
 		end)
 	end
@@ -562,6 +619,10 @@ local function setCloset(open: boolean)
 		return
 	end
 	closetPanel.Visible = open
+	if open then
+		popIn(closetPanel)
+		sfx(1.2)
+	end
 	local character = player.Character
 	local humanoid = character and character:FindFirstChildOfClass("Humanoid")
 	local root = character and character:FindFirstChild("HumanoidRootPart") :: BasePart?
@@ -747,10 +808,13 @@ local function takePhoto()
 	countdownLabel.Visible = true
 	for count = 3, 1, -1 do
 		countdownLabel.Text = tostring(count)
+		sfx(1.6, 0.3)
 		task.wait(0.7)
 	end
 	countdownLabel.Visible = false
 	poseBar.Visible = false -- hide only at the moment of the shot
+	sfx(0.5, 0.55)
+	sparkleBurst(40, Color3.fromRGB(255, 230, 150))
 	photoOverlay.Visible = true
 	task.wait(0.1)
 
@@ -923,6 +987,10 @@ end
 
 wishButton.MouseButton1Click:Connect(function()
 	wishFrame.Visible = not wishFrame.Visible
+	if wishFrame.Visible then
+		popIn(wishFrame)
+		sfx(1.3)
+	end
 end)
 
 ----------------------------------------------------------------------

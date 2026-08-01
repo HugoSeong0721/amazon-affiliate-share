@@ -254,3 +254,110 @@ spawnLocation.Transparency = 1
 spawnLocation.CanCollide = true
 spawnLocation.TopSurface = Enum.SurfaceType.Smooth
 spawnLocation.Parent = workspace
+
+----------------------------------------------------------------------
+-- Juice pass: post-processing, glossy stage, disco ball, neon pulse
+----------------------------------------------------------------------
+
+local Lighting = game:GetService("Lighting")
+local TweenService = game:GetService("TweenService")
+
+local bloom = Instance.new("BloomEffect")
+bloom.Intensity = 0.55
+bloom.Size = 32
+bloom.Threshold = 1.05
+bloom.Parent = Lighting
+
+local colorCorrection = Instance.new("ColorCorrectionEffect")
+colorCorrection.Saturation = 0.18
+colorCorrection.Contrast = 0.06
+colorCorrection.TintColor = Color3.fromRGB(255, 248, 252)
+colorCorrection.Parent = Lighting
+
+local atmosphere = Instance.new("Atmosphere")
+atmosphere.Density = 0.24
+atmosphere.Color = Color3.fromRGB(226, 198, 231)
+atmosphere.Decay = Color3.fromRGB(150, 100, 160)
+atmosphere.Haze = 1.2
+atmosphere.Parent = Lighting
+
+-- Glossy stage floor
+local floor = workspace:FindFirstChild("Floor")
+if floor and floor:IsA("BasePart") then
+	floor.Reflectance = 0.14
+end
+
+-- Disco ball over the middle of the hall
+local disco = part({
+	Name = "DiscoBall",
+	Shape = Enum.PartType.Ball,
+	Size = Vector3.new(7, 7, 7),
+	Position = Vector3.new(0, 19, 0),
+	Color = Color3.fromRGB(220, 230, 255),
+	Material = Enum.Material.Glass,
+	Reflectance = 0.6,
+	CanCollide = false,
+})
+local discoLight = Instance.new("PointLight")
+discoLight.Color = Color3.fromRGB(255, 170, 220)
+discoLight.Brightness = 1.6
+discoLight.Range = 34
+discoLight.Parent = disco
+local discoAttachment = Instance.new("Attachment")
+discoAttachment.Parent = disco
+local discoSparkle = Instance.new("ParticleEmitter")
+discoSparkle.Texture = "rbxasset://textures/particles/sparkles_main.dds"
+discoSparkle.Rate = 6
+discoSparkle.Speed = NumberRange.new(2, 5)
+discoSparkle.Lifetime = NumberRange.new(1, 2)
+discoSparkle.SpreadAngle = Vector2.new(180, 180)
+discoSparkle.Color = ColorSequence.new(Color3.fromRGB(255, 200, 235), Color3.fromRGB(160, 220, 255))
+discoSparkle.Parent = discoAttachment
+task.spawn(function()
+	while disco.Parent do
+		disco.CFrame = disco.CFrame * CFrame.Angles(0, math.rad(1.2), 0)
+		task.wait(0.05)
+	end
+end)
+
+-- Ambient rising sparkles at each photo spot
+for _, zoneX in { -75, -25, 25, 75 } do
+	local anchor = part({
+		Name = "ZoneSparkleAnchor",
+		Size = Vector3.new(1, 1, 1),
+		Position = Vector3.new(zoneX, 2, -29),
+		Transparency = 1,
+		CanCollide = false,
+	})
+	local attachment = Instance.new("Attachment")
+	attachment.Parent = anchor
+	local emitter = Instance.new("ParticleEmitter")
+	emitter.Texture = "rbxasset://textures/particles/sparkles_main.dds"
+	emitter.Rate = 2.5
+	emitter.Speed = NumberRange.new(1.5, 3)
+	emitter.Lifetime = NumberRange.new(1.5, 2.5)
+	emitter.SpreadAngle = Vector2.new(35, 35)
+	emitter.Acceleration = Vector3.new(0, 2, 0)
+	emitter.Color = ColorSequence.new(Color3.fromRGB(255, 220, 240))
+	emitter.Parent = attachment
+end
+
+-- Neon frames breathe
+task.spawn(function()
+	local frames = {}
+	for _, child in workspace:GetChildren() do
+		if child.Name == "PhotoFrameNeon" and child:IsA("BasePart") then
+			table.insert(frames, child)
+		end
+	end
+	while true do
+		for _, frame in frames do
+			TweenService:Create(frame, TweenInfo.new(1.1, Enum.EasingStyle.Sine), { Transparency = 0.35 }):Play()
+		end
+		task.wait(1.15)
+		for _, frame in frames do
+			TweenService:Create(frame, TweenInfo.new(1.1, Enum.EasingStyle.Sine), { Transparency = 0 }):Play()
+		end
+		task.wait(1.15)
+	end
+end)
