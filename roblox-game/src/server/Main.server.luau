@@ -135,7 +135,7 @@ end
 -- Outfit application
 ----------------------------------------------------------------------
 
-local function applyOutfit(player: Player)
+local function applyOutfitNow(player: Player)
 	local data = sessions[player]
 	local character = player.Character
 	if not data or not character then
@@ -179,8 +179,39 @@ local function applyOutfit(player: Player)
 		end
 	end
 
-	pcall(function()
+	local ok2 = pcall(function()
 		humanoid:ApplyDescription(description)
+	end)
+	if not ok2 then
+		-- A failed apply can leave the character half-built; retry once.
+		task.wait(0.5)
+		pcall(function()
+			if humanoid.Parent and humanoid.Health > 0 then
+				humanoid:ApplyDescription(description)
+			end
+		end)
+	end
+end
+
+-- ApplyDescription rebuilds the whole character and errors if two calls
+-- overlap (which visually "deletes" the avatar). Serialize applies per
+-- player: while one is running, remember that another is wanted and run
+-- it right after.
+local applying: { [Player]: boolean } = {}
+local applyAgain: { [Player]: boolean } = {}
+
+local function applyOutfit(player: Player)
+	if applying[player] then
+		applyAgain[player] = true
+		return
+	end
+	applying[player] = true
+	task.spawn(function()
+		repeat
+			applyAgain[player] = false
+			applyOutfitNow(player)
+		until not applyAgain[player] or not sessions[player]
+		applying[player] = nil
 	end)
 end
 
@@ -249,6 +280,12 @@ equipRemote.OnServerInvoke = function(player: Player, assetId: unknown, category
 end
 
 stateRemote.OnServerInvoke = function(player: Player)
+	-- The client can ask before this player's data finishes loading; wait
+	-- briefly instead of answering nil.
+	local startedAt = os.clock()
+	while not sessions[player] and os.clock() - startedAt < 10 do
+		task.wait(0.2)
+	end
 	local data = sessions[player]
 	if not data then
 		return nil
@@ -280,7 +317,10 @@ end
 -- Player lifecycle
 ----------------------------------------------------------------------
 
-Players.PlayerAdded:Connect(function(player)
+local function onPlayerAdded(player: Player)
+	if sessions[player] then
+		return
+	end
 	local data = loadData(player)
 	sessions[player] = data
 
@@ -298,9 +338,19 @@ Players.PlayerAdded:Connect(function(player)
 		task.wait(1)
 		applyOutfit(player)
 	end)
+	if player.Character then
+		task.delay(1, applyOutfit, player)
+	end
 
 	pushCoins(player)
-end)
+end
+
+Players.PlayerAdded:Connect(onPlayerAdded)
+-- In Studio playtests the player can join before this script connects the
+-- event, so sweep anyone already present.
+for _, player in Players:GetPlayers() do
+	task.spawn(onPlayerAdded, player)
+end
 
 Players.PlayerRemoving:Connect(function(player)
 	saveData(player)
