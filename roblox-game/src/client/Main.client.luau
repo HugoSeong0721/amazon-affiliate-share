@@ -355,7 +355,12 @@ buyYes.MouseButton1Click:Connect(function()
 	end
 	local result = buyRemote:InvokeServer(purchase.item.id, purchase.categoryKey)
 	if result and result.ok then
-		local ownedKey = purchase.categoryKey == "Props" and `prop_{purchase.item.id}` or tostring(purchase.item.id)
+		local ownedKey = tostring(purchase.item.id)
+		if purchase.categoryKey == "Props" then
+			ownedKey = `prop_{purchase.item.id}`
+		elseif purchase.categoryKey == "Rides" then
+			ownedKey = `ride_{purchase.item.id}`
+		end
 		owned[ownedKey] = true
 		if result.coins then
 			setCoins(result.coins)
@@ -524,6 +529,52 @@ local function renderPropsTab()
 	end
 end
 
+local function renderRidesTab()
+	local offCell, offThumb, offCaption = makeCell()
+	offThumb.Image = ""
+	offCaption.Text = "Walk"
+	offThumb.BackgroundColor3 = Color3.fromRGB(235, 235, 240)
+	offCell.MouseButton1Click:Connect(function()
+		equipItem(nil, "Rides")
+	end)
+
+	for _, ride in Config.Rides do
+		local cell, thumb, caption = makeCell()
+		thumb.Image = ""
+		create("TextLabel", {
+			Size = UDim2.fromScale(1, 1),
+			BackgroundTransparency = 1,
+			Text = ride.icon,
+			Font = FONT,
+			TextSize = 44,
+			Parent = thumb,
+		})
+		local isOn = equipped.Ride == ride.key
+		local ownedRide = ride.price == 0 or owned[`ride_{ride.key}`] == true
+		if isOn then
+			caption.Text = "\u{2705} On!"
+			;(cell:FindFirstChildOfClass("UIStroke") :: UIStroke).Color = PINK
+		elseif ride.price == 0 then
+			caption.Text = "FREE \u{1F49B}"
+		elseif ownedRide then
+			caption.Text = "Owned \u{2714}"
+		else
+			caption.Text = `\u{1F496} {ride.price}`
+		end
+		cell.MouseButton1Click:Connect(function()
+			if ownedRide then
+				equipItem(ride.key, "Rides")
+			else
+				pendingPurchase = { item = { id = ride.key, name = ride.name } :: any, categoryKey = "Rides" }
+				buyThumb.Image = ""
+				buyText.Text = `{ride.icon} Buy for \u{1F496} {ride.price}?`
+				buyPopup.Visible = true
+				popIn(buyPopup)
+			end
+		end)
+	end
+end
+
 local function renderItemTab(category: Config.Category)
 	loadingLabel.Visible = true
 	local items = searchCategory(category)
@@ -582,6 +633,8 @@ refreshGrid = function()
 		renderSkinTab()
 	elseif activeCategory.isProps then
 		renderPropsTab()
+	elseif activeCategory.isRides then
+		renderRidesTab()
 	else
 		task.spawn(renderItemTab, activeCategory)
 	end
@@ -590,11 +643,11 @@ end
 -- Tabs
 for _, category in Config.Categories do
 	local tab = create("TextButton", {
-		Size = UDim2.fromOffset(38, 38),
+		Size = UDim2.fromOffset(32, 36),
 		BackgroundColor3 = category.key == activeCategory.key and PINK or PINK_SOFT,
 		Text = `{category.icon}`,
 		Font = FONT,
-		TextSize = 22,
+		TextSize = 18,
 		TextColor3 = WHITE,
 		Parent = tabBar,
 	}, { round(21) })
@@ -644,7 +697,8 @@ local function setCloset(open: boolean)
 		)
 		TweenService:Create(camera, TweenInfo.new(0.4, Enum.EasingStyle.Quad), { CFrame = target }):Play()
 	else
-		humanoid.WalkSpeed = savedWalkSpeed
+		-- Restore the mount speed if the player is riding something.
+		humanoid.WalkSpeed = (humanoid:GetAttribute("RideSpeed") :: number?) or 16
 		camera.CameraType = Enum.CameraType.Custom
 	end
 end

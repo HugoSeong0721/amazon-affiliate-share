@@ -63,6 +63,24 @@ Config.Props = {
 	{ key = "phone", icon = "\u{1F4F1}", name = "Selfie Phone", price = 75 },
 }
 
+-- Rideable mounts (our own part-built models). Speed is the whole point:
+-- the bird is a rocket, the donkey is a joke.
+Config.Rides = {
+	{ key = "donkey", icon = "\u{1F955}", name = "Slow Donkey", price = 0 },
+	{ key = "horse", icon = "\u{1F434}", name = "Horse", price = 100 },
+	{ key = "dino", icon = "\u{1F996}", name = "T-Rex", price = 200 },
+	{ key = "bird", icon = "\u{1F426}", name = "Speedy Bird", price = 400 },
+}
+
+function Config.ridePriceFor(key: string): number
+	for _, ride in Config.Rides do
+		if ride.key == key then
+			return ride.price
+		end
+	end
+	return math.huge
+end
+
 function Config.propPriceFor(key: string): number
 	for _, prop in Config.Props do
 		if prop.key == key then
@@ -81,6 +99,7 @@ export type Category = {
 	searches: { string }?,
 	isSkin: boolean?,
 	isProps: boolean?,
+	isRides: boolean?,
 }
 
 -- Closet tabs. Each clothing tab is filled at runtime from the live Roblox
@@ -138,6 +157,12 @@ Config.Categories = {
 		label = "Props",
 		icon = "\u{1FA84}",
 		isProps = true,
+	},
+	{
+		key = "Rides",
+		label = "Rides",
+		icon = "\u{1F434}",
+		isRides = true,
 	},
 	{
 		key = "Skin",

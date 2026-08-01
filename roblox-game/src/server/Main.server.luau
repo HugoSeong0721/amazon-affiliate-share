@@ -365,6 +365,210 @@ local function attachProp(player: Player)
 end
 
 ----------------------------------------------------------------------
+-- Rideable mounts (part-built, welded under the player; speed per mount)
+----------------------------------------------------------------------
+
+local function ridePart(model: Model, root: BasePart, props: { [string]: any }, localCf: CFrame): Part
+	local p = propPart(props)
+	p.CFrame = root.CFrame * localCf
+	weldPair(root, p)
+	p.Parent = model
+	return p
+end
+
+local function rideBase(): (Model, BasePart)
+	local model = Instance.new("Model")
+	local root = propPart({ Name = "RideRoot", Size = Vector3.new(1, 1, 1), Transparency = 1 })
+	root.Parent = model
+	model.PrimaryPart = root
+	return model, root
+end
+
+local function addEyes(model: Model, root: BasePart, headCf: CFrame, spread: number)
+	for _, side in { -1, 1 } do
+		ridePart(model, root, {
+			Name = "Eye",
+			Shape = Enum.PartType.Ball,
+			Size = Vector3.new(0.28, 0.28, 0.28),
+			Color = Color3.fromRGB(25, 25, 30),
+		}, headCf * CFrame.new(side * spread, 0.15, -0.45))
+	end
+end
+
+type RideSpec = {
+	build: () -> Model,
+	lift: number,
+	speed: number,
+	jump: number,
+	trail: boolean?,
+}
+
+local RIDE_SPECS: { [string]: RideSpec } = {
+	donkey = {
+		lift = 1.6,
+		speed = 9,
+		jump = 5,
+		build = function()
+			local model, root = rideBase()
+			local gray = Color3.fromRGB(160, 150, 155)
+			ridePart(model, root, { Name = "Body", Size = Vector3.new(1.3, 1.3, 3), Color = gray }, CFrame.new(0, -0.4, 0))
+			local headCf = CFrame.new(0, 0.5, -1.8)
+			ridePart(model, root, { Name = "Head", Size = Vector3.new(0.9, 1, 1.3), Color = gray }, headCf)
+			ridePart(model, root, { Name = "Muzzle", Size = Vector3.new(0.7, 0.5, 0.5), Color = Color3.fromRGB(220, 205, 210) }, headCf * CFrame.new(0, -0.2, -0.8))
+			for _, side in { -1, 1 } do
+				ridePart(model, root, { Name = "Ear", Size = Vector3.new(0.25, 1.1, 0.4), Color = gray }, headCf * CFrame.new(side * 0.3, 0.9, 0))
+				for _, front in { -1, 1 } do
+					ridePart(model, root, { Name = "Leg", Size = Vector3.new(0.45, 1.6, 0.45), Color = gray }, CFrame.new(side * 0.45, -1.5, front * 1.1))
+				end
+			end
+			ridePart(model, root, { Name = "Tail", Size = Vector3.new(0.2, 1, 0.2), Color = Color3.fromRGB(110, 100, 105) }, CFrame.new(0, -0.5, 1.6))
+			addEyes(model, root, headCf, 0.3)
+			return model
+		end,
+	},
+	horse = {
+		lift = 2.2,
+		speed = 34,
+		jump = 9,
+		build = function()
+			local model, root = rideBase()
+			local brown = Color3.fromRGB(150, 96, 55)
+			local dark = Color3.fromRGB(90, 55, 30)
+			ridePart(model, root, { Name = "Body", Size = Vector3.new(1.6, 1.6, 3.8), Color = brown }, CFrame.new(0, -0.3, 0))
+			ridePart(model, root, { Name = "Neck", Size = Vector3.new(0.9, 1.6, 0.9), Color = brown }, CFrame.new(0, 0.6, -1.9) * CFrame.Angles(math.rad(-25), 0, 0))
+			local headCf = CFrame.new(0, 1.45, -2.5)
+			ridePart(model, root, { Name = "Head", Size = Vector3.new(0.9, 1, 1.5), Color = brown }, headCf)
+			ridePart(model, root, { Name = "Mane", Size = Vector3.new(0.3, 1.6, 1), Color = dark }, CFrame.new(0, 1, -1.7))
+			for _, side in { -1, 1 } do
+				ridePart(model, root, { Name = "Ear", Size = Vector3.new(0.25, 0.6, 0.3), Color = brown }, headCf * CFrame.new(side * 0.3, 0.7, 0.3))
+				for _, front in { -1, 1 } do
+					ridePart(model, root, { Name = "Leg", Size = Vector3.new(0.5, 2.2, 0.5), Color = brown }, CFrame.new(side * 0.5, -1.9, front * 1.4))
+				end
+			end
+			ridePart(model, root, { Name = "Tail", Size = Vector3.new(0.35, 1.5, 0.35), Color = dark }, CFrame.new(0, -0.6, 2.1) * CFrame.Angles(math.rad(20), 0, 0))
+			addEyes(model, root, headCf, 0.32)
+			return model
+		end,
+	},
+	dino = {
+		lift = 2.8,
+		speed = 26,
+		jump = 12,
+		build = function()
+			local model, root = rideBase()
+			local green = Color3.fromRGB(90, 170, 100)
+			local belly = Color3.fromRGB(200, 230, 170)
+			ridePart(model, root, { Name = "Body", Size = Vector3.new(2.2, 2.2, 4.4), Color = green }, CFrame.new(0, -0.2, 0))
+			ridePart(model, root, { Name = "Belly", Size = Vector3.new(1.6, 1.2, 3.4), Color = belly }, CFrame.new(0, -0.8, -0.2))
+			local headCf = CFrame.new(0, 1.5, -2.9)
+			ridePart(model, root, { Name = "Head", Size = Vector3.new(1.5, 1.4, 1.9), Color = green }, headCf)
+			ridePart(model, root, { Name = "Jaw", Size = Vector3.new(1.3, 0.5, 1.5), Color = belly }, headCf * CFrame.new(0, -0.55, -0.2))
+			ridePart(model, root, { Name = "Tail1", Size = Vector3.new(1.4, 1.4, 1.8), Color = green }, CFrame.new(0, -0.3, 2.8))
+			ridePart(model, root, { Name = "Tail2", Size = Vector3.new(0.9, 0.9, 1.6), Color = green }, CFrame.new(0, -0.4, 4.2))
+			for i = 0, 3 do
+				ridePart(model, root, { Name = "Spike", Size = Vector3.new(0.4, 0.7, 0.7), Color = Color3.fromRGB(60, 120, 70) }, CFrame.new(0, 1, -0.8 + i * 1.1) * CFrame.Angles(0, 0, math.rad(45)))
+			end
+			for _, side in { -1, 1 } do
+				for _, front in { -1, 1 } do
+					ridePart(model, root, { Name = "Leg", Size = Vector3.new(0.8, 2.4, 0.9), Color = green }, CFrame.new(side * 0.8, -1.9, front * 1.3))
+				end
+			end
+			addEyes(model, root, headCf, 0.5)
+			return model
+		end,
+	},
+	bird = {
+		lift = 1.8,
+		speed = 65,
+		jump = 16,
+		trail = true,
+		build = function()
+			local model, root = rideBase()
+			local pink = Color3.fromRGB(255, 143, 192)
+			ridePart(model, root, { Name = "Body", Shape = Enum.PartType.Ball, Size = Vector3.new(2.8, 2.4, 2.8), Color = pink }, CFrame.new(0, -0.5, 0))
+			local headCf = CFrame.new(0, 0.9, -1.6)
+			ridePart(model, root, { Name = "Head", Shape = Enum.PartType.Ball, Size = Vector3.new(1.5, 1.5, 1.5), Color = pink }, headCf)
+			ridePart(model, root, { Name = "Beak", Size = Vector3.new(0.4, 0.3, 0.8), Color = Color3.fromRGB(255, 190, 80) }, headCf * CFrame.new(0, -0.05, -0.95))
+			ridePart(model, root, { Name = "Crest", Shape = Enum.PartType.Ball, Size = Vector3.new(0.5, 0.5, 0.5), Color = Color3.fromRGB(120, 220, 255) }, headCf * CFrame.new(0, 0.8, 0))
+			for _, side in { -1, 1 } do
+				ridePart(model, root, { Name = "Wing", Size = Vector3.new(0.25, 1, 2.2), Color = Color3.fromRGB(255, 180, 215) }, CFrame.new(side * 1.5, -0.3, 0.1) * CFrame.Angles(0, 0, math.rad(side * 20)))
+				ridePart(model, root, { Name = "Foot", Size = Vector3.new(0.4, 0.9, 0.4), Color = Color3.fromRGB(255, 190, 80) }, CFrame.new(side * 0.5, -1.9, 0.2))
+			end
+			ridePart(model, root, { Name = "TailFeather", Size = Vector3.new(1.2, 0.25, 1.4), Color = Color3.fromRGB(255, 180, 215) }, CFrame.new(0, -0.3, 1.7) * CFrame.Angles(math.rad(15), 0, 0))
+			return model
+		end,
+	},
+}
+
+local rideBaseHip: { [Player]: number } = {}
+
+local function attachRide(player: Player)
+	local data = sessions[player]
+	local character = player.Character
+	if not character then
+		return
+	end
+	local humanoid = character:FindFirstChildOfClass("Humanoid")
+	if not humanoid then
+		return
+	end
+	local old = character:FindFirstChild("ComebackRide")
+	if old then
+		old:Destroy()
+	end
+	if rideBaseHip[player] then
+		humanoid.HipHeight = rideBaseHip[player]
+		rideBaseHip[player] = nil
+	end
+	humanoid.WalkSpeed = 16
+	humanoid.JumpHeight = 7.2
+	humanoid:SetAttribute("RideSpeed", nil)
+
+	local key = data and data.equipped.Ride
+	local spec = type(key) == "string" and RIDE_SPECS[key] or nil
+	if not spec then
+		return
+	end
+	local rootPart = character:FindFirstChild("HumanoidRootPart")
+	if not rootPart or not rootPart:IsA("BasePart") then
+		return
+	end
+
+	local model = spec.build()
+	model.Name = "ComebackRide"
+	model:PivotTo(rootPart.CFrame * CFrame.new(0, -1.6, 0))
+	local weld = Instance.new("WeldConstraint")
+	weld.Part0 = rootPart
+	weld.Part1 = model.PrimaryPart
+	weld.Parent = model.PrimaryPart
+	if spec.trail then
+		local body = model:FindFirstChild("Body")
+		if body and body:IsA("BasePart") then
+			local a0 = Instance.new("Attachment")
+			a0.Position = Vector3.new(0, 1, 0)
+			a0.Parent = body
+			local a1 = Instance.new("Attachment")
+			a1.Position = Vector3.new(0, -1, 0)
+			a1.Parent = body
+			local trail = Instance.new("Trail")
+			trail.Attachment0 = a0
+			trail.Attachment1 = a1
+			trail.Color = ColorSequence.new(Color3.fromRGB(120, 220, 255), Color3.fromRGB(255, 143, 192))
+			trail.Transparency = NumberSequence.new(0.3, 1)
+			trail.Lifetime = 0.35
+			trail.Parent = body
+		end
+	end
+	model.Parent = character
+
+	rideBaseHip[player] = humanoid.HipHeight
+	humanoid.HipHeight += spec.lift
+	humanoid.WalkSpeed = spec.speed
+	humanoid.JumpHeight = spec.jump
+	humanoid:SetAttribute("RideSpeed", spec.speed)
+end
+
+----------------------------------------------------------------------
 -- Outfit application
 ----------------------------------------------------------------------
 
@@ -387,8 +591,8 @@ local function applyOutfitNow(player: Player)
 	end
 
 	for categoryKey, assetId in data.equipped do
-		if categoryKey == "Props" then
-			continue -- held props are welded separately after the rebuild
+		if categoryKey == "Props" or categoryKey == "Ride" then
+			continue -- props and rides are welded separately after the rebuild
 		end
 		if categoryKey == "Skin" then
 			local tone = Config.SkinTones[assetId]
@@ -427,8 +631,9 @@ local function applyOutfitNow(player: Player)
 			end
 		end)
 	end
-	-- The rebuild strips welded props, so put the held prop back on.
+	-- The rebuild strips welded models, so put the prop and ride back on.
 	attachProp(player)
+	attachRide(player)
 end
 
 -- ApplyDescription rebuilds the whole character and errors if two calls
@@ -461,6 +666,22 @@ buyRemote.OnServerInvoke = function(player: Player, assetId: unknown, categoryKe
 	local data = sessions[player]
 	if not data or type(categoryKey) ~= "string" then
 		return { ok = false, message = "Try again!" }
+	end
+	if categoryKey == "Rides" then
+		if type(assetId) ~= "string" or not RIDE_SPECS[assetId] then
+			return { ok = false }
+		end
+		if data.owned[`ride_{assetId}`] then
+			return { ok = true, coins = data.coins }
+		end
+		local ridePrice = Config.ridePriceFor(assetId)
+		if data.coins < ridePrice then
+			return { ok = false, message = "Not enough hearts yet!" }
+		end
+		data.coins -= ridePrice
+		data.owned[`ride_{assetId}`] = true
+		pushCoins(player)
+		return { ok = true, coins = data.coins }
 	end
 	if categoryKey == "Props" then
 		if type(assetId) ~= "string" or not propBuilders[assetId] then
@@ -502,6 +723,23 @@ equipRemote.OnServerInvoke = function(player: Player, assetId: unknown, category
 	local data = sessions[player]
 	if not data or type(categoryKey) ~= "string" then
 		return { ok = false }
+	end
+
+	if categoryKey == "Rides" then
+		if assetId == nil then
+			data.equipped.Ride = nil
+			attachRide(player)
+			return { ok = true }
+		end
+		if type(assetId) ~= "string" or not RIDE_SPECS[assetId] then
+			return { ok = false }
+		end
+		if Config.ridePriceFor(assetId) > 0 and not data.owned[`ride_{assetId}`] then
+			return { ok = false, message = "Buy it first!" }
+		end
+		data.equipped.Ride = assetId
+		attachRide(player)
+		return { ok = true }
 	end
 
 	if categoryKey == "Props" then
@@ -691,7 +929,7 @@ local guestBoard = Instance.new("Part")
 guestBoard.Name = "GuestBoard"
 guestBoard.Anchored = true
 guestBoard.Size = Vector3.new(44, 12, 0.4)
-guestBoard.Position = Vector3.new(-62, 8, 34.4)
+guestBoard.Position = Vector3.new(-45, 8, 50)
 guestBoard.Color = Color3.fromRGB(58, 34, 84)
 guestBoard.Material = Enum.Material.SmoothPlastic
 guestBoard.TopSurface = Enum.SurfaceType.Smooth
