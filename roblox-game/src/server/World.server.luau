@@ -1,11 +1,10 @@
 --!strict
--- Builds the dressing room. Kept in its own Script so the room always
+-- Builds the studio world: a large dressing hall with four themed photo
+-- zones along the back wall. Kept in its own Script so the world always
 -- exists even if the game-logic script hits an error.
 
 local COLOR_FLOOR = Color3.fromRGB(255, 214, 231)
 local COLOR_WALL = Color3.fromRGB(244, 226, 255)
-local COLOR_ACCENT = Color3.fromRGB(255, 89, 158)
-local COLOR_NEON_B = Color3.fromRGB(120, 220, 255)
 
 local function part(props: { [string]: any }): Part
 	local p = Instance.new("Part")
@@ -19,19 +18,23 @@ local function part(props: { [string]: any }): Part
 	return p
 end
 
+----------------------------------------------------------------------
+-- Hall: floor + walls
+----------------------------------------------------------------------
+
 part({
 	Name = "Floor",
-	Size = Vector3.new(64, 1, 64),
+	Size = Vector3.new(200, 1, 70),
 	Position = Vector3.new(0, 0, 0),
 	Color = COLOR_FLOOR,
 	Material = Enum.Material.SmoothPlastic,
 })
 
 local wallSpecs = {
-	{ Vector3.new(64, 20, 1), Vector3.new(0, 10, -32) },
-	{ Vector3.new(64, 20, 1), Vector3.new(0, 10, 32) },
-	{ Vector3.new(1, 20, 64), Vector3.new(-32, 10, 0) },
-	{ Vector3.new(1, 20, 64), Vector3.new(32, 10, 0) },
+	{ Vector3.new(200, 24, 1), Vector3.new(0, 12, -35) },
+	{ Vector3.new(200, 24, 1), Vector3.new(0, 12, 35) },
+	{ Vector3.new(1, 24, 70), Vector3.new(-100, 12, 0) },
+	{ Vector3.new(1, 24, 70), Vector3.new(100, 12, 0) },
 }
 for _, spec in wallSpecs do
 	part({
@@ -43,70 +46,208 @@ for _, spec in wallSpecs do
 	})
 end
 
-local backdrop = part({
-	Name = "PhotoBackdrop",
-	Size = Vector3.new(18, 12, 0.5),
-	Position = Vector3.new(0, 6.5, -31),
-	Color = Color3.fromRGB(40, 20, 60),
-	Material = Enum.Material.SmoothPlastic,
-})
-local frameSpecs = {
-	{ Vector3.new(18.8, 0.6, 0.7), Vector3.new(0, 12.6, -31) },
-	{ Vector3.new(18.8, 0.6, 0.7), Vector3.new(0, 0.9, -31) },
-	{ Vector3.new(0.6, 12.4, 0.7), Vector3.new(-9.2, 6.7, -31) },
-	{ Vector3.new(0.6, 12.4, 0.7), Vector3.new(9.2, 6.7, -31) },
+----------------------------------------------------------------------
+-- Themed photo zones
+----------------------------------------------------------------------
+
+type Zone = {
+	x: number,
+	sign: string,
+	backdrop: Color3,
+	neonA: Color3,
+	neonB: Color3,
+	pad: Color3,
+	deco: ((x: number) -> ())?,
 }
-for index, spec in frameSpecs do
-	part({
-		Name = "PhotoFrameNeon",
-		Size = spec[1],
-		Position = spec[2],
-		Color = index % 2 == 0 and COLOR_ACCENT or COLOR_NEON_B,
-		Material = Enum.Material.Neon,
-	})
+
+local function decoClouds(x: number)
+	local spots = {
+		{ x - 6, 9.5, -32.5, 4 },
+		{ x - 3.5, 10.5, -32, 3 },
+		{ x + 5, 5, -32.5, 3.5 },
+		{ x + 7, 6.5, -32, 2.5 },
+	}
+	for _, s in spots do
+		part({
+			Name = "Cloud",
+			Shape = Enum.PartType.Ball,
+			Size = Vector3.new(s[4], s[4], s[4]),
+			Position = Vector3.new(s[1], s[2], s[3]),
+			Color = Color3.fromRGB(255, 255, 255),
+			Material = Enum.Material.SmoothPlastic,
+			CanCollide = false,
+		})
+	end
 end
 
-part({
-	Name = "PhotoSpot",
-	Size = Vector3.new(6, 0.1, 6),
-	Position = Vector3.new(0, 0.55, -27),
-	Color = COLOR_ACCENT,
-	Material = Enum.Material.Neon,
-	Transparency = 0.4,
-})
+local function decoBlossom(x: number)
+	part({
+		Name = "BlossomTrunk",
+		Size = Vector3.new(1.6, 9, 1.6),
+		Position = Vector3.new(x - 10, 4.5, -31),
+		Color = Color3.fromRGB(110, 76, 58),
+		Material = Enum.Material.Wood,
+	})
+	local puffs = {
+		{ x - 10, 10.5, -31, 6 },
+		{ x - 13, 9, -31, 4.5 },
+		{ x - 7, 9.2, -31, 4.5 },
+	}
+	for _, s in puffs do
+		part({
+			Name = "BlossomPuff",
+			Shape = Enum.PartType.Ball,
+			Size = Vector3.new(s[4], s[4], s[4]),
+			Position = Vector3.new(s[1], s[2], s[3]),
+			Color = Color3.fromRGB(255, 170, 205),
+			Material = Enum.Material.Grass,
+			CanCollide = false,
+		})
+	end
+end
 
-local signGui = Instance.new("SurfaceGui")
-signGui.Face = Enum.NormalId.Front
-signGui.CanvasSize = Vector2.new(900, 600)
-signGui.Parent = backdrop
-local signLabel = Instance.new("TextLabel")
-signLabel.Size = UDim2.fromScale(1, 0.4)
-signLabel.Position = UDim2.fromScale(0, 0.05)
-signLabel.BackgroundTransparency = 1
-signLabel.Text = "COMEBACK! \u{2728}"
-signLabel.Font = Enum.Font.FredokaOne
-signLabel.TextScaled = true
-signLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
-signLabel.Parent = signGui
+local function decoRetro(x: number)
+	for i = 0, 2 do
+		part({
+			Name = "RetroRing",
+			Size = Vector3.new(0.05, 10 - i * 3, 10 - i * 3),
+			Position = Vector3.new(x, 0.56 + i * 0.03, -28),
+			Color = i % 2 == 0 and Color3.fromRGB(255, 123, 84) or Color3.fromRGB(255, 209, 102),
+			Material = Enum.Material.SmoothPlastic,
+			CanCollide = false,
+			Shape = Enum.PartType.Cylinder,
+			Orientation = Vector3.new(0, 0, 90),
+		})
+	end
+end
 
-local lightPart = part({
-	Name = "SpotlightAnchor",
-	Size = Vector3.new(1, 1, 1),
-	Position = Vector3.new(0, 16, -24),
-	Transparency = 1,
-	CanCollide = false,
+local ZONES: { Zone } = {
+	{
+		x = -75, sign = "STAGE \u{1F3A4}",
+		backdrop = Color3.fromRGB(40, 20, 60),
+		neonA = Color3.fromRGB(255, 89, 158), neonB = Color3.fromRGB(120, 220, 255),
+		pad = Color3.fromRGB(255, 89, 158),
+	},
+	{
+		x = -25, sign = "CLOUDS \u{2601}",
+		backdrop = Color3.fromRGB(143, 215, 255),
+		neonA = Color3.fromRGB(255, 255, 255), neonB = Color3.fromRGB(255, 158, 203),
+		pad = Color3.fromRGB(143, 215, 255),
+		deco = decoClouds,
+	},
+	{
+		x = 25, sign = "RETRO \u{1F352}",
+		backdrop = Color3.fromRGB(255, 209, 102),
+		neonA = Color3.fromRGB(255, 123, 84), neonB = Color3.fromRGB(255, 90, 90),
+		pad = Color3.fromRGB(255, 181, 77),
+		deco = decoRetro,
+	},
+	{
+		x = 75, sign = "BLOSSOM \u{1F338}",
+		backdrop = Color3.fromRGB(255, 201, 222),
+		neonA = Color3.fromRGB(255, 105, 180), neonB = Color3.fromRGB(255, 255, 255),
+		pad = Color3.fromRGB(255, 170, 205),
+		deco = decoBlossom,
+	},
+}
+
+for _, zone in ZONES do
+	local backdrop = part({
+		Name = "PhotoBackdrop",
+		Size = Vector3.new(18, 12, 0.5),
+		Position = Vector3.new(zone.x, 6.5, -34.2),
+		Color = zone.backdrop,
+		Material = Enum.Material.SmoothPlastic,
+	})
+
+	local frameSpecs = {
+		{ Vector3.new(18.8, 0.6, 0.7), Vector3.new(zone.x, 12.6, -34.2) },
+		{ Vector3.new(18.8, 0.6, 0.7), Vector3.new(zone.x, 0.9, -34.2) },
+		{ Vector3.new(0.6, 12.4, 0.7), Vector3.new(zone.x - 9.2, 6.7, -34.2) },
+		{ Vector3.new(0.6, 12.4, 0.7), Vector3.new(zone.x + 9.2, 6.7, -34.2) },
+	}
+	for index, spec in frameSpecs do
+		part({
+			Name = "PhotoFrameNeon",
+			Size = spec[1],
+			Position = spec[2],
+			Color = index % 2 == 0 and zone.neonA or zone.neonB,
+			Material = Enum.Material.Neon,
+		})
+	end
+
+	part({
+		Name = "PhotoSpot",
+		Size = Vector3.new(7, 0.1, 7),
+		Position = Vector3.new(zone.x, 0.55, -29),
+		Color = zone.pad,
+		Material = Enum.Material.Neon,
+		Transparency = 0.4,
+	})
+
+	local signGui = Instance.new("SurfaceGui")
+	signGui.Face = Enum.NormalId.Front
+	signGui.CanvasSize = Vector2.new(900, 600)
+	signGui.Parent = backdrop
+	local signLabel = Instance.new("TextLabel")
+	signLabel.Size = UDim2.fromScale(1, 0.3)
+	signLabel.Position = UDim2.fromScale(0, 0.04)
+	signLabel.BackgroundTransparency = 1
+	signLabel.Text = zone.sign
+	signLabel.Font = Enum.Font.FredokaOne
+	signLabel.TextScaled = true
+	signLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+	signLabel.TextStrokeColor3 = Color3.fromRGB(60, 40, 80)
+	signLabel.TextStrokeTransparency = 0.4
+	signLabel.Parent = signGui
+
+	local lightPart = part({
+		Name = "SpotlightAnchor",
+		Size = Vector3.new(1, 1, 1),
+		Position = Vector3.new(zone.x, 18, -26),
+		Transparency = 1,
+		CanCollide = false,
+	})
+	local spot = Instance.new("SpotLight")
+	spot.Angle = 70
+	spot.Brightness = 2.5
+	spot.Range = 32
+	spot.Face = Enum.NormalId.Bottom
+	spot.Color = Color3.fromRGB(255, 240, 248)
+	spot.Parent = lightPart
+
+	if zone.deco then
+		zone.deco(zone.x)
+	end
+end
+
+----------------------------------------------------------------------
+-- Big logo on the front wall + spawn
+----------------------------------------------------------------------
+
+local logoWall = part({
+	Name = "LogoWall",
+	Size = Vector3.new(60, 10, 0.4),
+	Position = Vector3.new(0, 14, 34.4),
+	Color = Color3.fromRGB(58, 34, 84),
+	Material = Enum.Material.SmoothPlastic,
 })
-local spot = Instance.new("SpotLight")
-spot.Angle = 70
-spot.Brightness = 3
-spot.Range = 30
-spot.Face = Enum.NormalId.Bottom
-spot.Color = Color3.fromRGB(255, 235, 245)
-spot.Parent = lightPart
+local logoGui = Instance.new("SurfaceGui")
+logoGui.Face = Enum.NormalId.Back
+logoGui.CanvasSize = Vector2.new(1800, 300)
+logoGui.Parent = logoWall
+local logoLabel = Instance.new("TextLabel")
+logoLabel.Size = UDim2.fromScale(1, 1)
+logoLabel.BackgroundTransparency = 1
+logoLabel.Text = "COMEBACK! \u{2728} K-pop Dress Up"
+logoLabel.Font = Enum.Font.FredokaOne
+logoLabel.TextScaled = true
+logoLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+logoLabel.Parent = logoGui
 
 local spawnLocation = Instance.new("SpawnLocation")
 spawnLocation.Size = Vector3.new(6, 1, 6)
-spawnLocation.Position = Vector3.new(0, 0.5, 10)
+spawnLocation.Position = Vector3.new(0, 0.5, 15)
 spawnLocation.Anchored = true
 spawnLocation.Neutral = true
 spawnLocation.Transparency = 1

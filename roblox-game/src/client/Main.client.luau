@@ -155,7 +155,12 @@ local function actionButton(text: string, xOffset: number): TextButton
 		AutoButtonColor = true,
 		Parent = gui,
 	}, { round(31) })
-	create("UIStroke", { Thickness = 3, Color = WHITE, Parent = button })
+	create("UIStroke", {
+		Thickness = 3,
+		Color = WHITE,
+		ApplyStrokeMode = Enum.ApplyStrokeMode.Border,
+		Parent = button,
+	})
 	return button
 end
 
@@ -167,8 +172,8 @@ local photoButton = actionButton("\u{1F4F8} Photo", 14)
 ----------------------------------------------------------------------
 
 local closetPanel = create("Frame", {
-	Size = UDim2.new(0, 420, 1, -160),
-	Position = UDim2.new(1, -436, 0, 72),
+	Size = UDim2.new(0, 330, 1, -170),
+	Position = UDim2.new(1, -344, 0, 72),
 	BackgroundColor3 = WHITE,
 	BackgroundTransparency = 0.05,
 	Visible = false,
@@ -199,8 +204,8 @@ local itemGrid = create("ScrollingFrame", {
 	Parent = closetPanel,
 }, {
 	create("UIGridLayout", {
-		CellSize = UDim2.fromOffset(120, 140),
-		CellPadding = UDim2.fromOffset(10, 10),
+		CellSize = UDim2.fromOffset(94, 116),
+		CellPadding = UDim2.fromOffset(8, 8),
 		HorizontalAlignment = Enum.HorizontalAlignment.Center,
 	}),
 })
@@ -477,7 +482,7 @@ end
 -- Tabs
 for _, category in Config.Categories do
 	local tab = create("TextButton", {
-		Size = UDim2.fromOffset(74, 42),
+		Size = UDim2.fromOffset(46, 40),
 		BackgroundColor3 = category.key == activeCategory.key and PINK or PINK_SOFT,
 		Text = `{category.icon}`,
 		Font = FONT,
@@ -499,6 +504,13 @@ end
 
 closetButton.MouseButton1Click:Connect(function()
 	closetPanel.Visible = not closetPanel.Visible
+	-- Nudge the camera sideways while the closet is open so the panel
+	-- doesn't cover the character.
+	local character = player.Character
+	local humanoid = character and character:FindFirstChildOfClass("Humanoid")
+	if humanoid then
+		humanoid.CameraOffset = closetPanel.Visible and Vector3.new(2.4, 0.3, 0) or Vector3.zero
+	end
 	if closetPanel.Visible then
 		refreshGrid()
 	end
@@ -561,6 +573,74 @@ local countdownLabel = create("TextLabel", {
 	Parent = gui,
 })
 
+-- Poses: official Roblox emote animations, held (looped) for the shot.
+local POSES = {
+	{ icon = "\u{1F44B}", id = 507770239 }, -- wave
+	{ icon = "\u{1F389}", id = 507770677 }, -- cheer
+	{ icon = "\u{1F449}", id = 507770453 }, -- point
+	{ icon = "\u{1F483}", id = 507771019 }, -- dance
+	{ icon = "\u{1F57A}", id = 507776043 }, -- dance 2
+}
+local currentPose: AnimationTrack? = nil
+
+local function stopPose()
+	if currentPose then
+		currentPose:Stop(0.2)
+		currentPose = nil
+	end
+end
+
+local function playPose(assetId: number)
+	stopPose()
+	local character = player.Character
+	local humanoid = character and character:FindFirstChildOfClass("Humanoid")
+	local animator = humanoid and humanoid:FindFirstChildOfClass("Animator")
+	if not animator then
+		return
+	end
+	local animation = Instance.new("Animation")
+	animation.AnimationId = `rbxassetid://{assetId}`
+	local ok, track = pcall(function()
+		return animator:LoadAnimation(animation)
+	end)
+	if ok and track then
+		track.Looped = true
+		track:Play(0.2)
+		currentPose = track
+	end
+end
+
+local poseBar = create("Frame", {
+	Size = UDim2.fromOffset(440, 66),
+	Position = UDim2.new(0.5, -220, 1, -162),
+	BackgroundColor3 = WHITE,
+	BackgroundTransparency = 0.08,
+	Visible = false,
+	Parent = gui,
+}, {
+	round(33),
+	create("UIListLayout", {
+		FillDirection = Enum.FillDirection.Horizontal,
+		Padding = UDim.new(0, 8),
+		HorizontalAlignment = Enum.HorizontalAlignment.Center,
+		VerticalAlignment = Enum.VerticalAlignment.Center,
+	}),
+})
+
+for _, pose in POSES do
+	local poseButton = create("TextButton", {
+		Size = UDim2.fromOffset(50, 50),
+		BackgroundColor3 = PINK_SOFT,
+		Text = pose.icon,
+		Font = FONT,
+		TextSize = 26,
+		Parent = poseBar,
+	}, { round(25) })
+	poseButton.MouseButton1Click:Connect(function()
+		playPose(pose.id)
+	end)
+end
+
 local function takePhoto()
 	if photoBusy then
 		return
@@ -617,10 +697,34 @@ local function takePhoto()
 			toast("Photocard saved! \u{1F4F8}")
 		end
 	end
+	stopPose()
 	photoBusy = false
 end
 
-photoButton.MouseButton1Click:Connect(takePhoto)
+local goButton = create("TextButton", {
+	Size = UDim2.fromOffset(92, 50),
+	BackgroundColor3 = PINK,
+	Text = "GO! \u{1F4F8}",
+	Font = FONT,
+	TextSize = 22,
+	TextColor3 = WHITE,
+	Parent = poseBar,
+}, { round(25) })
+
+goButton.MouseButton1Click:Connect(function()
+	poseBar.Visible = false
+	takePhoto()
+end)
+
+photoButton.MouseButton1Click:Connect(function()
+	if photoBusy then
+		return
+	end
+	poseBar.Visible = not poseBar.Visible
+	if not poseBar.Visible then
+		stopPose()
+	end
+end)
 
 ----------------------------------------------------------------------
 -- Daily reward popup

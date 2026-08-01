@@ -10,7 +10,7 @@ Config.DailyRewardCoins = 50
 Config.DailyCooldownSeconds = 20 * 60 * 60
 Config.PhotoRewardCoins = 15
 Config.PhotoCooldownSeconds = 60
-Config.ItemsPerSearch = 24
+Config.ItemsPerSearch = 30
 
 -- Ages 6-12 across the US: skin tones must cover a wide, even range.
 Config.SkinTones = {
@@ -47,7 +47,7 @@ Config.Categories = {
 		icon = "\u{1F487}",
 		avatarAssetTypes = { Enum.AvatarAssetType.HairAccessory },
 		assetTypeIds = { 41 },
-		searches = { "kpop idol hair", "y2k aesthetic hair" },
+		searches = { "kpop idol hair", "y2k aesthetic hair", "long wavy hair", "short hair aesthetic" },
 	},
 	{
 		key = "Tops",
@@ -55,7 +55,7 @@ Config.Categories = {
 		icon = "\u{1F455}",
 		avatarAssetTypes = { Enum.AvatarAssetType.Shirt },
 		assetTypeIds = { 11 },
-		searches = { "kpop stage outfit shirt", "y2k aesthetic top" },
+		searches = { "kpop stage outfit shirt", "y2k aesthetic top", "korean fashion shirt", "idol concert outfit" },
 	},
 	{
 		key = "Bottoms",
@@ -63,7 +63,7 @@ Config.Categories = {
 		icon = "\u{1F456}",
 		avatarAssetTypes = { Enum.AvatarAssetType.Pants },
 		assetTypeIds = { 12 },
-		searches = { "kpop stage pants", "y2k aesthetic pants" },
+		searches = { "kpop stage pants", "y2k aesthetic pants", "plaid skirt", "cargo pants aesthetic" },
 	},
 	{
 		key = "Hats",
@@ -72,6 +72,19 @@ Config.Categories = {
 		avatarAssetTypes = { Enum.AvatarAssetType.Hat },
 		assetTypeIds = { 8 },
 		searches = { "y2k beanie", "cute bucket hat" },
+	},
+	{
+		key = "Extras",
+		label = "Extras",
+		icon = "\u{1F380}",
+		avatarAssetTypes = {
+			Enum.AvatarAssetType.FaceAccessory,
+			Enum.AvatarAssetType.NeckAccessory,
+			Enum.AvatarAssetType.BackAccessory,
+			Enum.AvatarAssetType.WaistAccessory,
+		},
+		assetTypeIds = { 42, 43, 46, 47 },
+		searches = { "kawaii glasses", "aesthetic necklace", "cute wings" },
 	},
 	{
 		key = "Skin",
@@ -85,6 +98,12 @@ Config.Categories = {
 Config.AccessoryFields = {
 	[8] = "HatAccessory",
 	[41] = "HairAccessory",
+	[42] = "FaceAccessory",
+	[43] = "NeckAccessory",
+	[44] = "ShouldersAccessory",
+	[45] = "FrontAccessory",
+	[46] = "BackAccessory",
+	[47] = "WaistAccessory",
 }
 Config.ClassicClothingFields = {
 	[11] = "Shirt",
