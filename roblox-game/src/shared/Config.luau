@@ -28,6 +28,28 @@ Config.SkinTones = {
 	Color3.fromRGB(64, 38, 25),
 }
 
+-- Wish Board: kid-safe structured feedback (tap a wish, no free text).
+Config.Wishes = {
+	{ key = "outfits", icon = "\u{1F457}", label = "More outfits!" },
+	{ key = "zones", icon = "\u{1F3DD}", label = "New photo zone!" },
+	{ key = "poses", icon = "\u{1F483}", label = "New poses!" },
+	{ key = "pets", icon = "\u{1F436}", label = "Pets!" },
+	{ key = "music", icon = "\u{1F3B5}", label = "More music!" },
+}
+
+-- What's-new popup shown once per player per version. When a wish comes
+-- true, put the wishers' names in `credits` before publishing the update.
+Config.News = {
+	version = 1,
+	title = "\u{1F389} Welcome to Comeback!",
+	lines = {
+		"4 photo zones to explore \u{1F3A4}\u{2601}\u{1F352}\u{1F338}",
+		"Strike a pose for your photocard \u{1F483}",
+		"Make a wish on the Wish Board \u{2B50}",
+	},
+	credits = "",
+}
+
 export type Category = {
 	key: string,
 	label: string,

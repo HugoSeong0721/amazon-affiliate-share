@@ -30,6 +30,7 @@ local buyRemote = makeRemoteFunction("BuyItem")
 local equipRemote = makeRemoteFunction("EquipItem")
 local photoRemote = makeRemoteFunction("TakePhoto")
 local stateRemote = makeRemoteFunction("GetState")
+local wishRemote = makeRemoteFunction("SendWish")
 
 local coinsChanged = Instance.new("RemoteEvent")
 coinsChanged.Name = "CoinsChanged"
@@ -38,6 +39,10 @@ coinsChanged.Parent = remotesFolder
 local dailyReward = Instance.new("RemoteEvent")
 dailyReward.Name = "DailyReward"
 dailyReward.Parent = remotesFolder
+
+local showNews = Instance.new("RemoteEvent")
+showNews.Name = "ShowNews"
+showNews.Parent = remotesFolder
 
 ----------------------------------------------------------------------
 -- Player data
@@ -48,6 +53,7 @@ type PlayerData = {
 	owned: { [string]: boolean },
 	equipped: { [string]: number },
 	lastDaily: number,
+	newsSeen: number?,
 }
 
 -- GetDataStore throws in Studio when the place isn't published; the game
@@ -84,7 +90,61 @@ local function loadData(player: Player): PlayerData
 	result.owned = result.owned or {}
 	result.equipped = result.equipped or {}
 	result.lastDaily = result.lastDaily or 0
+	result.newsSeen = result.newsSeen or 0
 	return result
+end
+
+----------------------------------------------------------------------
+-- Wish Board (kid-safe structured feedback with requester names)
+----------------------------------------------------------------------
+
+local wishStoreOk, wishStore = pcall(function()
+	return DataStoreService:GetDataStore("ComebackWishes_v1")
+end)
+if not wishStoreOk then
+	wishStore = nil
+end
+
+local wishVoted: { [Player]: { [string]: boolean } } = {}
+
+wishRemote.OnServerInvoke = function(player: Player, wishKey: unknown)
+	if type(wishKey) ~= "string" then
+		return { ok = false }
+	end
+	local valid = false
+	for _, wish in Config.Wishes do
+		if wish.key == wishKey then
+			valid = true
+			break
+		end
+	end
+	if not valid then
+		return { ok = false }
+	end
+	local voted = wishVoted[player] or {}
+	wishVoted[player] = voted
+	if voted[wishKey] then
+		return { ok = true, already = true }
+	end
+	voted[wishKey] = true
+	task.spawn(function()
+		pcall(function()
+			if wishStore then
+				wishStore:UpdateAsync(`wish_{wishKey}`, function(old)
+					old = old or { count = 0, names = {} }
+					old.count += 1
+					if not table.find(old.names, player.Name) then
+						table.insert(old.names, player.Name)
+						while #old.names > 50 do
+							table.remove(old.names, 1)
+						end
+					end
+					return old
+				end)
+			end
+		end)
+	end)
+	return { ok = true }
 end
 
 local function saveData(player: Player)
@@ -352,6 +412,15 @@ local function onPlayerAdded(player: Player)
 		task.delay(1, applyOutfit, player)
 	end
 
+	if (data.newsSeen or 0) < Config.News.version then
+		data.newsSeen = Config.News.version
+		task.delay(6, function()
+			if sessions[player] then
+				showNews:FireClient(player, Config.News)
+			end
+		end)
+	end
+
 	pushCoins(player)
 end
 
@@ -366,6 +435,7 @@ Players.PlayerRemoving:Connect(function(player)
 	saveData(player)
 	sessions[player] = nil
 	photoTimestamps[player] = nil
+	wishVoted[player] = nil
 end)
 
 game:BindToClose(function()

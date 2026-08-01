@@ -19,6 +19,8 @@ local photoRemote = remotes:WaitForChild("TakePhoto") :: RemoteFunction
 local stateRemote = remotes:WaitForChild("GetState") :: RemoteFunction
 local coinsChanged = remotes:WaitForChild("CoinsChanged") :: RemoteEvent
 local dailyReward = remotes:WaitForChild("DailyReward") :: RemoteEvent
+local wishRemote = remotes:WaitForChild("SendWish") :: RemoteFunction
+local showNews = remotes:WaitForChild("ShowNews") :: RemoteEvent
 
 ----------------------------------------------------------------------
 -- Palette / helpers
@@ -94,7 +96,7 @@ create("TextLabel", {
 local coinLabel = create("TextLabel", {
 	Size = UDim2.fromScale(1, 1),
 	BackgroundTransparency = 1,
-	Text = "\u{1FA99} 0",
+	Text = "\u{1F496} 0",
 	Font = FONT,
 	TextSize = 26,
 	TextColor3 = PURPLE_DARK,
@@ -109,7 +111,7 @@ create("Frame", {
 
 local function setCoins(value: number)
 	coins = value
-	coinLabel.Text = `\u{1FA99} {value}`
+	coinLabel.Text = `\u{1F496} {value}`
 end
 
 -- Toast message (short feedback, big and readable for young kids)
@@ -164,8 +166,9 @@ local function actionButton(text: string, xOffset: number): TextButton
 	return button
 end
 
-local closetButton = actionButton("\u{1F457} Closet", -184)
-local photoButton = actionButton("\u{1F4F8} Photo", 14)
+local closetButton = actionButton("\u{1F457} Closet", -264)
+local photoButton = actionButton("\u{1F4F8} Photo", -88)
+local wishButton = actionButton("\u{2B50} Wish", 88)
 
 ----------------------------------------------------------------------
 -- Closet panel
@@ -455,7 +458,7 @@ local function renderItemTab(category: Config.Category)
 		elseif isOwnedOrFree(item.id) then
 			caption.Text = price == 0 and "FREE \u{1F49B}" or "Owned \u{2714}"
 		else
-			caption.Text = `\u{1FA99} {price}`
+			caption.Text = `\u{1F496} {price}`
 		end
 		cell.MouseButton1Click:Connect(function()
 			if isOwnedOrFree(item.id) then
@@ -463,7 +466,7 @@ local function renderItemTab(category: Config.Category)
 			else
 				pendingPurchase = { item = item, categoryKey = category.key }
 				buyThumb.Image = thumb.Image
-				buyText.Text = `Buy for \u{1FA99} {price}?`
+				buyText.Text = `Buy for \u{1F496} {price}?`
 				buyPopup.Visible = true
 			end
 		end)
@@ -692,7 +695,7 @@ local function takePhoto()
 			setCoins(result.coins)
 		end
 		if result.rewarded then
-			toast(`Photocard saved! +{Config.PhotoRewardCoins} \u{1FA99}`)
+			toast(`Photocard saved! +{Config.PhotoRewardCoins} \u{1F496}`)
 		else
 			toast("Photocard saved! \u{1F4F8}")
 		end
@@ -763,7 +766,7 @@ dailyReward.OnClientEvent:Connect(function(amount: number)
 			Size = UDim2.new(1, 0, 0, 44),
 			Position = UDim2.fromOffset(0, 80),
 			BackgroundTransparency = 1,
-			Text = `+{amount} \u{1FA99}`,
+			Text = `+{amount} \u{1F496}`,
 			Font = FONT,
 			TextSize = 30,
 			TextColor3 = YELLOW,
@@ -773,6 +776,141 @@ dailyReward.OnClientEvent:Connect(function(amount: number)
 		}),
 		okButton,
 	})
+	okButton.MouseButton1Click:Connect(function()
+		popup:Destroy()
+	end)
+end)
+
+----------------------------------------------------------------------
+-- Wish Board (structured feedback — no free text, kid-safe)
+----------------------------------------------------------------------
+
+local wishHeight = 78 + #Config.Wishes * 58
+local wishFrame = create("Frame", {
+	Size = UDim2.fromOffset(340, wishHeight),
+	Position = UDim2.new(0.5, -170, 0.5, -math.floor(wishHeight / 2)),
+	BackgroundColor3 = WHITE,
+	Visible = false,
+	ZIndex = 12,
+	Parent = gui,
+}, { round(18) })
+
+create("TextLabel", {
+	Size = UDim2.new(1, 0, 0, 50),
+	Position = UDim2.fromOffset(0, 10),
+	BackgroundTransparency = 1,
+	Text = "\u{2B50} Wish Board",
+	Font = FONT,
+	TextSize = 30,
+	TextColor3 = PURPLE_DARK,
+	ZIndex = 12,
+	Parent = wishFrame,
+})
+
+local wishClose = create("TextButton", {
+	Size = UDim2.fromOffset(36, 36),
+	Position = UDim2.new(1, -44, 0, 12),
+	BackgroundColor3 = PINK_SOFT,
+	Text = "\u{2715}",
+	Font = FONT,
+	TextSize = 18,
+	TextColor3 = PURPLE_DARK,
+	ZIndex = 12,
+	Parent = wishFrame,
+}, { round(18) })
+wishClose.MouseButton1Click:Connect(function()
+	wishFrame.Visible = false
+end)
+
+for index, wish in Config.Wishes do
+	local wishOption = create("TextButton", {
+		Size = UDim2.fromOffset(300, 48),
+		Position = UDim2.new(0.5, -150, 0, 62 + (index - 1) * 58),
+		BackgroundColor3 = PINK_SOFT,
+		Text = `{wish.icon} {wish.label}`,
+		Font = FONT,
+		TextSize = 22,
+		TextColor3 = PURPLE_DARK,
+		ZIndex = 12,
+		Parent = wishFrame,
+	}, { round(24) })
+	wishOption.MouseButton1Click:Connect(function()
+		wishFrame.Visible = false
+		local result = wishRemote:InvokeServer(wish.key)
+		if result and result.ok then
+			toast(result.already and "You already wished that \u{1F49C}" or "Wish sent! \u{2B50}")
+		end
+	end)
+end
+
+wishButton.MouseButton1Click:Connect(function()
+	wishFrame.Visible = not wishFrame.Visible
+end)
+
+----------------------------------------------------------------------
+-- What's-new popup (update announcements + wish credits)
+----------------------------------------------------------------------
+
+showNews.OnClientEvent:Connect(function(news)
+	local hasCredits = news.credits ~= nil and news.credits ~= ""
+	local height = hasCredits and 336 or 296
+	local popup = create("Frame", {
+		Size = UDim2.fromOffset(390, height),
+		Position = UDim2.new(0.5, -195, 0.5, -math.floor(height / 2)),
+		BackgroundColor3 = WHITE,
+		ZIndex = 15,
+		Parent = gui,
+	}, { round(18) })
+	create("TextLabel", {
+		Size = UDim2.new(1, -20, 0, 52),
+		Position = UDim2.fromOffset(10, 14),
+		BackgroundTransparency = 1,
+		Text = tostring(news.title or "What's new"),
+		Font = FONT,
+		TextSize = 30,
+		TextColor3 = PURPLE_DARK,
+		TextWrapped = true,
+		ZIndex = 15,
+		Parent = popup,
+	})
+	create("TextLabel", {
+		Size = UDim2.new(1, -40, 0, 120),
+		Position = UDim2.fromOffset(20, 72),
+		BackgroundTransparency = 1,
+		Text = table.concat(news.lines or {}, "\n"),
+		Font = FONT,
+		TextSize = 21,
+		TextColor3 = Color3.fromRGB(90, 70, 120),
+		TextWrapped = true,
+		TextYAlignment = Enum.TextYAlignment.Top,
+		ZIndex = 15,
+		Parent = popup,
+	})
+	if hasCredits then
+		create("TextLabel", {
+			Size = UDim2.new(1, -40, 0, 40),
+			Position = UDim2.new(0, 20, 1, -108),
+			BackgroundTransparency = 1,
+			Text = tostring(news.credits),
+			Font = FONT,
+			TextSize = 19,
+			TextColor3 = PINK,
+			TextWrapped = true,
+			ZIndex = 15,
+			Parent = popup,
+		})
+	end
+	local okButton = create("TextButton", {
+		Size = UDim2.fromOffset(170, 50),
+		Position = UDim2.new(0.5, -85, 1, -62),
+		BackgroundColor3 = PINK,
+		Text = "Let's go!",
+		Font = FONT,
+		TextSize = 24,
+		TextColor3 = WHITE,
+		ZIndex = 15,
+		Parent = popup,
+	}, { round(25) })
 	okButton.MouseButton1Click:Connect(function()
 		popup:Destroy()
 	end)
