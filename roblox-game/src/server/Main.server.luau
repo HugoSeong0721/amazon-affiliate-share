@@ -767,7 +767,8 @@ signPrompt.Triggered:Connect(function(player)
 	data.signed = true
 	data.coins += 10
 	pushCoins(player)
-	table.insert(signatures, player.DisplayName)
+	local entry = `{player.DisplayName} \u{00B7} {os.date("!%b %d")}`
+	table.insert(signatures, entry)
 	while #signatures > 200 do
 		table.remove(signatures, 1)
 	end
@@ -778,7 +779,7 @@ signPrompt.Triggered:Connect(function(player)
 			if guestStore then
 				guestStore:UpdateAsync("signatures", function(old)
 					old = type(old) == "table" and old or {}
-					table.insert(old, player.DisplayName)
+					table.insert(old, entry)
 					while #old > 200 do
 						table.remove(old, 1)
 					end
@@ -787,4 +788,153 @@ signPrompt.Triggered:Connect(function(player)
 			end
 		end)
 	end)
+end)
+
+----------------------------------------------------------------------
+-- Sign-anywhere stickers: hide your name (+date) on any surface
+----------------------------------------------------------------------
+
+local placeSignRemote = makeRemoteFunction("PlaceSign")
+
+type StickerEntry = {
+	u: number,
+	n: string,
+	d: string,
+	px: number,
+	py: number,
+	pz: number,
+	nx: number,
+	ny: number,
+	nz: number,
+}
+
+local stickers: { { entry: StickerEntry, part: Part } } = {}
+local placeCooldown: { [Player]: number } = {}
+local MAX_STICKERS_PER_PLAYER = 3
+local MAX_STICKERS_TOTAL = 400
+
+local function buildStickerPart(entry: StickerEntry): Part
+	local pos = Vector3.new(entry.px, entry.py, entry.pz)
+	local normal = Vector3.new(entry.nx, entry.ny, entry.nz)
+	if normal.Magnitude < 0.5 then
+		normal = Vector3.new(0, 1, 0)
+	end
+	normal = normal.Unit
+	local up = math.abs(normal.Y) > 0.9 and Vector3.new(1, 0, 0) or Vector3.new(0, 1, 0)
+	local part = Instance.new("Part")
+	part.Name = "SignSticker"
+	part.Anchored = true
+	part.CanCollide = false
+	part.CanQuery = false
+	part.Size = Vector3.new(4.2, 1.1, 0.1)
+	part.Transparency = 1
+	part.CFrame = CFrame.lookAt(pos + normal * 0.06, pos + normal, up)
+	local gui = Instance.new("SurfaceGui")
+	gui.Face = Enum.NormalId.Front
+	gui.CanvasSize = Vector2.new(420, 110)
+	gui.Parent = part
+	local bg = Instance.new("Frame")
+	bg.Size = UDim2.fromScale(1, 1)
+	bg.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+	bg.BackgroundTransparency = 0.25
+	bg.Parent = gui
+	local corner = Instance.new("UICorner")
+	corner.CornerRadius = UDim.new(0, 24)
+	corner.Parent = bg
+	local label = Instance.new("TextLabel")
+	label.Size = UDim2.fromScale(1, 1)
+	label.BackgroundTransparency = 1
+	label.Text = `\u{270D} {entry.n} \u{00B7} {entry.d}`
+	label.Font = Enum.Font.FredokaOne
+	label.TextScaled = true
+	label.TextColor3 = Color3.fromRGB(226, 58, 130)
+	label.Parent = bg
+	part.Parent = workspace
+	return part
+end
+
+local function persistStickers()
+	task.spawn(function()
+		pcall(function()
+			if guestStore then
+				local list = {}
+				for _, sticker in stickers do
+					table.insert(list, sticker.entry)
+				end
+				guestStore:SetAsync("stickers", list)
+			end
+		end)
+	end)
+end
+
+task.spawn(function()
+	pcall(function()
+		if guestStore then
+			local stored = guestStore:GetAsync("stickers")
+			if type(stored) == "table" then
+				for _, entry in stored do
+					table.insert(stickers, { entry = entry, part = buildStickerPart(entry) })
+				end
+			end
+		end
+	end)
+end)
+
+placeSignRemote.OnServerInvoke = function(player: Player, pos: unknown, normal: unknown)
+	if typeof(pos) ~= "Vector3" or typeof(normal) ~= "Vector3" then
+		return { ok = false }
+	end
+	local character = player.Character
+	local root = character and character:FindFirstChild("HumanoidRootPart")
+	if not root or not root:IsA("BasePart") or (root.Position - pos).Magnitude > 40 then
+		return { ok = false, message = "Too far away!" }
+	end
+	local now = os.clock()
+	local last = placeCooldown[player]
+	if last and now - last < 3 then
+		return { ok = false }
+	end
+	placeCooldown[player] = now
+
+	-- Keep at most a few per player: placing a new one moves your oldest.
+	local mine = 0
+	for _, sticker in stickers do
+		if sticker.entry.u == player.UserId then
+			mine += 1
+		end
+	end
+	if mine >= MAX_STICKERS_PER_PLAYER then
+		for index, sticker in stickers do
+			if sticker.entry.u == player.UserId then
+				sticker.part:Destroy()
+				table.remove(stickers, index)
+				break
+			end
+		end
+	end
+	while #stickers >= MAX_STICKERS_TOTAL do
+		stickers[1].part:Destroy()
+		table.remove(stickers, 1)
+	end
+
+	local unitNormal = (normal :: Vector3)
+	local position = pos :: Vector3
+	local entry: StickerEntry = {
+		u = player.UserId,
+		n = player.DisplayName,
+		d = os.date("!%b %d") :: any,
+		px = position.X,
+		py = position.Y,
+		pz = position.Z,
+		nx = unitNormal.X,
+		ny = unitNormal.Y,
+		nz = unitNormal.Z,
+	}
+	table.insert(stickers, { entry = entry, part = buildStickerPart(entry) })
+	persistStickers()
+	return { ok = true }
+end
+
+Players.PlayerRemoving:Connect(function(player)
+	placeCooldown[player] = nil
 end)

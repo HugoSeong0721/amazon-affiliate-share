@@ -996,6 +996,76 @@ showNews.OnClientEvent:Connect(function(news)
 end)
 
 ----------------------------------------------------------------------
+-- Sign-anywhere mode: tap the pen, then tap any wall or floor
+----------------------------------------------------------------------
+
+local UserInputService = game:GetService("UserInputService")
+local placeSignRemote = remotes:WaitForChild("PlaceSign") :: RemoteFunction
+
+local signModeButton = create("TextButton", {
+	Size = UDim2.fromOffset(64, 64),
+	Position = UDim2.new(1, -80, 1, -88),
+	BackgroundColor3 = PINK,
+	Text = "\u{270D}",
+	Font = FONT,
+	TextSize = 30,
+	TextColor3 = WHITE,
+	Parent = gui,
+}, { round(32) })
+create("UIStroke", {
+	Thickness = 3,
+	Color = WHITE,
+	ApplyStrokeMode = Enum.ApplyStrokeMode.Border,
+	Parent = signModeButton,
+})
+
+local signMode = false
+
+local function setSignMode(on: boolean)
+	signMode = on
+	signModeButton.BackgroundColor3 = on and YELLOW or PINK
+end
+
+signModeButton.MouseButton1Click:Connect(function()
+	setSignMode(not signMode)
+	if signMode then
+		toast("Tap a wall or floor to leave your sign! \u{270D}")
+	end
+end)
+
+UserInputService.InputBegan:Connect(function(input, gameProcessed)
+	if not signMode or gameProcessed then
+		return
+	end
+	if input.UserInputType ~= Enum.UserInputType.MouseButton1 and input.UserInputType ~= Enum.UserInputType.Touch then
+		return
+	end
+	local camera = workspace.CurrentCamera
+	local ray = camera:ViewportPointToRay(input.Position.X, input.Position.Y)
+	local params = RaycastParams.new()
+	local character = player.Character
+	if character then
+		params.FilterDescendantsInstances = { character }
+		params.FilterType = Enum.RaycastFilterType.Exclude
+	end
+	local hit = workspace:Raycast(ray.Origin, ray.Direction * 200, params)
+	if not hit or not hit.Instance then
+		return
+	end
+	if not hit.Instance.Anchored then
+		toast("Try a wall or floor! \u{270D}")
+		return
+	end
+	setSignMode(false)
+	local result = placeSignRemote:InvokeServer(hit.Position, hit.Normal)
+	if result and result.ok then
+		toast("Your sign is here! \u{270D}\u{2728}")
+	elseif result and result.message then
+		toast(result.message)
+	end
+end)
+
+----------------------------------------------------------------------
 -- Initial state sync
 ----------------------------------------------------------------------
 
