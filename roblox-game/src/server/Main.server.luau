@@ -50,7 +50,15 @@ type PlayerData = {
 	lastDaily: number,
 }
 
-local dataStore = DataStoreService:GetDataStore("Comeback_v1")
+-- GetDataStore throws in Studio when the place isn't published; the game
+-- must still run (just without saving).
+local dataStoreOk, dataStore = pcall(function()
+	return DataStoreService:GetDataStore("Comeback_v1")
+end)
+if not dataStoreOk then
+	dataStore = nil
+	warn("[Comeback] DataStore unavailable (unpublished place?) — progress will not save.")
+end
 local sessions: { [Player]: PlayerData } = {}
 local photoTimestamps: { [Player]: number } = {}
 
@@ -66,7 +74,7 @@ end
 local function loadData(player: Player): PlayerData
 	local data: PlayerData? = nil
 	local ok, stored = pcall(function()
-		return dataStore:GetAsync(`player_{player.UserId}`)
+		return dataStore and dataStore:GetAsync(`player_{player.UserId}`)
 	end)
 	if ok and type(stored) == "table" then
 		data = stored :: PlayerData
@@ -85,7 +93,9 @@ local function saveData(player: Player)
 		return
 	end
 	pcall(function()
-		dataStore:SetAsync(`player_{player.UserId}`, data)
+		if dataStore then
+			dataStore:SetAsync(`player_{player.UserId}`, data)
+		end
 	end)
 end
 
