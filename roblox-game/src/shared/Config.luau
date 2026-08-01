@@ -48,7 +48,12 @@ Config.News = {
 		"Make a wish on the Wish Board \u{2B50}",
 	},
 	credits = "",
+	-- Set to a wish key (e.g. "zones") when an update fulfills that wish:
+	-- everyone who voted for it gets a personal congrats popup + gift.
+	fulfilledWish = "",
 }
+
+Config.WishThanksCoins = 100
 
 export type Category = {
 	key: string,

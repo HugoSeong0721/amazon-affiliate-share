@@ -127,16 +127,24 @@ wishRemote.OnServerInvoke = function(player: Player, wishKey: unknown)
 		return { ok = true, already = true }
 	end
 	voted[wishKey] = true
-	task.spawn(function()
+	task.spawn(function() -- persist the vote off the hot path
 		pcall(function()
 			if wishStore then
 				wishStore:UpdateAsync(`wish_{wishKey}`, function(old)
-					old = old or { count = 0, names = {} }
+					old = old or { count = 0, names = {}, ids = {} }
 					old.count += 1
+					old.names = old.names or {}
+					old.ids = old.ids or {}
 					if not table.find(old.names, player.Name) then
 						table.insert(old.names, player.Name)
 						while #old.names > 50 do
 							table.remove(old.names, 1)
+						end
+					end
+					if not table.find(old.ids, player.UserId) then
+						table.insert(old.ids, player.UserId)
+						while #old.ids > 200 do
+							table.remove(old.ids, 1)
 						end
 					end
 					return old
@@ -145,6 +153,24 @@ wishRemote.OnServerInvoke = function(player: Player, wishKey: unknown)
 		end)
 	end)
 	return { ok = true }
+end
+
+-- When an update fulfills a wish, load who voted for it so they get a
+-- personal congrats + thank-you gift on their next visit.
+local fulfilledVoters: { [number]: boolean } = {}
+if Config.News.fulfilledWish ~= "" then
+	task.spawn(function()
+		pcall(function()
+			if wishStore then
+				local entry = wishStore:GetAsync(`wish_{Config.News.fulfilledWish}`)
+				if entry and entry.ids then
+					for _, userId in entry.ids do
+						fulfilledVoters[userId] = true
+					end
+				end
+			end
+		end)
+	end)
 end
 
 local function saveData(player: Player)
@@ -414,9 +440,22 @@ local function onPlayerAdded(player: Player)
 
 	if (data.newsSeen or 0) < Config.News.version then
 		data.newsSeen = Config.News.version
+		local personal = fulfilledVoters[player.UserId] == true
+		local bonus = 0
+		if personal then
+			bonus = Config.WishThanksCoins
+			data.coins += bonus
+		end
 		task.delay(6, function()
 			if sessions[player] then
-				showNews:FireClient(player, Config.News)
+				showNews:FireClient(player, {
+					title = Config.News.title,
+					lines = Config.News.lines,
+					credits = Config.News.credits,
+					personal = personal,
+					bonus = bonus,
+				})
+				pushCoins(player)
 			end
 		end)
 	end

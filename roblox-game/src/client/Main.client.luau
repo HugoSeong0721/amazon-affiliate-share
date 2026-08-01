@@ -865,7 +865,7 @@ showNews.OnClientEvent:Connect(function(news)
 		Size = UDim2.new(1, -20, 0, 52),
 		Position = UDim2.fromOffset(10, 14),
 		BackgroundTransparency = 1,
-		Text = tostring(news.title or "What's new"),
+		Text = news.personal and "\u{1F389} YOUR wish came true!" or tostring(news.title or "What's new"),
 		Font = FONT,
 		TextSize = 30,
 		TextColor3 = PURPLE_DARK,
@@ -877,7 +877,8 @@ showNews.OnClientEvent:Connect(function(news)
 		Size = UDim2.new(1, -40, 0, 120),
 		Position = UDim2.fromOffset(20, 72),
 		BackgroundTransparency = 1,
-		Text = table.concat(news.lines or {}, "\n"),
+		Text = table.concat(news.lines or {}, "\n")
+			.. ((news.bonus or 0) > 0 and `\n\u{1F381} +{news.bonus} \u{1F496} thank-you gift!` or ""),
 		Font = FONT,
 		TextSize = 21,
 		TextColor3 = Color3.fromRGB(90, 70, 120),
