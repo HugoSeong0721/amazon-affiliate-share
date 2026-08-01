@@ -210,7 +210,7 @@ for _, zone in ZONES do
 	})
 	local spot = Instance.new("SpotLight")
 	spot.Angle = 70
-	spot.Brightness = 2.5
+	spot.Brightness = 1
 	spot.Range = 32
 	spot.Face = Enum.NormalId.Bottom
 	spot.Color = Color3.fromRGB(255, 240, 248)
@@ -263,22 +263,22 @@ local Lighting = game:GetService("Lighting")
 local TweenService = game:GetService("TweenService")
 
 local bloom = Instance.new("BloomEffect")
-bloom.Intensity = 0.55
-bloom.Size = 32
-bloom.Threshold = 1.05
+bloom.Intensity = 0.3
+bloom.Size = 24
+bloom.Threshold = 2
 bloom.Parent = Lighting
 
 local colorCorrection = Instance.new("ColorCorrectionEffect")
-colorCorrection.Saturation = 0.18
-colorCorrection.Contrast = 0.06
+colorCorrection.Saturation = 0.08
+colorCorrection.Contrast = 0.02
 colorCorrection.TintColor = Color3.fromRGB(255, 248, 252)
 colorCorrection.Parent = Lighting
 
 local atmosphere = Instance.new("Atmosphere")
-atmosphere.Density = 0.24
+atmosphere.Density = 0.1
 atmosphere.Color = Color3.fromRGB(226, 198, 231)
 atmosphere.Decay = Color3.fromRGB(150, 100, 160)
-atmosphere.Haze = 1.2
+atmosphere.Haze = 0.5
 atmosphere.Parent = Lighting
 
 -- Glossy stage floor
@@ -300,7 +300,7 @@ local disco = part({
 })
 local discoLight = Instance.new("PointLight")
 discoLight.Color = Color3.fromRGB(255, 170, 220)
-discoLight.Brightness = 1.6
+discoLight.Brightness = 0.7
 discoLight.Range = 34
 discoLight.Parent = disco
 local discoAttachment = Instance.new("Attachment")
