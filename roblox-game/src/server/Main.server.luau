@@ -44,6 +44,10 @@ local showNews = Instance.new("RemoteEvent")
 showNews.Name = "ShowNews"
 showNews.Parent = remotesFolder
 
+local serverToast = Instance.new("RemoteEvent")
+serverToast.Name = "ServerToast"
+serverToast.Parent = remotesFolder
+
 ----------------------------------------------------------------------
 -- Player data
 ----------------------------------------------------------------------
@@ -51,9 +55,10 @@ showNews.Parent = remotesFolder
 type PlayerData = {
 	coins: number,
 	owned: { [string]: boolean },
-	equipped: { [string]: number },
+	equipped: { [string]: any },
 	lastDaily: number,
 	newsSeen: number?,
+	signed: boolean?,
 }
 
 -- GetDataStore throws in Studio when the place isn't published; the game
@@ -228,6 +233,138 @@ local function isValidForCategory(assetId: number, categoryKey: string): boolean
 end
 
 ----------------------------------------------------------------------
+-- Hand-held props (our own part-built models, welded to the right hand)
+----------------------------------------------------------------------
+
+local function propPart(props: { [string]: any }): Part
+	local p = Instance.new("Part")
+	p.Anchored = false
+	p.CanCollide = false
+	p.Massless = true
+	p.TopSurface = Enum.SurfaceType.Smooth
+	p.BottomSurface = Enum.SurfaceType.Smooth
+	for key, value in props do
+		(p :: any)[key] = value
+	end
+	return p
+end
+
+local function weldPair(a: BasePart, b: BasePart)
+	local weld = Instance.new("WeldConstraint")
+	weld.Part0 = a
+	weld.Part1 = b
+	weld.Parent = a
+end
+
+local propBuilders: { [string]: () -> Model } = {
+	lightstick = function()
+		local model = Instance.new("Model")
+		local handle = propPart({
+			Name = "Handle",
+			Size = Vector3.new(0.25, 1.1, 0.25),
+			Color = Color3.fromRGB(55, 50, 65),
+		})
+		handle.Parent = model
+		local head = propPart({
+			Name = "Head",
+			Shape = Enum.PartType.Ball,
+			Size = Vector3.new(0.75, 0.75, 0.75),
+			Color = Color3.fromRGB(255, 105, 180),
+			Material = Enum.Material.Neon,
+		})
+		head.CFrame = CFrame.new(0, 0.9, 0)
+		head.Parent = model
+		local glow = Instance.new("PointLight")
+		glow.Color = Color3.fromRGB(255, 130, 190)
+		glow.Range = 8
+		glow.Brightness = 1.2
+		glow.Parent = head
+		weldPair(handle, head)
+		model.PrimaryPart = handle
+		return model
+	end,
+	mic = function()
+		local model = Instance.new("Model")
+		local handle = propPart({
+			Name = "Handle",
+			Size = Vector3.new(0.22, 0.95, 0.22),
+			Color = Color3.fromRGB(45, 40, 60),
+		})
+		handle.Parent = model
+		local band = propPart({
+			Name = "Band",
+			Size = Vector3.new(0.26, 0.1, 0.26),
+			Color = Color3.fromRGB(255, 197, 49),
+			Material = Enum.Material.Metal,
+		})
+		band.CFrame = CFrame.new(0, 0.45, 0)
+		band.Parent = model
+		local head = propPart({
+			Name = "Head",
+			Shape = Enum.PartType.Ball,
+			Size = Vector3.new(0.55, 0.55, 0.55),
+			Color = Color3.fromRGB(70, 65, 90),
+			Material = Enum.Material.DiamondPlate,
+		})
+		head.CFrame = CFrame.new(0, 0.72, 0)
+		head.Parent = model
+		weldPair(handle, band)
+		weldPair(handle, head)
+		model.PrimaryPart = handle
+		return model
+	end,
+	phone = function()
+		local model = Instance.new("Model")
+		local handle = propPart({
+			Name = "Handle",
+			Size = Vector3.new(0.5, 0.95, 0.09),
+			Color = Color3.fromRGB(240, 200, 220),
+		})
+		handle.Parent = model
+		local screen = propPart({
+			Name = "Screen",
+			Size = Vector3.new(0.42, 0.82, 0.03),
+			Color = Color3.fromRGB(120, 220, 255),
+			Material = Enum.Material.Neon,
+		})
+		screen.CFrame = CFrame.new(0, 0, -0.05)
+		screen.Parent = model
+		weldPair(handle, screen)
+		model.PrimaryPart = handle
+		return model
+	end,
+}
+
+local function attachProp(player: Player)
+	local data = sessions[player]
+	local character = player.Character
+	if not character then
+		return
+	end
+	local old = character:FindFirstChild("ComebackProp")
+	if old then
+		old:Destroy()
+	end
+	local key = data and data.equipped.Props
+	if type(key) ~= "string" then
+		return
+	end
+	local builder = propBuilders[key]
+	local rightHand = character:FindFirstChild("RightHand") or character:FindFirstChild("Right Arm")
+	if not builder or not rightHand or not rightHand:IsA("BasePart") then
+		return
+	end
+	local model = builder()
+	model.Name = "ComebackProp"
+	model:PivotTo(rightHand.CFrame * CFrame.new(0, -0.05, 0))
+	local weld = Instance.new("WeldConstraint")
+	weld.Part0 = rightHand
+	weld.Part1 = model.PrimaryPart
+	weld.Parent = model.PrimaryPart
+	model.Parent = character
+end
+
+----------------------------------------------------------------------
 -- Outfit application
 ----------------------------------------------------------------------
 
@@ -250,6 +387,9 @@ local function applyOutfitNow(player: Player)
 	end
 
 	for categoryKey, assetId in data.equipped do
+		if categoryKey == "Props" then
+			continue -- held props are welded separately after the rebuild
+		end
 		if categoryKey == "Skin" then
 			local tone = Config.SkinTones[assetId]
 			if tone then
@@ -287,6 +427,8 @@ local function applyOutfitNow(player: Player)
 			end
 		end)
 	end
+	-- The rebuild strips welded props, so put the held prop back on.
+	attachProp(player)
 end
 
 -- ApplyDescription rebuilds the whole character and errors if two calls
@@ -317,7 +459,26 @@ end
 
 buyRemote.OnServerInvoke = function(player: Player, assetId: unknown, categoryKey: unknown)
 	local data = sessions[player]
-	if not data or type(assetId) ~= "number" or type(categoryKey) ~= "string" then
+	if not data or type(categoryKey) ~= "string" then
+		return { ok = false, message = "Try again!" }
+	end
+	if categoryKey == "Props" then
+		if type(assetId) ~= "string" or not propBuilders[assetId] then
+			return { ok = false }
+		end
+		if data.owned[`prop_{assetId}`] then
+			return { ok = true, coins = data.coins }
+		end
+		local propPrice = Config.propPriceFor(assetId)
+		if data.coins < propPrice then
+			return { ok = false, message = "Not enough hearts yet!" }
+		end
+		data.coins -= propPrice
+		data.owned[`prop_{assetId}`] = true
+		pushCoins(player)
+		return { ok = true, coins = data.coins }
+	end
+	if type(assetId) ~= "number" then
 		return { ok = false, message = "Try again!" }
 	end
 	assetId = math.floor(assetId)
@@ -341,6 +502,23 @@ equipRemote.OnServerInvoke = function(player: Player, assetId: unknown, category
 	local data = sessions[player]
 	if not data or type(categoryKey) ~= "string" then
 		return { ok = false }
+	end
+
+	if categoryKey == "Props" then
+		if assetId == nil then
+			data.equipped.Props = nil
+			attachProp(player)
+			return { ok = true }
+		end
+		if type(assetId) ~= "string" or not propBuilders[assetId] then
+			return { ok = false }
+		end
+		if Config.propPriceFor(assetId) > 0 and not data.owned[`prop_{assetId}`] then
+			return { ok = false, message = "Buy it first!" }
+		end
+		data.equipped.Props = assetId
+		attachProp(player)
+		return { ok = true }
 	end
 
 	if categoryKey == "Skin" then
@@ -494,4 +672,119 @@ task.spawn(function()
 			saveData(player)
 		end
 	end
+end)
+
+----------------------------------------------------------------------
+-- Guest book: visitors sign the wall and their name stays forever
+----------------------------------------------------------------------
+
+local guestStoreOk, guestStore = pcall(function()
+	return DataStoreService:GetDataStore("ComebackGuestbook_v1")
+end)
+if not guestStoreOk then
+	guestStore = nil
+end
+
+local signatures: { string } = {}
+
+local guestBoard = Instance.new("Part")
+guestBoard.Name = "GuestBoard"
+guestBoard.Anchored = true
+guestBoard.Size = Vector3.new(44, 12, 0.4)
+guestBoard.Position = Vector3.new(-62, 8, 34.4)
+guestBoard.Color = Color3.fromRGB(58, 34, 84)
+guestBoard.Material = Enum.Material.SmoothPlastic
+guestBoard.TopSurface = Enum.SurfaceType.Smooth
+guestBoard.BottomSurface = Enum.SurfaceType.Smooth
+guestBoard.Parent = workspace
+
+local boardLabels: { TextLabel } = {}
+-- Text on both faces so it reads no matter the part's orientation.
+for _, face in { Enum.NormalId.Front, Enum.NormalId.Back } do
+	local gui = Instance.new("SurfaceGui")
+	gui.Face = face
+	gui.CanvasSize = Vector2.new(1400, 380)
+	gui.Parent = guestBoard
+	local header = Instance.new("TextLabel")
+	header.Size = UDim2.fromScale(1, 0.28)
+	header.BackgroundTransparency = 1
+	header.Text = "\u{270D} GUEST BOOK"
+	header.Font = Enum.Font.FredokaOne
+	header.TextScaled = true
+	header.TextColor3 = Color3.fromRGB(255, 214, 74)
+	header.Parent = gui
+	local names = Instance.new("TextLabel")
+	names.Size = UDim2.fromScale(1, 0.68)
+	names.Position = UDim2.fromScale(0, 0.3)
+	names.BackgroundTransparency = 1
+	names.Text = "Be the first to sign! \u{2B50}"
+	names.Font = Enum.Font.FredokaOne
+	names.TextSize = 44
+	names.TextWrapped = true
+	names.TextColor3 = Color3.fromRGB(255, 255, 255)
+	names.TextYAlignment = Enum.TextYAlignment.Top
+	names.Parent = gui
+	table.insert(boardLabels, names)
+end
+
+local function renderBoard()
+	local text = #signatures == 0 and "Be the first to sign! \u{2B50}"
+		or `{#signatures} stars visited \u{2B50}  {table.concat(signatures, "  \u{00B7}  ")}`
+	for _, label in boardLabels do
+		label.Text = text
+	end
+end
+
+task.spawn(function()
+	pcall(function()
+		if guestStore then
+			local stored = guestStore:GetAsync("signatures")
+			if type(stored) == "table" then
+				signatures = stored
+				renderBoard()
+			end
+		end
+	end)
+end)
+
+local signPrompt = Instance.new("ProximityPrompt")
+signPrompt.ActionText = "Sign \u{270D}"
+signPrompt.ObjectText = "Guest Book"
+signPrompt.HoldDuration = 0.3
+signPrompt.MaxActivationDistance = 14
+signPrompt.RequiresLineOfSight = false
+signPrompt.Parent = guestBoard
+
+signPrompt.Triggered:Connect(function(player)
+	local data = sessions[player]
+	if not data then
+		return
+	end
+	if data.signed then
+		serverToast:FireClient(player, "You already signed \u{1F49C}")
+		return
+	end
+	data.signed = true
+	data.coins += 10
+	pushCoins(player)
+	table.insert(signatures, player.DisplayName)
+	while #signatures > 200 do
+		table.remove(signatures, 1)
+	end
+	renderBoard()
+	serverToast:FireClient(player, "Signed! +10 \u{1F496}")
+	task.spawn(function()
+		pcall(function()
+			if guestStore then
+				guestStore:UpdateAsync("signatures", function(old)
+					old = type(old) == "table" and old or {}
+					table.insert(old, player.DisplayName)
+					while #old > 200 do
+						table.remove(old, 1)
+					end
+					return old
+				end)
+			end
+		end)
+	end)
 end)

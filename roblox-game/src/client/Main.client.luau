@@ -58,7 +58,7 @@ type CatalogItem = { id: number, name: string }
 
 local coins = 0
 local owned: { [string]: boolean } = {}
-local equipped: { [string]: number } = {}
+local equipped: { [string]: any } = {}
 local catalogCache: { [string]: { CatalogItem } } = {}
 local photoBusy = false
 
@@ -282,7 +282,7 @@ local pendingPurchase: { item: CatalogItem, categoryKey: string }? = nil
 
 local refreshGrid: () -> () -- forward-declared, defined with the tabs below
 
-local function equipItem(assetId: number?, categoryKey: string)
+local function equipItem(assetId: any, categoryKey: string)
 	local result = equipRemote:InvokeServer(assetId, categoryKey)
 	if result and result.ok then
 		if assetId == nil then
@@ -305,7 +305,8 @@ buyYes.MouseButton1Click:Connect(function()
 	end
 	local result = buyRemote:InvokeServer(purchase.item.id, purchase.categoryKey)
 	if result and result.ok then
-		owned[tostring(purchase.item.id)] = true
+		local ownedKey = purchase.categoryKey == "Props" and `prop_{purchase.item.id}` or tostring(purchase.item.id)
+		owned[ownedKey] = true
 		if result.coins then
 			setCoins(result.coins)
 		end
@@ -422,6 +423,51 @@ local function renderSkinTab()
 	end
 end
 
+local function renderPropsTab()
+	local offCell, offThumb, offCaption = makeCell()
+	offThumb.Image = ""
+	offCaption.Text = "Take off"
+	offThumb.BackgroundColor3 = Color3.fromRGB(235, 235, 240)
+	offCell.MouseButton1Click:Connect(function()
+		equipItem(nil, "Props")
+	end)
+
+	for _, prop in Config.Props do
+		local cell, thumb, caption = makeCell()
+		thumb.Image = ""
+		create("TextLabel", {
+			Size = UDim2.fromScale(1, 1),
+			BackgroundTransparency = 1,
+			Text = prop.icon,
+			Font = FONT,
+			TextSize = 44,
+			Parent = thumb,
+		})
+		local isOn = equipped.Props == prop.key
+		local ownedProp = prop.price == 0 or owned[`prop_{prop.key}`] == true
+		if isOn then
+			caption.Text = "\u{2705} On!"
+			;(cell:FindFirstChildOfClass("UIStroke") :: UIStroke).Color = PINK
+		elseif prop.price == 0 then
+			caption.Text = "FREE \u{1F49B}"
+		elseif ownedProp then
+			caption.Text = "Owned \u{2714}"
+		else
+			caption.Text = `\u{1F496} {prop.price}`
+		end
+		cell.MouseButton1Click:Connect(function()
+			if ownedProp then
+				equipItem(prop.key, "Props")
+			else
+				pendingPurchase = { item = { id = prop.key, name = prop.name } :: any, categoryKey = "Props" }
+				buyThumb.Image = ""
+				buyText.Text = `{prop.icon} Buy for \u{1F496} {prop.price}?`
+				buyPopup.Visible = true
+			end
+		end)
+	end
+end
+
 local function renderItemTab(category: Config.Category)
 	loadingLabel.Visible = true
 	local items = searchCategory(category)
@@ -477,6 +523,8 @@ refreshGrid = function()
 	clearGrid()
 	if activeCategory.isSkin then
 		renderSkinTab()
+	elseif activeCategory.isProps then
+		renderPropsTab()
 	else
 		task.spawn(renderItemTab, activeCategory)
 	end
@@ -485,7 +533,7 @@ end
 -- Tabs
 for _, category in Config.Categories do
 	local tab = create("TextButton", {
-		Size = UDim2.fromOffset(46, 40),
+		Size = UDim2.fromOffset(38, 38),
 		BackgroundColor3 = category.key == activeCategory.key and PINK or PINK_SOFT,
 		Text = `{category.icon}`,
 		Font = FONT,
@@ -952,6 +1000,9 @@ end)
 ----------------------------------------------------------------------
 
 coinsChanged.OnClientEvent:Connect(setCoins)
+
+local serverToastEvent = remotes:WaitForChild("ServerToast") :: RemoteEvent
+serverToastEvent.OnClientEvent:Connect(toast)
 
 task.spawn(function()
 	local state = stateRemote:InvokeServer()

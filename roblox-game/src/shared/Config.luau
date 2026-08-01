@@ -55,6 +55,23 @@ Config.News = {
 
 Config.WishThanksCoins = 100
 
+-- Hand-held props are our own part-built models (no catalog assets), so
+-- they always load and the IP is fully ours.
+Config.Props = {
+	{ key = "lightstick", icon = "\u{1FA84}", name = "Lightstick", price = 0 },
+	{ key = "mic", icon = "\u{1F3A4}", name = "Star Mic", price = 50 },
+	{ key = "phone", icon = "\u{1F4F1}", name = "Selfie Phone", price = 75 },
+}
+
+function Config.propPriceFor(key: string): number
+	for _, prop in Config.Props do
+		if prop.key == key then
+			return prop.price
+		end
+	end
+	return math.huge
+end
+
 export type Category = {
 	key: string,
 	label: string,
@@ -63,6 +80,7 @@ export type Category = {
 	assetTypeIds: { number }?,
 	searches: { string }?,
 	isSkin: boolean?,
+	isProps: boolean?,
 }
 
 -- Closet tabs. Each clothing tab is filled at runtime from the live Roblox
@@ -114,6 +132,12 @@ Config.Categories = {
 		},
 		assetTypeIds = { 42, 43, 44, 45, 46, 47 },
 		searches = { "kawaii glasses", "aesthetic necklace", "cute wings", "lightstick", "toy microphone" },
+	},
+	{
+		key = "Props",
+		label = "Props",
+		icon = "\u{1FA84}",
+		isProps = true,
 	},
 	{
 		key = "Skin",
