@@ -44,7 +44,7 @@
 
 ## 바로 받기 (툴체인 불필요)
 
-**⬇️ [BlueprintHomes-v2.rbxl 다운로드](https://github.com/HugoSeong0721/amazon-affiliate-share/raw/claude/roblox-house-building-game-sxuk4g/roblox-blueprint-homes/build/BlueprintHomes-v2.rbxl)**
+**⬇️ [BlueprintHomes-v3.rbxl 다운로드](https://github.com/HugoSeong0721/amazon-affiliate-share/raw/claude/roblox-house-building-game-sxuk4g/roblox-blueprint-homes/build/BlueprintHomes-v3.rbxl)**
 
 받아서 Roblox Studio로 열고 **Play(F5)** 누르면 스폰 광장에서 시작한다.
 Studio에서 파일을 열었을 때 Workspace가 비어 보이는 건 정상이다 — 동네 맵(도로,
@@ -52,12 +52,26 @@ Studio에서 파일을 열었을 때 Workspace가 비어 보이는 건 정상이
 
 | 버전 | 변경 |
 |---|---|
+| v3 | 미퍼블리시 플레이스에서 아바타가 안 보이던 문제 대응(기본 블록 캐릭터로 폴백), 존재하지 않는 사운드 에셋 참조 제거 |
 | v2 | 맵 생성 전 캐릭터가 빈 공간에 스폰돼 낙사하던 문제 수정, 스폰 광장 추가, 플롯 간판 크기를 스터드 기준으로 변경(거리별 축소) |
 | v1 | 최초 빌드 |
 
-> 마켓의 블루프린트 저장·거래를 테스트하려면 Studio에서
-> **Game Settings → Security → Enable Studio Access to API Services**를 켤 것.
-> 꺼져 있어도 건축·경제는 인메모리로 전부 동작한다(마켓 영속만 비활성).
+### ⚠️ 파일만 열었을 때의 제약 — 퍼블리시하면 전부 해결된다
+
+로컬 `.rbxl`은 퍼블리시된 적이 없어서 `PlaceId = 0`이고, 이 상태에서는 Roblox
+에셋 서버가 **모든 요청을 403으로 거부**한다. 그 결과:
+
+- **내 아바타가 안 보인다** — 몸통 메시·텍스처를 못 받아서 렌더링되지 않는다.
+  v3부터는 이 경우를 감지해 다운로드가 필요 없는 **기본 블록 캐릭터로 자동 폴백**하므로
+  일단 캐릭터가 보이고 플레이는 된다.
+- **콘솔에 `Failed to load animation ...` 에러가 쌓인다** — 로블록스 기본 걷기/점프
+  애니메이션도 같은 이유로 못 받는다. 게임 로직과 무관하며 이동은 정상 동작한다.
+- **마켓 블루프린트가 저장되지 않는다** — DataStore를 못 쓴다.
+
+**해결:** Studio에서 **File → Publish to Roblox**로 새 플레이스를 만든 뒤 그 플레이스에서
+테스트하면 실제 아바타·애니메이션이 정상 로드되고 위 에러도 사라진다.
+추가로 **Game Settings → Security → Enable Studio Access to API Services**를 켜면
+마켓 저장·거래까지 완전히 동작한다.
 
 ## 소스에서 빌드 / 개발
 
@@ -72,7 +86,7 @@ aftman install        # rojo 7.4.4
 rojo serve
 
 # B) 배포용 .rbxl 재빌드 (위 다운로드 파일을 만든 명령)
-rojo build default.project.json -o build/BlueprintHomes-v2.rbxl
+rojo build default.project.json -o build/BlueprintHomes-v3.rbxl
 ```
 
 서버당 플롯이 8개이므로 퍼블리시할 때 place 설정에서 **최대 플레이어 8명**으로 맞출 것.

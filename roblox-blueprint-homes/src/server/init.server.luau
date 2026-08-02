@@ -4,6 +4,7 @@
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local StarterPlayer = game:GetService("StarterPlayer")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 require(Shared.Net) -- creates all remotes before any client needs them
@@ -16,6 +17,22 @@ local BlueprintMarketService = require(script.BlueprintMarketService)
 
 local Net = require(Shared.Net)
 local notify = Net.event("Notify")
+
+-- A .rbxl opened straight from disk has never been published, so PlaceId is 0
+-- and Roblox asset delivery rejects every request it makes (HTTP 403) - which
+-- includes the meshes, textures and accessories a player's avatar is made of.
+-- The character loads but renders as nothing, so the player looks invisible.
+-- Fall back to the built-in blocky rig, which needs no downloads, so the game
+-- is playable straight from the file.
+if game.PlaceId == 0 then
+	StarterPlayer.LoadCharacterAppearance = false
+	warn(
+		"[BlueprintHomes] Unpublished place (PlaceId 0): Roblox can't serve avatar "
+			.. "or animation assets here, so a default blocky character is used and "
+			.. "animation errors in the console are expected. Publish the place "
+			.. "(File > Publish to Roblox) for real avatars and DataStore saving."
+	)
+end
 
 -- The neighbourhood is generated at runtime, so hold character spawning until
 -- it exists. Without this a character can spawn into an empty DataModel, fall

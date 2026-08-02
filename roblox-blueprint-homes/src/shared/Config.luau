@@ -50,6 +50,14 @@ Config.Products = {
 	-- [0000003] = 400000,
 }
 
+-- // Sounds
+-- Left empty on purpose: an unpublished place cannot fetch any audio asset
+-- (asset delivery answers 403), and a broken SoundId spams the console. Put a
+-- real "rbxassetid://..." here once the place is published.
+Config.Sounds = {
+	Place = "",
+}
+
 -- // Persistence
 Config.DataStoreVersion = "v1"
 Config.AutosaveInterval = 120 -- seconds

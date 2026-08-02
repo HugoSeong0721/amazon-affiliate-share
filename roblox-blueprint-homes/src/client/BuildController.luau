@@ -8,6 +8,7 @@ local UserInputService = game:GetService("UserInputService")
 
 local Shared = game:GetService("ReplicatedStorage"):WaitForChild("Shared")
 local Catalog = require(Shared.Catalog)
+local Config = require(Shared.Config)
 local GridUtil = require(Shared.GridUtil)
 local ItemModels = require(Shared.ItemModels)
 local Net = require(Shared.Net)
@@ -321,10 +322,13 @@ function BuildController.Init(ui: any)
 		rotate = BuildController.Rotate,
 	})
 
-	placeSound = Instance.new("Sound")
-	placeSound.SoundId = "rbxasset://sounds/electronicpingshort.wav"
-	placeSound.Volume = 0.4
-	placeSound.Parent = game:GetService("SoundService")
+	if Config.Sounds.Place ~= "" then
+		local sound = Instance.new("Sound")
+		sound.SoundId = Config.Sounds.Place
+		sound.Volume = 0.4
+		sound.Parent = game:GetService("SoundService")
+		placeSound = sound
+	end
 
 	Net.event("PlotAssigned").OnClientEvent:Connect(function(model: Model, origin: Vector3)
 		plotOrigin = origin
