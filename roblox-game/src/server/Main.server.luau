@@ -597,22 +597,31 @@ local function applyOutfitNow(player: Player)
 	if not ok or not applied then
 		return
 	end
+
+	-- Rebuilding an avatar re-downloads every body mesh, and a failed
+	-- download leaves the player invisible. Only rebuild when the outfit
+	-- actually differs from what they are already wearing.
 	local description = applied:Clone()
+	local changed = false
 
 	for categoryKey, assetId in data.equipped do
 		if categoryKey == "Props" or categoryKey == "Ride" then
-			continue -- props and rides are welded separately after the rebuild
+			continue -- these are welded on separately
 		end
 		if categoryKey == "Skin" then
 			local tone = Config.SkinTones[assetId]
-			if tone then
+			if tone and description.HeadColor ~= tone then
 				description.HeadColor = tone
 				description.TorsoColor = tone
 				description.LeftArmColor = tone
 				description.RightArmColor = tone
 				description.LeftLegColor = tone
 				description.RightLegColor = tone
+				changed = true
 			end
+			continue
+		end
+		if type(assetId) ~= "number" then
 			continue
 		end
 		local typeId = assetTypeIdOf(assetId)
@@ -622,25 +631,35 @@ local function applyOutfitNow(player: Player)
 		local accessoryField = Config.AccessoryFields[typeId]
 		local clothingField = Config.ClassicClothingFields[typeId]
 		if accessoryField then
-			(description :: any)[accessoryField] = tostring(assetId)
+			local wanted = tostring(assetId)
+			if (description :: any)[accessoryField] ~= wanted then
+				(description :: any)[accessoryField] = wanted
+				changed = true
+			end
 		elseif clothingField then
-			(description :: any)[clothingField] = assetId
+			if (description :: any)[clothingField] ~= assetId then
+				(description :: any)[clothingField] = assetId
+				changed = true
+			end
 		end
 	end
 
-	local ok2 = pcall(function()
-		humanoid:ApplyDescription(description)
-	end)
-	if not ok2 then
-		-- Asset delivery can fail mid-rebuild and leave the avatar invisible;
-		-- put the previous look back so the player is never a ghost.
-		pcall(function()
-			if humanoid.Parent and humanoid.Health > 0 then
-				humanoid:ApplyDescription(applied)
-			end
+	if changed then
+		local applyOk = pcall(function()
+			humanoid:ApplyDescription(description)
 		end)
+		if not applyOk then
+			-- Asset delivery can fail mid-rebuild and leave the avatar
+			-- invisible; put the previous look back so nobody is a ghost.
+			pcall(function()
+				if humanoid.Parent and humanoid.Health > 0 then
+					humanoid:ApplyDescription(applied)
+				end
+			end)
+		end
 	end
-	-- The rebuild strips welded models, so put the prop and ride back on.
+
+	-- A rebuild strips welded models, so put the prop and ride back on.
 	attachProp(player)
 	attachRide(player)
 end
