@@ -44,7 +44,7 @@
 
 ## 바로 받기 (툴체인 불필요)
 
-**⬇️ [BlueprintHomes-v3.rbxl 다운로드](https://github.com/HugoSeong0721/amazon-affiliate-share/raw/claude/roblox-house-building-game-sxuk4g/roblox-blueprint-homes/build/BlueprintHomes-v3.rbxl)**
+**⬇️ [BlueprintHomes-v4.rbxl 다운로드](https://github.com/HugoSeong0721/amazon-affiliate-share/raw/claude/roblox-house-building-game-sxuk4g/roblox-blueprint-homes/build/BlueprintHomes-v4.rbxl)**
 
 받아서 Roblox Studio로 열고 **Play(F5)** 누르면 스폰 광장에서 시작한다.
 Studio에서 파일을 열었을 때 Workspace가 비어 보이는 건 정상이다 — 동네 맵(도로,
@@ -52,7 +52,8 @@ Studio에서 파일을 열었을 때 Workspace가 비어 보이는 건 정상이
 
 | 버전 | 변경 |
 |---|---|
-| v3 | 미퍼블리시 플레이스에서 아바타가 안 보이던 문제 대응(기본 블록 캐릭터로 폴백), 존재하지 않는 사운드 에셋 참조 제거 |
+| v4 | 미퍼블리시 시 프리미티브 파츠로 만든 R6 리그(StarterCharacter)를 사용해 캐릭터가 실제로 보이도록 수정 |
+| v3 | 미퍼블리시 대응 1차 시도(`LoadCharacterAppearance=false`) — 기본 아바타가 R15 메시라 불충분했음, 존재하지 않는 사운드 에셋 참조 제거 |
 | v2 | 맵 생성 전 캐릭터가 빈 공간에 스폰돼 낙사하던 문제 수정, 스폰 광장 추가, 플롯 간판 크기를 스터드 기준으로 변경(거리별 축소) |
 | v1 | 최초 빌드 |
 
@@ -61,9 +62,11 @@ Studio에서 파일을 열었을 때 Workspace가 비어 보이는 건 정상이
 로컬 `.rbxl`은 퍼블리시된 적이 없어서 `PlaceId = 0`이고, 이 상태에서는 Roblox
 에셋 서버가 **모든 요청을 403으로 거부**한다. 그 결과:
 
-- **내 아바타가 안 보인다** — 몸통 메시·텍스처를 못 받아서 렌더링되지 않는다.
-  v3부터는 이 경우를 감지해 다운로드가 필요 없는 **기본 블록 캐릭터로 자동 폴백**하므로
-  일단 캐릭터가 보이고 플레이는 된다.
+- **내 아바타가 안 보인다** — 기본 아바타는 R15이고 몸통이 전부 **메시 에셋**이라,
+  못 받으면 캐릭터가 생성되어도 그릴 게 없어 투명해진다. 리그 타입(R6/R15)은 플레이스
+  파일이 아니라 플랫폼 설정이라 프로젝트에서 강제할 수 없으므로, v4부터는 이 경우를
+  감지해 **프리미티브 파츠로 직접 만든 R6 리그**(`FallbackCharacter.luau`)를
+  StarterCharacter로 끼워 넣는다. 다운로드가 0이라 항상 보인다.
 - **콘솔에 `Failed to load animation ...` 에러가 쌓인다** — 로블록스 기본 걷기/점프
   애니메이션도 같은 이유로 못 받는다. 게임 로직과 무관하며 이동은 정상 동작한다.
 - **마켓 블루프린트가 저장되지 않는다** — DataStore를 못 쓴다.
@@ -86,7 +89,7 @@ aftman install        # rojo 7.4.4
 rojo serve
 
 # B) 배포용 .rbxl 재빌드 (위 다운로드 파일을 만든 명령)
-rojo build default.project.json -o build/BlueprintHomes-v3.rbxl
+rojo build default.project.json -o build/BlueprintHomes-v4.rbxl
 ```
 
 서버당 플롯이 8개이므로 퍼블리시할 때 place 설정에서 **최대 플레이어 8명**으로 맞출 것.

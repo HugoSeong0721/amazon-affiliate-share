@@ -4,12 +4,12 @@
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local StarterPlayer = game:GetService("StarterPlayer")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 require(Shared.Net) -- creates all remotes before any client needs them
 
 local DataService = require(script.DataService)
+local FallbackCharacter = require(script.FallbackCharacter)
 local PlotService = require(script.PlotService)
 local BuildService = require(script.BuildService)
 local EconomyService = require(script.EconomyService)
@@ -20,16 +20,14 @@ local notify = Net.event("Notify")
 
 -- A .rbxl opened straight from disk has never been published, so PlaceId is 0
 -- and Roblox asset delivery rejects every request it makes (HTTP 403) - which
--- includes the meshes, textures and accessories a player's avatar is made of.
--- The character loads but renders as nothing, so the player looks invisible.
--- Fall back to the built-in blocky rig, which needs no downloads, so the game
--- is playable straight from the file.
-if game.PlaceId == 0 then
-	StarterPlayer.LoadCharacterAppearance = false
+-- includes the meshes a default R15 avatar is built from. The character loads
+-- but renders as nothing, so the player looks invisible. Swap in a rig made of
+-- primitives, which needs no downloads.
+if FallbackCharacter.InstallIfUnpublished() then
 	warn(
 		"[BlueprintHomes] Unpublished place (PlaceId 0): Roblox can't serve avatar "
-			.. "or animation assets here, so a default blocky character is used and "
-			.. "animation errors in the console are expected. Publish the place "
+			.. "or animation assets here, so a placeholder character is used and the "
+			.. "console's animation errors are expected. Publish the place "
 			.. "(File > Publish to Roblox) for real avatars and DataStore saving."
 	)
 end
