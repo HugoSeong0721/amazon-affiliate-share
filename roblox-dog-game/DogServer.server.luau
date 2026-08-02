@@ -159,16 +159,36 @@ local function defaultData()
 	}
 end
 
-local function loadData(player)
-	local data = nil
-	if dogStore then
-		pcall(function()
-			data = dogStore:GetAsync("player_" .. player.UserId)
+-- 불러오기를 여러 번 재시도한다.
+-- 반환: ok(통신 성공 여부), stored(저장본 또는 nil = 신규 플레이어)
+--
+-- ⚠️ ok 와 "저장본 없음"을 반드시 구분해야 한다.
+--    통신 실패를 신규 플레이어로 착각하면, 잠시 뒤 자동 저장이
+--    플레이어가 키우던 강아지를 새 강아지로 덮어써 버린다.
+local LOAD_RETRIES = 4
+
+local function fetchSave(userId)
+	for attempt = 1, LOAD_RETRIES do
+		local ok, result = pcall(function()
+			return dogStore:GetAsync("player_" .. userId)
 		end)
+		if ok then return true, result end
+		if attempt < LOAD_RETRIES then
+			task.wait(attempt * 1.5) -- 1.5s, 3s, 4.5s 뒤 재시도
+		end
 	end
-	if type(data) ~= "table" then
-		data = defaultData()
+	return false, nil
+end
+
+-- 반환: data, loadOk
+local function loadData(player)
+	local stored, loadOk = nil, true
+	if dogStore then
+		loadOk, stored = fetchSave(player.UserId)
 	end
+
+	local data = type(stored) == "table" and stored or defaultData()
+
 	-- 예전 저장본에 빠진 칸이 있으면 기본값으로 채움
 	local base = defaultData()
 	for key, value in pairs(base) do
@@ -181,13 +201,15 @@ local function loadData(player)
 		if data.stats[key] == nil then data.stats[key] = value end
 	end
 	if not BREEDS[data.dog.breed] then data.dog.breed = "mix" end
-	return data
+	return data, loadOk
 end
 
-local function saveData(player, data)
-	if not dogStore or not data then return end
+local function saveData(player, info)
+	if not dogStore or not info or not info.data then return end
+	-- 불러오기가 실패했던 세션은 절대 저장하지 않는다 (기존 저장본 보호)
+	if info.saveBlocked then return end
 	pcall(function()
-		dogStore:SetAsync("player_" .. player.UserId, data)
+		dogStore:SetAsync("player_" .. player.UserId, info.data)
 	end)
 end
 
@@ -787,7 +809,7 @@ task.spawn(function()
 	while true do
 		task.wait(120)
 		for player, info in pairs(dogs) do
-			saveData(player, info.data)
+			saveData(player, info)
 		end
 	end
 end)
@@ -796,9 +818,10 @@ end)
 -- 입장 / 퇴장
 -- =====================================================================
 local function onPlayerAdded(player)
-	local data = loadData(player)
+	local data, loadOk = loadData(player)
 	dogs[player] = {
 		data = data,
+		saveBlocked = not loadOk,
 		rig = nil,
 		state = "follow",
 		cooldowns = {},
@@ -836,6 +859,12 @@ local function onPlayerAdded(player)
 		end
 		sendState(player)
 		notify(player, "🐶 " .. data.dog.name .. "가 반겨줍니다! 멍멍!")
+		if not loadOk then
+			-- 저장본을 못 읽었다. 덮어쓰기를 막았으니 진행 상황은 안전하지만,
+			-- 이번 판의 플레이는 저장되지 않는다는 걸 반드시 알려준다.
+			task.wait(2)
+			notify(player, "⚠️ 저장 정보를 불러오지 못했어요. 이번 판은 저장되지 않습니다 (기존 강아지는 안전해요)", "warn")
+		end
 		task.spawn(runDogLoop, player)
 	end)
 end
@@ -848,7 +877,7 @@ end
 Players.PlayerRemoving:Connect(function(player)
 	local info = dogs[player]
 	if info then
-		saveData(player, info.data)
+		saveData(player, info)
 		if info.ball then info.ball:Destroy() end
 		if info.rig and info.rig.model then info.rig.model:Destroy() end
 		dogs[player] = nil
@@ -858,7 +887,7 @@ end)
 -- 서버가 꺼질 때 마지막 저장
 game:BindToClose(function()
 	for player, info in pairs(dogs) do
-		saveData(player, info.data)
+		saveData(player, info)
 	end
 	task.wait(2)
 end)

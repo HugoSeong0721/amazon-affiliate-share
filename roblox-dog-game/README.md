@@ -7,10 +7,29 @@
 
 아래 파일을 받아서 **더블클릭하면 Roblox Studio가 바로 열립니다.** 복붙 작업 없음:
 
-### 👉 [**MungMungHouse-v1.rbxl 다운로드**](https://github.com/HugoSeong0721/amazon-affiliate-share/raw/claude/roblox-dog-game-hcwzjz/roblox-dog-game/build/MungMungHouse-v1.rbxl)
+### 👉 [**MungMungHouse-v2.rbxl 다운로드**](https://github.com/HugoSeong0721/amazon-affiliate-share/raw/claude/roblox-dog-game-hcwzjz/roblox-dog-game/build/MungMungHouse-v2.rbxl)
 
 받은 뒤 ▶ **Play** 를 누르면 공원에 강아지가 나타납니다.
 (스크립트 3개 + 공원 맵 + 조명이 모두 세팅된 상태입니다.)
+
+## ⚠️ 열자마자 꼭 해야 할 것 — 게시(Publish)
+
+다운로드한 place 파일은 아직 **로블록스에 게시되지 않은 상태**라 PlaceId 가 `0` 입니다.
+이 상태로 Play 하면 다음 두 가지가 정상 동작하지 않습니다:
+
+| 증상 | 원인 |
+|---|---|
+| 내 캐릭터가 안 보이고, Output 에 `Failed to load animation ... serverplaceid=0` 에러가 수십 개 | 게시되지 않은 place 는 아바타 · 애니메이션 에셋을 불러올 권한이 없음 |
+| 나갔다 들어오면 강아지가 초기화됨 | DataStore 는 PlaceId 가 있어야 동작 |
+
+**해결 방법 (1분):**
+
+1. `File > Publish to Roblox As...` → 이름 입력 → **Create**
+2. `Home > Game Settings > Security` → **Enable Studio Access to API Services** 체크 → Save
+3. 다시 ▶ **Play**
+
+이제 캐릭터도 보이고, 애니메이션 에러도 사라지고, 저장도 됩니다.
+게시는 무료이고, `Game Settings > Permissions` 를 Private 로 두면 나만 볼 수 있습니다.
 
 > 🌐 Studio 없이 게임 느낌만 먼저 보고 싶다면, 저장소의 `dog-demo/index.html`을
 > 브라우저로 열어보세요. 같은 컨셉의 웹 데모 버전입니다.
@@ -50,16 +69,27 @@ rojo build roblox-dog-game --output roblox-dog-game/build/MungMungHouse-v2.rbxl
 
 `default.project.json` 이 스크립트를 어느 서비스에 넣을지 정의하고 있습니다.
 
-### 저장 기능 켜기 (선택이지만 추천)
+### 저장(DataStore)은 어떻게 동작하나
 
-Studio 테스트 중에도 저장이 되게 하려면:
+플레이어가 **나갔다가 다시 들어와도 키우던 강아지가 그대로 남습니다.**
+저장되는 항목은 다음과 같습니다 (플레이어 UserId 기준):
 
-- 상단 메뉴 `Home` → `Game Settings` → `Security` →
-  **Enable Studio Access to API Services** 체크 → Save
-- 이 설정은 게임을 로블록스에 **Publish** 한 뒤에만 켤 수 있습니다
-  (`File > Publish to Roblox`)
+- 강아지 **이름 · 품종 · 레벨 · 경험치**
+- 보유한 **뼈다귀 코인**, 입양해 둔 **품종 목록**
+- 배고픔 · 행복 · 에너지 수치
 
-저장을 안 켜도 게임은 정상 동작하고, 저장만 건너뜁니다.
+저장 시점은 **2분마다 자동 저장**, **플레이어가 나갈 때**, **서버가 종료될 때** 세 가지입니다.
+수치는 접속 중에만 줄어들고 오프라인 동안은 멈춰 있으므로, 오래 안 들어와도
+강아지가 굶어 있지는 않습니다.
+
+**데이터 보호:** 로블록스 DataStore 통신이 일시적으로 실패할 수 있는데,
+이때 "저장본이 없는 신규 플레이어"로 착각하면 기존 강아지를 새 강아지로
+덮어써 버립니다. 이를 막기 위해 불러오기를 **최대 4회 재시도**하고,
+그래도 실패하면 **그 세션에는 저장을 아예 하지 않고** 플레이어에게 알립니다.
+(기존 저장본은 그대로 보존됩니다.)
+
+> 저장 기능은 위의 **게시 + API Services 켜기**를 해야 동작합니다.
+> 안 켜도 게임 자체는 정상 동작하고, 저장만 건너뜁니다.
 
 ## 밸런스 바꾸는 법
 
@@ -93,7 +123,7 @@ Studio 테스트 중에도 저장이 되게 하려면:
 
 | 파일 | 역할 / 넣는 위치 |
 |---|---|
-| `build/MungMungHouse-v1.rbxl` | **완성된 place 파일** — 더블클릭하면 Studio가 열림 |
+| `build/MungMungHouse-v2.rbxl` | **완성된 place 파일** — 더블클릭하면 Studio가 열림 (최신) |
 | `DogServer.server.luau` | 게임 로직 · `ServerScriptService` > Script |
 | `DogWorld.server.luau` | 공원 맵 생성 · `ServerScriptService` > Script |
 | `DogUI.client.luau` | 화면 UI · `StarterPlayer > StarterPlayerScripts` > LocalScript |

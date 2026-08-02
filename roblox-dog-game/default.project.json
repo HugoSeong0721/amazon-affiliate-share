@@ -17,6 +17,14 @@
         }
       }
     },
+    "Workspace": {
+      "$properties": {
+        "StreamingEnabled": false
+      },
+      "Terrain": {
+        "$className": "Terrain"
+      }
+    },
     "Lighting": {
       "$properties": {
         "Brightness": 2.2,
