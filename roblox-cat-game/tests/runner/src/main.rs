@@ -48,6 +48,7 @@ fn install_host_api(lua: &Lua, entry: &str) -> mlua::Result<()> {
         .map(|p| p.to_path_buf())
         .unwrap_or_default();
     globals.set("_scriptDir", base.to_string_lossy().to_string())?;
+    globals.set("_skipClient", std::env::var("SKIP_CLIENT").is_ok())?;
 
     // 파일 읽기
     globals.set(
