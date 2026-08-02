@@ -1,0 +1,12 @@
+[package]
+name = "luarun"
+version = "0.1.0"
+edition = "2021"
+
+# Roblox가 쓰는 것과 같은 Luau VM을 그대로 임베드한다.
+# 덕분에 게임 스크립트를 "진짜 Luau"로 실행해볼 수 있다.
+[dependencies]
+mlua = { version = "0.10", features = ["luau", "vendored"] }
+
+[profile.release]
+opt-level = 1
