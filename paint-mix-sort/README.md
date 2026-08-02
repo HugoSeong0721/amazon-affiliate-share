@@ -7,9 +7,13 @@
 
 - 같은 색 위에는 언제든 부을 수 있다 (클래식과 동일)
 - 🔴+🟡=🟠 · 🟡+🔵=🟢 · 🔴+🔵=🟣 — 1차색끼리 부으면 닿은 구간 전체가 2차색으로 변한다
+  (양이 안 맞아도 된다. 빨강 1칸 + 노랑 3칸이면 4칸 전부 주황이 된다)
 - 2차색은 더 이상 섞이지 않는다 (잘못 섞으면 못 되돌린다 — 되돌리기 버튼뿐)
-- 상단 목표 칩과 똑같은 색의 가득 찬 병들을 만들면 클리어
+- 하단 **만들 색** 선반의 빈 병들을 전부 채우면 클리어
 - 목표에 1차색이 있으면 그 색은 순수하게 지켜야 한다
+- 완성된 2차색 병은 잠긴다 (실수로 부어서 스스로 망칠 수 없다)
+
+레벨 1은 문구 대신 **손가락이 직접 짚어주고**, 안내한 병 외에는 눌러도 반응하지 않는다.
 
 ## 실행
 
@@ -29,7 +33,10 @@ python3 -m http.server 8000
 
 ```bash
 node paint-mix-sort/tools/build-single-file.mjs
-# → paint-mix-sort/dist/paint-mix-sort.html (약 52KB)
+# → paint-mix-sort/dist/paint-mix-sort.html (약 56KB)
+
+# 문서 셸(<html>/<head>/<body>)을 직접 씌우는 호스트에 임베드할 때
+node paint-mix-sort/tools/build-single-file.mjs out.html --fragment
 ```
 
 `localStorage`가 막힌 샌드박스에서도 죽지 않도록 메모리 폴백이 자동으로 들어간다.

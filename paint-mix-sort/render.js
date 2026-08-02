@@ -69,6 +69,7 @@ export class Renderer {
     this.state = null;
     this.capacity = 4;
     this.selected = null;
+    this.guide = null;
     this.anim = null;
     this.shake = null;
     this.particles = [];
@@ -99,12 +100,18 @@ export class Renderer {
     this.selected = i;
   }
 
+  // 튜토리얼 손가락이 가리킬 병. null이면 안내 없음.
+  setGuide(i) {
+    this.guide = i;
+  }
+
   // 레벨 전환 시 진행 중인 연출을 모두 정리 (onDone은 호출하지 않는다 —
   // 호출부가 상태를 새로 세팅하는 중이므로)
   clearEffects() {
     this.anim = null;
     this.particles = [];
     this.shake = null;
+    this.guide = null;
   }
 
   shakeBottle(i) {
@@ -268,7 +275,11 @@ export class Renderer {
       if (selected) rect.y -= LIFT;
       const complete =
         this.state.bottles[i].length === this.capacity && isUniform(this.state.bottles[i]);
+      // 안내 중에는 지금 눌러야 할 병 외에는 물러나 보이게 한다
+      const dim = this.guide !== null && i !== this.guide && !selected;
+      if (dim) ctx.save(), (ctx.globalAlpha = 0.4);
       this._drawBottle(rect, model, { selected, complete, shadow: true });
+      if (dim) ctx.restore();
     }
 
     // 애니메이션 중인 원본 병 + 물줄기
@@ -287,7 +298,51 @@ export class Renderer {
       ctx.restore();
     }
 
+    if (!animData) this._drawGuide(now);
     this._drawParticles(now);
+  }
+
+  // 튜토리얼: 눌러야 할 병 위에 맥동하는 링 + 손가락 커서
+  _drawGuide(now) {
+    if (this.guide === null) return;
+    const r = this.rects[this.guide];
+    if (!r) return;
+    const ctx = this.ctx;
+    const cx = r.x + r.w / 2;
+    const cy = r.y + r.h * 0.5;
+    const beat = (Math.sin(now / 330) + 1) / 2; // 0..1
+
+    ctx.save();
+    ctx.strokeStyle = `rgba(255,255,255,${0.45 - 0.32 * beat})`;
+    ctx.lineWidth = 2.4;
+    ctx.beginPath();
+    ctx.arc(cx, cy, 19 + beat * 15, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.restore();
+
+    // 검지 든 손. 검지 → 엄지 → 주먹 순서로 그려 주먹이 밑동을 덮게 한다.
+    ctx.save();
+    ctx.translate(cx + 2, cy - 6 + beat * 9);
+    ctx.rotate(0.28); // 오른쪽 아래에서 올라온 손처럼 살짝 기울인다
+    ctx.scale(1.3, 1.3);
+    ctx.lineJoin = 'round';
+    ctx.lineWidth = 3;
+    ctx.strokeStyle = 'rgba(26,22,52,0.92)';
+    ctx.fillStyle = '#ffffff';
+    ctx.shadowColor = 'rgba(0,0,0,0.45)';
+    ctx.shadowBlur = 12;
+    ctx.shadowOffsetY = 4;
+
+    rr(ctx, -5.5, 0, 11, 33, 5.5); // 검지
+    ctx.fill();
+    ctx.stroke();
+    rr(ctx, -23, 30, 15, 12, 6); // 엄지
+    ctx.fill();
+    ctx.stroke();
+    rr(ctx, -16, 26, 33, 29, 12); // 주먹
+    ctx.fill();
+    ctx.stroke();
+    ctx.restore();
   }
 
   _computeAnim(now, A) {

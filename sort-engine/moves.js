@@ -51,9 +51,18 @@ export function pour(state, from, to, rules = CLASSIC_RULES) {
   return { state: next, from, to, amount, color, mixed, mixedRunBefore };
 }
 
+// 완성돼서 더 이상 손댈 수 없는 병 (가득 + 단색).
+// 단, 혼합 모드의 1차색 완성병은 깨서 섞어야 풀리는 배치가 있어 잠그지 않는다.
+// UI와 솔버가 같은 규칙을 쓰도록 여기 한 곳에서만 판단한다.
+export function isLocked(state, i, rules = CLASSIC_RULES) {
+  const b = state.bottles[i];
+  if (!b || b.length !== state.capacity) return false;
+  for (let k = 1; k < b.length; k++) if (b[k] !== b[0]) return false;
+  return !(rules.allowMix && isPrimary(b[0]));
+}
+
 // 탐색용 합법 수 나열. 무의미한 수는 가지치기한다:
-// - 완성된 병(가득 + 단색)은 원칙적으로 잠금.
-//   단, 혼합 모드의 1차색 완성병은 깨서 섞어야 풀리는 경우가 있어 허용한다.
+// - 완성돼 잠긴 병에서는 나갈 수 없다.
 // - 단색 병 → 빈 병 이동은 상태가 그대로라 제외.
 export function legalMoves(state, rules = CLASSIC_RULES) {
   const moves = [];
@@ -61,11 +70,9 @@ export function legalMoves(state, rules = CLASSIC_RULES) {
   for (let from = 0; from < n; from++) {
     const src = state.bottles[from];
     if (!src.length) continue;
+    if (isLocked(state, from, rules)) continue;
     let uniform = true;
     for (let i = 1; i < src.length; i++) if (src[i] !== src[0]) { uniform = false; break; }
-    if (uniform && src.length === state.capacity) {
-      if (!rules.allowMix || !isPrimary(src[0])) continue;
-    }
     for (let to = 0; to < n; to++) {
       if (to === from) continue;
       if (uniform && state.bottles[to].length === 0) continue;

@@ -5,6 +5,7 @@ import {
   pour,
   isWin,
   isComplete,
+  isLocked,
   solve,
   MIX_RULES,
 } from '../sort-engine/index.js';
@@ -13,9 +14,11 @@ import { COLOR_HEX } from './render.js';
 
 const STORAGE_LEVEL = 'pms.level';
 
+// 손가락이 첫 판을 끝까지 안내하는 레벨 (설명 문구 대신 직접 짚어준다)
+const GUIDED_LEVELS = new Set([0]);
+
 const HINTS = {
-  0: '병을 눌러 선택하고, 부을 병을 누르세요.\n🔴 빨강 + 🟡 노랑을 섞으면 🟠 주황!',
-  6: '⚠️ 이번엔 빨강 병 자체가 목표예요. 빨강을 다 섞어버리면 안 됩니다!',
+  6: '🔴 빨강도 목표예요. 전부 섞어버리면 못 만듭니다.',
 };
 
 export class Game {
@@ -43,6 +46,8 @@ export class Game {
     this.selected = null;
     this.won = false;
     this.busy = false;
+    this.guided = GUIDED_LEVELS.has(this.levelIndex);
+    this._goalFlags = null;
     clearTimeout(this._deadT);
     clearTimeout(this._bannerT);
 
@@ -52,7 +57,8 @@ export class Game {
     this.dom.overlay.classList.add('hidden');
     this.hideBanner();
     this.updateHud();
-    this.updateTargets();
+    this.updateGoals();
+    this.updateGuide();
 
     const hint = HINTS[this.levelIndex];
     if (hint) {
@@ -68,36 +74,62 @@ export class Game {
     this.renderer.setSelected(null);
   }
 
+  // 안내 레벨에서 지금 눌러야 할 수. 입력을 이 수로만 제한한다.
+  nextGuideMove() {
+    if (!this.guided || this.won || this.busy) return null;
+    return this.level.solution[this.history.length] || null;
+  }
+
+  updateGuide() {
+    const g = this.nextGuideMove();
+    this.renderer.setGuide(g ? (this.selected === null ? g.from : g.to) : null);
+  }
+
+  // 선택 시도. 비었거나 완성돼 잠긴 병이면 거절한다.
+  trySelect(i) {
+    if (!this.state.bottles[i].length || isLocked(this.state, i, MIX_RULES)) {
+      this.renderer.shakeBottle(i);
+      this.sound.error();
+      return false;
+    }
+    this.selected = i;
+    this.renderer.setSelected(i);
+    this.sound.select();
+    this.updateGuide();
+    return true;
+  }
+
   tap(i) {
     if (this.busy || this.won) return;
     if (!this.state.bottles[i]) return;
 
-    if (this.selected === null) {
-      if (this.state.bottles[i].length) {
-        this.selected = i;
-        this.renderer.setSelected(i);
-        this.sound.select();
-      } else {
+    // 안내 중에는 짚어준 병만 반응한다
+    const g = this.nextGuideMove();
+    if (g) {
+      const want = this.selected === null ? g.from : g.to;
+      if (i !== want) {
         this.renderer.shakeBottle(i);
+        return;
       }
+    }
+
+    if (this.selected === null) {
+      this.trySelect(i);
       return;
     }
 
     if (i === this.selected) {
       this.deselect();
+      this.updateGuide();
       return;
     }
 
     if (canPour(this.state, this.selected, i, MIX_RULES)) {
       this.doPour(this.selected, i);
-    } else if (this.state.bottles[i].length) {
-      // 부을 수 없는 곳이면 선택을 옮겨준다 (연타 조작감)
-      this.selected = i;
-      this.renderer.setSelected(i);
-      this.sound.select();
     } else {
-      this.renderer.shakeBottle(i);
-      this.sound.error();
+      // 부을 수 없는 곳이면 선택을 옮겨준다 (연타 조작감).
+      // 옮길 수 없는 병이면 기존 선택을 유지한다.
+      this.trySelect(i);
     }
   }
 
@@ -113,6 +145,7 @@ export class Game {
     this.hideBanner();
     this.sound.pour(res.amount);
     this.updateHud();
+    this.renderer.setGuide(null); // 붓는 동안에는 손가락을 치운다
 
     const completedNow = isComplete(this.state, to) && !isComplete(prev, to);
 
@@ -123,13 +156,16 @@ export class Game {
       onDone: () => {
         this.busy = false;
         this.renderer.setState(this.state);
-        this.updateTargets();
+        this.updateGoals();
         if (completedNow) {
           this.renderer.burstAtBottle(to, COLOR_HEX[res.color]);
           this.sound.complete();
         }
         if (isWin(this.state, this.targets)) this.win();
-        else this.scheduleDeadCheck();
+        else {
+          this.updateGuide();
+          this.scheduleDeadCheck();
+        }
       },
     });
   }
@@ -141,7 +177,8 @@ export class Game {
     this.renderer.setState(this.state);
     this.hideBanner();
     this.updateHud();
-    this.updateTargets();
+    this.updateGoals();
+    this.updateGuide();
     this.sound.select();
   }
 
@@ -170,6 +207,7 @@ export class Game {
   win() {
     this.won = true;
     this.sound.win();
+    this.renderer.setGuide(null);
     this.renderer.celebrate();
     if (this.levelIndex + 1 < LEVEL_DATA.length) {
       localStorage.setItem(STORAGE_LEVEL, String(this.levelIndex + 1));
@@ -187,25 +225,31 @@ export class Game {
     this.dom.btnUndo.disabled = !this.history.length;
   }
 
-  updateTargets() {
-    // 완성된 병 색 개수를 세서 목표 칩에 체크 표시
-    const doneCount = {};
+  // 하단 목표 선반: 빈 병 실루엣이 "만들어야 할 병", 완성되면 색이 찬다.
+  updateGoals() {
+    const remaining = {};
     this.state.bottles.forEach((b, i) => {
-      if (isComplete(this.state, i)) doneCount[b[0]] = (doneCount[b[0]] || 0) + 1;
+      if (isComplete(this.state, i)) remaining[b[0]] = (remaining[b[0]] || 0) + 1;
     });
-    const bar = this.dom.targetsBar;
-    bar.innerHTML = '';
-    const remaining = { ...doneCount };
-    for (const t of this.targets) {
-      const chip = document.createElement('span');
-      chip.className = 'chip';
-      chip.style.setProperty('--c', COLOR_HEX[t]);
+    const flags = this.targets.map((t) => {
       if (remaining[t] > 0) {
-        chip.classList.add('done');
         remaining[t]--;
+        return true;
       }
-      bar.appendChild(chip);
-    }
+      return false;
+    });
+
+    const slots = this.dom.goalSlots;
+    slots.innerHTML = '';
+    flags.forEach((done, idx) => {
+      const el = document.createElement('span');
+      el.className = 'goal' + (done ? ' done' : '');
+      el.style.setProperty('--c', COLOR_HEX[this.targets[idx]]);
+      // 이번에 새로 완성된 칸만 튀어오르게
+      if (done && this._goalFlags && !this._goalFlags[idx]) el.classList.add('pop');
+      slots.appendChild(el);
+    });
+    this._goalFlags = flags;
   }
 
   showBanner(text, sticky = false) {
@@ -239,8 +283,9 @@ export class Game {
       this.state = res.state;
     }
     this.renderer.setState(this.state);
+    this.renderer.setGuide(null);
     this.updateHud();
-    this.updateTargets();
+    this.updateGoals();
     if (isWin(this.state, this.targets)) {
       this.win();
       return true;

@@ -8,6 +8,7 @@ import {
   pour,
   legalMoves,
   isWin,
+  isLocked,
   solve,
   generateLevel,
   MIX_RULES,
@@ -84,6 +85,23 @@ test('승리 판정: 완성 색 목록이 목표와 정확히 일치해야 한�
   assert.equal(isWin(win, ['O', 'P']), false);
   assert.equal(isWin(S([['O', 'O', 'O'], ['O']]), ['O']), false); // 가득 차지 않음
   assert.equal(isWin(S([['O', 'O', 'O', 'O'], ['O', 'O', 'O', 'O']]), ['O', 'G']), false); // 색 불일치
+});
+
+test('isLocked: 완성된 2차색 병만 잠긴다', () => {
+  const st = S([
+    ['O', 'O', 'O', 'O'], // 완성된 2차색 → 잠김
+    ['R', 'R', 'R', 'R'], // 완성된 1차색 → 혼합 모드에서는 안 잠김
+    ['O', 'O', 'O'], // 가득 차지 않음
+    ['R', 'Y', 'R', 'Y'], // 단색 아님
+    [],
+  ]);
+  assert.equal(isLocked(st, 0, MIX_RULES), true);
+  assert.equal(isLocked(st, 1, MIX_RULES), false);
+  assert.equal(isLocked(st, 2, MIX_RULES), false);
+  assert.equal(isLocked(st, 3, MIX_RULES), false);
+  assert.equal(isLocked(st, 4, MIX_RULES), false);
+  // 클래식 모드에서는 1차색 완성병도 잠긴다
+  assert.equal(isLocked(st, 1, CLASSIC_RULES), true);
 });
 
 test('legalMoves: 완성된 2차색 병은 잠기고, 1차색 완성병은 깰 수 있다', () => {

@@ -12,6 +12,6 @@ export {
   stateKey,
   isWin,
 } from './state.js';
-export { CLASSIC_RULES, MIX_RULES, canPour, pour, legalMoves } from './moves.js';
+export { CLASSIC_RULES, MIX_RULES, canPour, pour, legalMoves, isLocked } from './moves.js';
 export { solve } from './solver.js';
 export { generateLevel } from './generator.js';

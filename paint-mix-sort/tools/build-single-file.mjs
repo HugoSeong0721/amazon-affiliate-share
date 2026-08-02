@@ -1,8 +1,11 @@
 // 단일 HTML 파일로 번들링 — 외부 요청이 전혀 없는 자립형 페이지를 만든다.
 // 공유 링크, 웹뷰 앱 패키징(Capacitor 등), 오프라인 배포에 그대로 쓸 수 있다.
 //
-// 사용법:  node paint-mix-sort/tools/build-single-file.mjs [출력경로]
+// 사용법:  node paint-mix-sort/tools/build-single-file.mjs [출력경로] [--fragment]
 // 기본 출력: paint-mix-sort/dist/paint-mix-sort.html
+//
+// --fragment 를 주면 <!DOCTYPE>/<html>/<head>/<body> 껍데기를 뺀 조각만 낸다.
+// 문서 셸을 직접 씌우는 호스트(다른 페이지에 임베드, 아티팩트 배포 등)에 쓴다.
 
 import { readFileSync, writeFileSync, mkdirSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
@@ -10,9 +13,12 @@ import { dirname, join, resolve } from 'node:path';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const REPO = resolve(HERE, '..', '..');
-const outPath = process.argv[2]
-  ? resolve(process.argv[2])
-  : join(REPO, 'paint-mix-sort', 'dist', 'paint-mix-sort.html');
+const args = process.argv.slice(2);
+const fragment = args.includes('--fragment');
+const outArg = args.find((a) => !a.startsWith('--'));
+const outPath = outArg
+  ? resolve(outArg)
+  : join(REPO, 'paint-mix-sort', 'dist', fragment ? 'paint-mix-sort.fragment.html' : 'paint-mix-sort.html');
 
 const read = (p) => readFileSync(join(REPO, p), 'utf8');
 
@@ -66,28 +72,38 @@ const html = read('paint-mix-sort/index.html');
 const appMarkup = html.match(/(<div id="app">[\s\S]*<\/div>)\s*<script/);
 if (!appMarkup) throw new Error('index.html에서 #app 마크업을 찾지 못했습니다');
 
-const page = `<!DOCTYPE html>
-<html lang="ko">
-<head>
-<meta charset="UTF-8">
+const HEAD = `<title>페인트 믹스 — 색을 섞는 소트 퍼즐</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <meta name="theme-color" content="#14152b">
-<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎨</text></svg>">
-<title>페인트 믹스 — 색을 섞는 소트 퍼즐</title>
 <style>
 ${read('paint-mix-sort/style.css')}
-</style>
-</head>
-<body>
-${appMarkup[1]}
+</style>`;
+
+const BODY = `${appMarkup[1]}
 <script type="module">
 ${SAFE_STORAGE}
 ${bundle}
-</script>
+</script>`;
+
+// 조각 모드에서는 호스트가 <head>를 따로 주지 않으므로 전부 이어서 낸다.
+// 브라우저는 body 안의 <title>/<meta>/<style>도 정상 처리한다.
+const page = fragment
+  ? `${HEAD}\n${BODY}\n`
+  : `<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎨</text></svg>">
+${HEAD}
+</head>
+<body>
+${BODY}
 </body>
 </html>
 `;
 
 mkdirSync(dirname(outPath), { recursive: true });
 writeFileSync(outPath, page);
-console.log(`단일 파일 빌드 완료 → ${outPath} (${(page.length / 1024).toFixed(0)}KB, 외부 의존 0)`);
+console.log(
+  `${fragment ? '조각' : '단일 파일'} 빌드 완료 → ${outPath} (${(page.length / 1024).toFixed(0)}KB, 외부 의존 0)`
+);

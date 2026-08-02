@@ -14,7 +14,7 @@ const dom = {
   btnRestart: $('btnRestart'),
   btnMute: $('btnMute'),
   btnNext: $('btnNext'),
-  targetsBar: $('targetsBar'),
+  goalSlots: $('goalSlots'),
   legend: $('legend'),
   hint: $('hint'),
   banner: $('banner'),
