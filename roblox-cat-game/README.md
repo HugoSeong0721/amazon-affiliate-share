@@ -17,15 +17,15 @@
 
 ## 📥 바로 다운로드
 
-**[CatGame-v1.rbxl 다운로드](https://github.com/HugoSeong0721/amazon-affiliate-share/raw/claude/roblox-cat-game-nwoz9h/roblox-cat-game/build/CatGame-v1.rbxl)**
+**[CatGame-v2.rbxl 다운로드](https://github.com/HugoSeong0721/amazon-affiliate-share/raw/claude/roblox-cat-game-nwoz9h/roblox-cat-game/build/CatGame-v2.rbxl)**
 
 ```
-https://github.com/HugoSeong0721/amazon-affiliate-share/raw/claude/roblox-cat-game-nwoz9h/roblox-cat-game/build/CatGame-v1.rbxl
+https://github.com/HugoSeong0721/amazon-affiliate-share/raw/claude/roblox-cat-game-nwoz9h/roblox-cat-game/build/CatGame-v2.rbxl
 ```
 
 클릭하면 바로 받아지고, 더블클릭하면 Roblox Studio가 열립니다. 로그인·계정 불필요.
 
-> XML 버전(`build/CatGame-v1.rbxlx`)도 같은 내용입니다. 브라우저에서 링크로 열면
+> XML 버전(`build/CatGame-v2.rbxlx`)도 같은 내용입니다. 브라우저에서 링크로 열면
 > 다운로드 대신 텍스트가 펼쳐지므로, **공유용 링크는 `.rbxl` 쪽을 쓰세요.**
 
 ## Roblox Studio에 넣는 방법
@@ -33,7 +33,7 @@ https://github.com/HugoSeong0721/amazon-affiliate-share/raw/claude/roblox-cat-ga
 ### 방법 1 — place 파일 바로 열기 (가장 쉬움)
 
 1. [Roblox Studio](https://create.roblox.com/) 설치 후 실행
-2. 위 링크로 `CatGame-v1.rbxl`을 받아서 더블클릭 (또는 Studio에서 *File > Open from File*)
+2. 위 링크로 `CatGame-v2.rbxl`을 받아서 더블클릭 (또는 Studio에서 *File > Open from File*)
 3. **▶ Play** 버튼으로 바로 테스트
 
 ### 방법 2 — 스크립트 3개 복사-붙여넣기
@@ -44,7 +44,9 @@ Studio에서 새 **Baseplate** 템플릿을 만들고, Explorer 창에서:
 |---|---|---|---|
 | `src/ReplicatedStorage/CatConfig.lua` | ReplicatedStorage | **ModuleScript** | `CatConfig` |
 | `src/ServerScriptService/CatGameServer.server.lua` | ServerScriptService | **Script** | `CatGameServer` |
+| `src/ServerScriptService/CharacterSetup.server.lua` | ServerScriptService | **Script** | `CharacterSetup` |
 | `src/StarterPlayerScripts/CatGameClient.client.lua` | StarterPlayer > StarterPlayerScripts | **LocalScript** | `CatGameClient` |
+| `src/StarterCharacterScripts/Animate.client.lua` | StarterPlayer > StarterCharacterScripts | **LocalScript** | `Animate` |
 
 각 위치에서 `+` 버튼으로 해당 종류의 스크립트를 만들고, 파일 내용을 통째로 붙여넣으면 끝입니다.
 ⚠️ 종류(Script / LocalScript / ModuleScript)와 이름이 표와 정확히 같아야 합니다.
@@ -67,6 +69,24 @@ bash tools/build.sh            # build/ 에 .rbxlx 와 .rbxl 둘 다 생성
 스크립트를 고쳐서 새로 배포할 때는 `tools/build_rbxlx.py` 맨 위의 `VERSION`을
 올려주세요. GitHub raw 링크는 같은 경로의 파일을 몇 분간 캐싱하기 때문에,
 파일명을 바꿔야 받는 사람이 확실히 새 버전을 받습니다.
+
+## 캐릭터도 파츠로 직접 만듭니다
+
+게시(publish)하지 않은 place 파일은 PlaceId가 0이라, 플레이 중 로블록스 에셋 서버에
+보내는 요청이 전부 거부됩니다 (콘솔의 `serverplaceid=0` 오류). 기본 아바타는 몸통이
+MeshPart라 인터넷에서 받아와야 하는데 그게 막히면 **캐릭터가 통째로 안 보입니다.**
+
+그래서 이 게임은 고양이처럼 캐릭터도 파츠로 조립합니다 (`CharacterSetup.server.lua`).
+R6 규격 그대로라 Humanoid가 정상 인식하고, 걷기 동작은 관절을 직접 돌려서 만듭니다
+(`Animate.client.lua` — 이름이 `Animate`라서 애니메이션을 다운로드하는 기본
+스크립트를 대체합니다).
+
+덕분에 게시 전에도 캐릭터가 항상 보이고 콘솔도 깨끗합니다. 다운로드하는 에셋이
+하나도 없습니다.
+
+> 플레이어의 실제 아바타(옷·액세서리)를 쓰고 싶다면 게임을 게시한 뒤
+> `CharacterSetup.server.lua`를 지우면 됩니다. 게시된 게임에서는 에셋 로딩이
+> 정상 동작합니다.
 
 ## 데이터 저장 켜기 (중요)
 
@@ -97,13 +117,16 @@ Studio 테스트에서 저장까지 확인하려면:
 ```
 roblox-cat-game/
 ├── build/
-│   ├── CatGame-v1.rbxl           ← 공유·다운로드용 (바이너리, 링크 클릭 시 바로 받아짐)
-│   └── CatGame-v1.rbxlx          ← 같은 내용의 XML 버전 (git diff가 읽힘)
+│   ├── CatGame-v2.rbxl           ← 공유·다운로드용 (바이너리, 링크 클릭 시 바로 받아짐)
+│   ├── CatGame-v2.rbxlx          ← 같은 내용의 XML 버전 (git diff가 읽힘)
+│   └── CatGame-v1.*              ← 이전 버전 (기존 링크가 깨지지 않게 남겨둠)
 ├── default.project.json          ← Rojo 프로젝트 설정
 ├── src/
 │   ├── ReplicatedStorage/CatConfig.lua              (밸런스·품종 설정)
 │   ├── ServerScriptService/CatGameServer.server.lua (서버 게임 로직)
-│   └── StarterPlayerScripts/CatGameClient.client.lua (UI)
+│   ├── ServerScriptService/CharacterSetup.server.lua (파츠로 만든 플레이어 캐릭터)
+│   ├── StarterPlayerScripts/CatGameClient.client.lua (UI)
+│   └── StarterCharacterScripts/Animate.client.lua    (에셋 없는 걷기 동작)
 └── tools/
     ├── build.sh                  ← .rbxlx + .rbxl 한 번에 빌드
     ├── build_rbxlx.py            ← 스크립트를 XML place로 묶기

@@ -378,12 +378,16 @@ local function onPlayerAdded(player)
 	catCount.Parent = stats
 	stats.Parent = player
 
-	player.CharacterAdded:Connect(function(character)
-		character:WaitForChild("HumanoidRootPart", 5)
+	-- 캐릭터는 CharacterSetup 스크립트가 직접 스폰시키므로, 이 스크립트가 늦게
+	-- 실행돼 이미 스폰이 끝났을 수도 있다. 두 경우 모두 처리한다.
+	local function onCharacter(character)
+		character:WaitForChild("HumanoidRootPart", 10)
 		refreshCatModels(player)
-	end)
+	end
+
+	player.CharacterAdded:Connect(onCharacter)
 	if player.Character then
-		refreshCatModels(player)
+		task.spawn(onCharacter, player.Character)
 	end
 	pushData(player)
 end

@@ -12,7 +12,7 @@ XML place 파일(build/CatGame-v{VERSION}.rbxlx)로 묶는다.
 import xml.etree.ElementTree as ET
 from pathlib import Path
 
-VERSION = 1
+VERSION = 2
 
 ROOT = Path(__file__).resolve().parent.parent
 SRC = ROOT / "src"
@@ -101,13 +101,23 @@ server_service, sss_props = item(root, "ServerScriptService")
 prop(sss_props, "string", "Name", "ServerScriptService")
 script_item(server_service, "Script", "CatGameServer",
             SRC / "ServerScriptService" / "CatGameServer.server.lua")
+script_item(server_service, "Script", "CharacterSetup",
+            SRC / "ServerScriptService" / "CharacterSetup.server.lua")
 
 starter_player, sp_props = item(root, "StarterPlayer")
 prop(sp_props, "string", "Name", "StarterPlayer")
+prop(sp_props, "bool", "LoadCharacterAppearance", "false")
+
 scripts_folder, sps_props = item(starter_player, "StarterPlayerScripts")
 prop(sps_props, "string", "Name", "StarterPlayerScripts")
 script_item(scripts_folder, "LocalScript", "CatGameClient",
             SRC / "StarterPlayerScripts" / "CatGameClient.client.lua")
+
+# 이름이 Animate인 스크립트를 넣어두면 로블록스 기본 Animate가 들어오지 않는다
+char_scripts, scs_props = item(starter_player, "StarterCharacterScripts")
+prop(scs_props, "string", "Name", "StarterCharacterScripts")
+script_item(char_scripts, "LocalScript", "Animate",
+            SRC / "StarterCharacterScripts" / "Animate.client.lua")
 
 ET.indent(root)
 OUT.parent.mkdir(parents=True, exist_ok=True)

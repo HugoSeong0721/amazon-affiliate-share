@@ -12,14 +12,26 @@
       "$className": "ServerScriptService",
       "CatGameServer": {
         "$path": "src/ServerScriptService/CatGameServer.server.lua"
+      },
+      "CharacterSetup": {
+        "$path": "src/ServerScriptService/CharacterSetup.server.lua"
       }
     },
     "StarterPlayer": {
       "$className": "StarterPlayer",
+      "$properties": {
+        "LoadCharacterAppearance": false
+      },
       "StarterPlayerScripts": {
         "$className": "StarterPlayerScripts",
         "CatGameClient": {
           "$path": "src/StarterPlayerScripts/CatGameClient.client.lua"
+        }
+      },
+      "StarterCharacterScripts": {
+        "$className": "StarterCharacterScripts",
+        "Animate": {
+          "$path": "src/StarterCharacterScripts/Animate.client.lua"
         }
       }
     }
