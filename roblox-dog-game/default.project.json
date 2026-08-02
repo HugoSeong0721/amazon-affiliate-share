@@ -1,0 +1,29 @@
+{
+  "name": "MungMung House - Dog Pet Game",
+  "tree": {
+    "$className": "DataModel",
+    "ServerScriptService": {
+      "DogWorld": {
+        "$path": "DogWorld.server.luau"
+      },
+      "DogServer": {
+        "$path": "DogServer.server.luau"
+      }
+    },
+    "StarterPlayer": {
+      "StarterPlayerScripts": {
+        "DogUI": {
+          "$path": "DogUI.client.luau"
+        }
+      }
+    },
+    "Lighting": {
+      "$properties": {
+        "Brightness": 2.2,
+        "ClockTime": 14.2,
+        "Ambient": [0.5, 0.48, 0.42],
+        "OutdoorAmbient": [0.58, 0.55, 0.48]
+      }
+    }
+  }
+}
