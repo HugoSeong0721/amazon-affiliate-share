@@ -79,7 +79,9 @@ local function makePlot(index: number, centerX: number, centerZ: number, parent:
 
 	local gui = Instance.new("BillboardGui")
 	gui.Name = "SignGui"
-	gui.Size = UDim2.fromOffset(220, 56)
+	-- Sized in studs (scale component), so distant signs shrink instead of
+	-- staying pixel-huge and overlapping each other across the street.
+	gui.Size = UDim2.fromScale(11, 2.8)
 	gui.StudsOffset = Vector3.new(0, 3.4, 0)
 	gui.MaxDistance = 220
 	gui.Parent = post
@@ -161,14 +163,27 @@ function PlotService.GenerateMap()
 		table.insert(plots, makePlot(i, x, z, map))
 	end
 
-	local spawn = Instance.new("SpawnLocation")
-	spawn.Size = Vector3.new(12, 1, 12)
-	spawn.Position = Vector3.new(-(rowSpan / 2) - 30, 0.5, 0)
-	spawn.Color = Color3.fromRGB(150, 150, 155)
-	spawn.Material = Enum.Material.Concrete
-	spawn.Anchored = true
-	spawn.Duration = 0
-	spawn.Parent = map
+	-- Spawn plaza at the head of the street, set back from the road so the
+	-- character lands clear of traffic and can see the whole neighbourhood.
+	local plazaX = -(rowSpan / 2) - 34
+	makePart({
+		Name = "SpawnPlaza",
+		Size = Vector3.new(28, 1, 28),
+		Position = Vector3.new(plazaX, 0.5, 0),
+		Color = Color3.fromRGB(198, 194, 186),
+		Material = Enum.Material.Concrete,
+	}).Parent = map
+
+	local spawnPad = Instance.new("SpawnLocation")
+	spawnPad.Name = "Spawn"
+	spawnPad.Size = Vector3.new(12, 1, 12)
+	spawnPad.Position = Vector3.new(plazaX, 1.5, 0)
+	spawnPad.Color = Color3.fromRGB(150, 150, 155)
+	spawnPad.Material = Enum.Material.Concrete
+	spawnPad.Anchored = true
+	spawnPad.CanCollide = true
+	spawnPad.Duration = 0
+	spawnPad.Parent = map
 
 	map.Parent = workspace
 end

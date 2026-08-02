@@ -17,7 +17,12 @@ local BlueprintMarketService = require(script.BlueprintMarketService)
 local Net = require(Shared.Net)
 local notify = Net.event("Notify")
 
+-- The neighbourhood is generated at runtime, so hold character spawning until
+-- it exists. Without this a character can spawn into an empty DataModel, fall
+-- past the void threshold and die before the ground and SpawnLocation appear.
+Players.CharacterAutoLoads = false
 PlotService.GenerateMap()
+Players.CharacterAutoLoads = true
 
 DataService.Init()
 BuildService.Init()
@@ -36,8 +41,20 @@ local function onPlayerAdded(player: Player)
 end
 
 Players.PlayerAdded:Connect(onPlayerAdded)
+
+-- Anyone already in the game when this script started (Studio solo test) was
+-- either never spawned or spawned into the not-yet-generated world. Give them
+-- a fresh character now that the ground and SpawnLocation exist.
 for _, player in ipairs(Players:GetPlayers()) do
-	task.spawn(onPlayerAdded, player)
+	task.spawn(function()
+		local ok, err = pcall(function()
+			player:LoadCharacter()
+		end)
+		if not ok then
+			warn("[BlueprintHomes] LoadCharacter failed for", player.Name, err)
+		end
+		onPlayerAdded(player)
+	end)
 end
 
 Players.PlayerRemoving:Connect(function(player)

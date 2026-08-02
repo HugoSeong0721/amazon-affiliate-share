@@ -44,11 +44,16 @@
 
 ## 바로 받기 (툴체인 불필요)
 
-**⬇️ [BlueprintHomes-v1.rbxl 다운로드](https://github.com/HugoSeong0721/amazon-affiliate-share/raw/claude/roblox-house-building-game-sxuk4g/roblox-blueprint-homes/build/BlueprintHomes-v1.rbxl)**
+**⬇️ [BlueprintHomes-v2.rbxl 다운로드](https://github.com/HugoSeong0721/amazon-affiliate-share/raw/claude/roblox-house-building-game-sxuk4g/roblox-blueprint-homes/build/BlueprintHomes-v2.rbxl)**
 
-받아서 Roblox Studio로 열고 **Play(F5)** 누르면 바로 플레이된다.
+받아서 Roblox Studio로 열고 **Play(F5)** 누르면 스폰 광장에서 시작한다.
 Studio에서 파일을 열었을 때 Workspace가 비어 보이는 건 정상이다 — 동네 맵(도로,
-플롯 8개, 스폰)은 서버 스크립트가 런타임에 생성한다.
+플롯 8개, 스폰 광장)은 서버 스크립트가 런타임에 생성한다.
+
+| 버전 | 변경 |
+|---|---|
+| v2 | 맵 생성 전 캐릭터가 빈 공간에 스폰돼 낙사하던 문제 수정, 스폰 광장 추가, 플롯 간판 크기를 스터드 기준으로 변경(거리별 축소) |
+| v1 | 최초 빌드 |
 
 > 마켓의 블루프린트 저장·거래를 테스트하려면 Studio에서
 > **Game Settings → Security → Enable Studio Access to API Services**를 켤 것.
@@ -67,7 +72,7 @@ aftman install        # rojo 7.4.4
 rojo serve
 
 # B) 배포용 .rbxl 재빌드 (위 다운로드 파일을 만든 명령)
-rojo build default.project.json -o build/BlueprintHomes-v1.rbxl
+rojo build default.project.json -o build/BlueprintHomes-v2.rbxl
 ```
 
 서버당 플롯이 8개이므로 퍼블리시할 때 place 설정에서 **최대 플레이어 8명**으로 맞출 것.
