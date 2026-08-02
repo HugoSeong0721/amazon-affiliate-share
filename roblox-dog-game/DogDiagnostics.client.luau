@@ -46,23 +46,59 @@ else
 	local root = character:FindFirstChild("HumanoidRootPart")
 	log(string.format("   위치 = %s", root and tostring(root.Position) or "HumanoidRootPart 없음"))
 
-	local total, invisible, emptyMesh = 0, 0, 0
+	-- Transparency 와 LocalTransparencyModifier 는 별개다.
+	-- 후자는 클라이언트에서만 몸을 숨기며(1인칭 처리 등) 서버에는 안 보인다.
+	local total, invisible, localHidden = 0, 0, 0
 	for _, item in ipairs(character:GetDescendants()) do
 		if item:IsA("BasePart") then
 			total = total + 1
 			if item.Transparency >= 1 then
 				invisible = invisible + 1
 			end
-			if item:IsA("MeshPart") and item.MeshId == "" then
-				emptyMesh = emptyMesh + 1
+			if item.LocalTransparencyModifier >= 1 then
+				localHidden = localHidden + 1
 			end
 		end
 	end
-	log(string.format("   파트 %d개 | 완전투명 %d개 | 메시 로딩 실패 %d개", total, invisible, emptyMesh))
-	if total > 0 and invisible == total then
-		log("   👉 모든 파트가 투명합니다")
-	elseif emptyMesh > 0 then
-		log("   👉 아바타 메시를 못 불러왔습니다 (게시하면 해결)")
+	log(string.format("   파트 %d개 | Transparency 투명 %d개 | LocalTransparencyModifier 숨김 %d개",
+		total, invisible, localHidden))
+	if localHidden > 0 then
+		log("   👉 클라이언트에서 몸을 숨기고 있습니다 (1인칭 처리 등)")
+	end
+
+	-- ⚠️ MeshId 가 채워져 있어도 실제 다운로드는 실패할 수 있다.
+	--    (미게시 place 는 assetdelivery 가 403 을 준다)
+	--    따라서 MeshId 유무가 아니라 실제 로딩 성공 여부를 확인해야 한다.
+	local ContentProvider = game:GetService("ContentProvider")
+	local targets = {}
+	for _, item in ipairs(character:GetDescendants()) do
+		if item:IsA("MeshPart") or item:IsA("SpecialMesh") or item:IsA("Decal") then
+			table.insert(targets, item)
+		end
+	end
+
+	if #targets == 0 then
+		log("   아바타 메시/텍스처 에셋 없음 (기본 블록 아바타)")
+	else
+		local okCount, failCount = 0, 0
+		local preloaded = pcall(function()
+			ContentProvider:PreloadAsync(targets, function(_, status)
+				if status == Enum.AssetFetchStatus.Success then
+					okCount = okCount + 1
+				else
+					failCount = failCount + 1
+				end
+			end)
+		end)
+		if preloaded then
+			log(string.format("   아바타 에셋 %d개 → 다운로드 성공 %d개 / 실패 %d개",
+				#targets, okCount, failCount))
+			if failCount > 0 then
+				log("   👉 몸통 메시를 못 받았습니다. 이래서 캐릭터가 안 보입니다 (게시하면 해결)")
+			end
+		else
+			log("   아바타 에셋 확인 실패 (PreloadAsync 오류)")
+		end
 	end
 end
 
