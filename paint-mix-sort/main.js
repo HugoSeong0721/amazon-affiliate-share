@@ -14,6 +14,8 @@ const dom = {
   btnRestart: $('btnRestart'),
   btnMute: $('btnMute'),
   btnNext: $('btnNext'),
+  levelSelect: $('levelSelect'),
+  levelGrid: $('levelGrid'),
   goalSlots: $('goalSlots'),
   legend: $('legend'),
   hint: $('hint'),
@@ -59,6 +61,17 @@ dom.btnNext.addEventListener('click', () => game.next());
 dom.btnMute.addEventListener('click', () => {
   sound.setMuted(!sound.muted);
   updateMuteIcon();
+});
+
+$('btnLevels').addEventListener('click', () => game.toggleLevels());
+$('btnCloseLevels').addEventListener('click', () => game.closeLevels());
+$('btnLevelsFromWin').addEventListener('click', () => game.openLevels());
+// 배경을 누르면 닫기 (카드 안쪽 클릭은 통과시키지 않는다)
+dom.levelSelect.addEventListener('click', (e) => {
+  if (e.target === dom.levelSelect) game.closeLevels();
+});
+window.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') game.closeLevels();
 });
 
 new ResizeObserver(() => renderer.resize()).observe(dom.board);

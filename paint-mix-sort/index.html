@@ -16,6 +16,7 @@
         <div id="moveLabel">0수</div>
       </div>
       <div class="hud-right">
+        <button id="btnLevels" class="hud-btn" title="레벨 목차" aria-label="레벨 목차">☰</button>
         <button id="btnUndo" class="hud-btn" title="되돌리기" aria-label="되돌리기">↩︎</button>
         <button id="btnRestart" class="hud-btn" title="다시하기" aria-label="다시하기">⟳</button>
         <button id="btnMute" class="hud-btn" title="소리 켜기/끄기" aria-label="소리">🔊</button>
@@ -38,7 +39,21 @@
       <div class="overlay-card">
         <h2 id="overlayTitle">레벨 클리어!</h2>
         <p id="overlayInfo"></p>
-        <button id="btnNext">다음 레벨 ▶</button>
+        <div class="overlay-actions">
+          <button id="btnLevelsFromWin" class="ghost-btn">목차</button>
+          <button id="btnNext">다음 레벨 ▶</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="levelSelect" class="hidden">
+      <div class="ls-card">
+        <div class="ls-head">
+          <h2>레벨 목차</h2>
+          <button id="btnCloseLevels" class="hud-btn" title="닫기" aria-label="닫기">✕</button>
+        </div>
+        <p class="ls-note">아래 점이 그 레벨에서 만들어야 할 색입니다.</p>
+        <div id="levelGrid"></div>
       </div>
     </div>
   </div>

@@ -13,6 +13,7 @@ import { LEVEL_DATA, CAPACITY } from './levels-data.js';
 import { COLOR_HEX } from './render.js';
 
 const STORAGE_LEVEL = 'pms.level';
+const STORAGE_CLEARED = 'pms.cleared'; // 레벨당 '0'/'1' 한 글자
 
 // 손가락이 첫 판을 끝까지 안내하는 레벨 (설명 문구 대신 직접 짚어준다)
 const GUIDED_LEVELS = new Set([0]);
@@ -28,8 +29,14 @@ export class Game {
     this.dom = dom;
     const saved = parseInt(localStorage.getItem(STORAGE_LEVEL) || '0', 10);
     this.levelIndex = Number.isFinite(saved) ? Math.min(Math.max(saved, 0), LEVEL_DATA.length - 1) : 0;
+    const marks = localStorage.getItem(STORAGE_CLEARED) || '';
+    this.cleared = LEVEL_DATA.map((_, i) => marks[i] === '1');
     this.busy = false;
     this.won = false;
+  }
+
+  saveCleared() {
+    localStorage.setItem(STORAGE_CLEARED, this.cleared.map((c) => (c ? '1' : '0')).join(''));
   }
 
   get level() {
@@ -55,6 +62,7 @@ export class Game {
     this.renderer.setState(this.state);
     this.renderer.setSelected(null);
     this.dom.overlay.classList.add('hidden');
+    this.closeLevels();
     this.hideBanner();
     this.updateHud();
     this.updateGoals();
@@ -209,6 +217,8 @@ export class Game {
     this.sound.win();
     this.renderer.setGuide(null);
     this.renderer.celebrate();
+    this.cleared[this.levelIndex] = true;
+    this.saveCleared();
     if (this.levelIndex + 1 < LEVEL_DATA.length) {
       localStorage.setItem(STORAGE_LEVEL, String(this.levelIndex + 1));
     }
@@ -250,6 +260,53 @@ export class Game {
       slots.appendChild(el);
     });
     this._goalFlags = flags;
+  }
+
+  // --- 레벨 목차 ---
+  // 프로토타입이라 전부 열어둔다. 난이도 곡선을 아무 데나 찍어보며 확인할 수 있어야 하므로.
+  // 실제 출시 때는 클리어한 다음 레벨까지만 여는 게 맞다.
+  openLevels() {
+    this.buildLevelGrid();
+    this.dom.levelSelect.classList.remove('hidden');
+  }
+
+  closeLevels() {
+    this.dom.levelSelect.classList.add('hidden');
+  }
+
+  toggleLevels() {
+    if (this.dom.levelSelect.classList.contains('hidden')) this.openLevels();
+    else this.closeLevels();
+  }
+
+  buildLevelGrid() {
+    const grid = this.dom.levelGrid;
+    grid.innerHTML = '';
+    LEVEL_DATA.forEach((lv, i) => {
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className =
+        'lv' + (this.cleared[i] ? ' cleared' : '') + (i === this.levelIndex ? ' current' : '');
+      btn.setAttribute(
+        'aria-label',
+        `레벨 ${i + 1}${this.cleared[i] ? ' (클리어함)' : ''} — 목표 ${lv.targets.length}개`
+      );
+
+      const num = document.createElement('span');
+      num.textContent = String(i + 1);
+
+      const dots = document.createElement('span');
+      dots.className = 'dots';
+      for (const t of lv.targets) {
+        const d = document.createElement('i');
+        d.style.setProperty('--c', COLOR_HEX[t]);
+        dots.appendChild(d);
+      }
+
+      btn.append(num, dots);
+      btn.addEventListener('click', () => this.loadLevel(i));
+      grid.appendChild(btn);
+    });
   }
 
   showBanner(text, sticky = false) {
