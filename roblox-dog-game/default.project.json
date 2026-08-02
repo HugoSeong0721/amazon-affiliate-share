@@ -11,9 +11,19 @@
       }
     },
     "StarterPlayer": {
+      "$properties": {
+        "CameraMode": "Classic",
+        "CameraMinZoomDistance": 8,
+        "CameraMaxZoomDistance": 400,
+        "LoadCharacterAppearance": true,
+        "EnableMouseLockOption": true
+      },
       "StarterPlayerScripts": {
         "DogUI": {
           "$path": "DogUI.client.luau"
+        },
+        "DogDiagnostics": {
+          "$path": "DogDiagnostics.client.luau"
         }
       }
     },
