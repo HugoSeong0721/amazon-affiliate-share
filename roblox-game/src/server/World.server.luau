@@ -27,6 +27,17 @@ end
 -- Ground + invisible borders
 ----------------------------------------------------------------------
 
+local spawnLocation = Instance.new("SpawnLocation")
+spawnLocation.Size = Vector3.new(8, 1, 8)
+spawnLocation.Position = Vector3.new(0, 0.5, 20)
+spawnLocation.Anchored = true
+spawnLocation.Neutral = true
+spawnLocation.Transparency = 1
+spawnLocation.CanCollide = true
+spawnLocation.TopSurface = Enum.SurfaceType.Smooth
+spawnLocation.Parent = workspace
+
+
 part({
 	Name = "Floor",
 	Size = Vector3.new(900, 1, 900),
@@ -237,16 +248,6 @@ for _, face in { Enum.NormalId.Front, Enum.NormalId.Back } do
 	logoLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
 	logoLabel.Parent = logoGui
 end
-
-local spawnLocation = Instance.new("SpawnLocation")
-spawnLocation.Size = Vector3.new(8, 1, 8)
-spawnLocation.Position = Vector3.new(0, 0.5, 20)
-spawnLocation.Anchored = true
-spawnLocation.Neutral = true
-spawnLocation.Transparency = 1
-spawnLocation.CanCollide = true
-spawnLocation.TopSurface = Enum.SurfaceType.Smooth
-spawnLocation.Parent = workspace
 
 ----------------------------------------------------------------------
 -- Post-processing + disco ball + neon pulse (tuned, not blinding)
