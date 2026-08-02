@@ -15,12 +15,25 @@
 - **내 고양이** 메뉴에서 데려갈 고양이를 골라 장착/해제
 - 코인·고양이·레벨은 DataStore에 **자동 저장**됩니다 (아래 설정 필요)
 
+## 📥 바로 다운로드
+
+**[CatGame-v1.rbxl 다운로드](https://github.com/HugoSeong0721/amazon-affiliate-share/raw/claude/roblox-cat-game-nwoz9h/roblox-cat-game/build/CatGame-v1.rbxl)**
+
+```
+https://github.com/HugoSeong0721/amazon-affiliate-share/raw/claude/roblox-cat-game-nwoz9h/roblox-cat-game/build/CatGame-v1.rbxl
+```
+
+클릭하면 바로 받아지고, 더블클릭하면 Roblox Studio가 열립니다. 로그인·계정 불필요.
+
+> XML 버전(`build/CatGame-v1.rbxlx`)도 같은 내용입니다. 브라우저에서 링크로 열면
+> 다운로드 대신 텍스트가 펼쳐지므로, **공유용 링크는 `.rbxl` 쪽을 쓰세요.**
+
 ## Roblox Studio에 넣는 방법
 
 ### 방법 1 — place 파일 바로 열기 (가장 쉬움)
 
 1. [Roblox Studio](https://create.roblox.com/) 설치 후 실행
-2. `CatGame.rbxlx` 파일을 다운로드해서 더블클릭 (또는 Studio에서 *File > Open from File*)
+2. 위 링크로 `CatGame-v1.rbxl`을 받아서 더블클릭 (또는 Studio에서 *File > Open from File*)
 3. **▶ Play** 버튼으로 바로 테스트
 
 ### 방법 2 — 스크립트 3개 복사-붙여넣기
@@ -41,15 +54,19 @@ Studio에서 새 **Baseplate** 템플릿을 만들고, Explorer 창에서:
 [Rojo](https://rojo.space/)가 설치되어 있다면:
 
 ```sh
-rojo build -o CatGame.rbxlx    # place 파일 생성
+rojo build -o CatGame.rbxl     # place 파일 생성
 rojo serve                     # 또는 Studio 플러그인으로 실시간 동기화
 ```
 
-`CatGame.rbxlx`를 직접 다시 만들고 싶다면 Rojo 없이도 됩니다:
+Rojo 없이 place 파일을 다시 만들려면 (python3 + Rust 필요):
 
 ```sh
-python3 tools/build_rbxlx.py
+bash tools/build.sh            # build/ 에 .rbxlx 와 .rbxl 둘 다 생성
 ```
+
+스크립트를 고쳐서 새로 배포할 때는 `tools/build_rbxlx.py` 맨 위의 `VERSION`을
+올려주세요. GitHub raw 링크는 같은 경로의 파일을 몇 분간 캐싱하기 때문에,
+파일명을 바꿔야 받는 사람이 확실히 새 버전을 받습니다.
 
 ## 데이터 저장 켜기 (중요)
 
@@ -79,11 +96,16 @@ Studio 테스트에서 저장까지 확인하려면:
 
 ```
 roblox-cat-game/
-├── CatGame.rbxlx                 ← Studio에서 바로 여는 완성 place 파일
+├── build/
+│   ├── CatGame-v1.rbxl           ← 공유·다운로드용 (바이너리, 링크 클릭 시 바로 받아짐)
+│   └── CatGame-v1.rbxlx          ← 같은 내용의 XML 버전 (git diff가 읽힘)
 ├── default.project.json          ← Rojo 프로젝트 설정
 ├── src/
 │   ├── ReplicatedStorage/CatConfig.lua              (밸런스·품종 설정)
 │   ├── ServerScriptService/CatGameServer.server.lua (서버 게임 로직)
 │   └── StarterPlayerScripts/CatGameClient.client.lua (UI)
-└── tools/build_rbxlx.py          ← 스크립트를 rbxlx로 묶는 빌드 도구
+└── tools/
+    ├── build.sh                  ← .rbxlx + .rbxl 한 번에 빌드
+    ├── build_rbxlx.py            ← 스크립트를 XML place로 묶기
+    └── rbxlx2rbxl/               ← .rbxlx → .rbxl 변환기 (Rust)
 ```

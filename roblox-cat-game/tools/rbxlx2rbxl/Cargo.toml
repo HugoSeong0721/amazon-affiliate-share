@@ -1,0 +1,12 @@
+[package]
+name = "rbxlx2rbxl"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+rbx_xml = "0.13"
+rbx_binary = "0.7"
+rbx_dom_weak = "2"
+
+[profile.release]
+opt-level = 1

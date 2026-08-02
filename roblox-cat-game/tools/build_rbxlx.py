@@ -1,15 +1,22 @@
 #!/usr/bin/env python3
 """src/ 안의 Lua 스크립트 3개를 Roblox Studio에서 바로 열 수 있는
-place 파일(CatGame.rbxlx)로 묶는다.
+XML place 파일(build/CatGame-v{VERSION}.rbxlx)로 묶는다.
 
 사용법:  python3 tools/build_rbxlx.py
+바이너리 .rbxl까지 한 번에 만들려면 tools/build.sh 를 쓴다.
+
+파일명에 버전을 붙이는 이유: GitHub raw 링크는 브랜치 파일을 몇 분간 캐싱하기
+때문에, 내용을 고쳤으면 VERSION을 올려 새 파일명으로 배포해야 받는 사람이
+확실히 최신 파일을 받는다.
 """
 import xml.etree.ElementTree as ET
 from pathlib import Path
 
+VERSION = 1
+
 ROOT = Path(__file__).resolve().parent.parent
 SRC = ROOT / "src"
-OUT = ROOT / "CatGame.rbxlx"
+OUT = ROOT / "build" / ("CatGame-v%d.rbxlx" % VERSION)
 
 _ref_counter = 0
 
@@ -103,5 +110,6 @@ script_item(scripts_folder, "LocalScript", "CatGameClient",
             SRC / "StarterPlayerScripts" / "CatGameClient.client.lua")
 
 ET.indent(root)
+OUT.parent.mkdir(parents=True, exist_ok=True)
 OUT.write_bytes(ET.tostring(root, encoding="utf-8"))
 print("완료: %s (%.1f KB)" % (OUT, OUT.stat().st_size / 1024))
