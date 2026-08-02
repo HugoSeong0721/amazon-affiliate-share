@@ -12,7 +12,7 @@ XML place 파일(build/CatGame-v{VERSION}.rbxlx)로 묶는다.
 import xml.etree.ElementTree as ET
 from pathlib import Path
 
-VERSION = 4
+VERSION = 5
 
 ROOT = Path(__file__).resolve().parent.parent
 SRC = ROOT / "src"
@@ -76,8 +76,8 @@ _, base_props = item(workspace, "Part")
 prop(base_props, "string", "Name", "Baseplate")
 prop(base_props, "bool", "Anchored", "true")
 prop(base_props, "bool", "Locked", "true")
-vector3(base_props, "size", 512, 20, 512)
-cframe(base_props, "CFrame", 0, -10, 0)
+vector3(base_props, "size", 420, 20, 900)
+cframe(base_props, "CFrame", 0, -10, -260)
 prop(base_props, "Color3uint8", "Color3uint8", color3uint8(106, 168, 79))
 prop(base_props, "token", "TopSurface", "0")
 prop(base_props, "token", "BottomSurface", "0")
@@ -96,6 +96,8 @@ replicated, rep_props = item(root, "ReplicatedStorage")
 prop(rep_props, "string", "Name", "ReplicatedStorage")
 script_item(replicated, "ModuleScript", "CatConfig",
             SRC / "ReplicatedStorage" / "CatConfig.lua")
+script_item(replicated, "ModuleScript", "BigNumber",
+            SRC / "ReplicatedStorage" / "BigNumber.lua")
 
 server_service, sss_props = item(root, "ServerScriptService")
 prop(sss_props, "string", "Name", "ServerScriptService")
@@ -103,8 +105,10 @@ script_item(server_service, "Script", "CatGameServer",
             SRC / "ServerScriptService" / "CatGameServer.server.lua")
 script_item(server_service, "Script", "CharacterSetup",
             SRC / "ServerScriptService" / "CharacterSetup.server.lua")
-script_item(server_service, "Script", "Shelter",
-            SRC / "ServerScriptService" / "Shelter.server.lua")
+script_item(server_service, "Script", "Breakables",
+            SRC / "ServerScriptService" / "Breakables.server.lua")
+script_item(server_service, "Script", "World",
+            SRC / "ServerScriptService" / "World.server.lua")
 
 starter_player, sp_props = item(root, "StarterPlayer")
 prop(sp_props, "string", "Name", "StarterPlayer")

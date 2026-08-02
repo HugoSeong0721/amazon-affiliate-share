@@ -1,183 +1,191 @@
-# 🐱 작은 고양이 쉼터 (Roblox Cat Shelter)
+# 🐱 고양이 시뮬레이터 (Roblox Cat Simulator)
 
-로블록스에서 바로 돌아가는 **고양이 키우기 게임**입니다.
-별도 에셋 없이 스크립트만으로 쉼터·고양이·캐릭터·UI가 전부 만들어집니다.
-
-## 이야기
-
-> 비가 몹시 오던 밤, 쉼터 문 앞에 상자 하나가 놓여 있었습니다.
-> 안에는 치즈색 새끼 고양이 한 마리.
-> 오늘부터 당신은 이 작은 쉼터의 주인입니다.
-
-거리에는 아직 네 마리가 더 기다리고 있어요. 목표는 **다섯 마리를 모두 쉼터로 데려오는 것**입니다.
-
-이 설정이 게임의 모든 규칙을 설명해 줍니다:
-
-| 하는 일 | 왜 그런가 |
-|---|---|
-| 밥을 준다 | 고양이가 **건강해집니다** (레벨) |
-| 그러면 후원금이 생긴다 | **돌보는 모습을 본 이웃**이 후원금을 놓고 갑니다 |
-| 후원금을 모은다 | 거리의 다음 아이를 데려올 **구조 비용**(병원비·이동장·첫 달 사료값)이 됩니다 |
-| 다 모으면 | 쉼터가 가득 찹니다 — 엔딩 |
-
-## 게임 내용
-
-- 처음 들어오면 도입부 이야기와 **4단계 튜토리얼**이 손을 잡아줍니다
-- 시작하면 **치즈냥이** 한 마리와 후원금 50을 받습니다
-- 고양이가 플레이어 옆에 둥둥 떠서 따라다닙니다 (한 번에 3마리까지)
-- 고양이 근처에서 **E 키**(모바일은 화면 버튼)로 밥을 줍니다
-  - 밥을 주면 후원금 +4, 건강 +10
-  - 건강해지면 고양이가 점점 **커집니다** (최대 2.5배)
-- 함께 다니는 고양이 수만큼 10초마다 후원금이 조금씩 쌓입니다
-- **🐾 구조하기**에서 다음 아이를 데려옵니다 — 각자 사연이 있습니다
-  까망냥이(80) · 하양냥이(250) · 삼색냥이(600) · 황금냥이(2000)
-  - 후원금이 모자라면 버튼에 **`🪙 30 더`** 처럼 얼마가 부족한지 그대로 표시됩니다
-  - 이미 데려온 아이는 `쉼터에 있음`으로 잠깁니다
-- **🏠 우리 고양이**에서 함께 다닐 아이를 고릅니다
-- 후원금·고양이·건강은 DataStore에 **자동 저장**됩니다 (아래 설정 필요)
+로블록스에서 바로 돌아가는 **Pet Simulator 방식의 고양이 게임**입니다.
+별도 에셋 없이 스크립트만으로 월드·고양이·캐릭터·UI가 전부 만들어집니다.
 
 ## 📥 바로 다운로드
 
-**[CatGame-v4.rbxl 다운로드](https://github.com/HugoSeong0721/amazon-affiliate-share/raw/claude/roblox-cat-game-nwoz9h/roblox-cat-game/build/CatGame-v4.rbxl)**
+**[CatGame-v5.rbxl 다운로드](https://github.com/HugoSeong0721/amazon-affiliate-share/raw/claude/roblox-cat-game-nwoz9h/roblox-cat-game/build/CatGame-v5.rbxl)**
 
 ```
-https://github.com/HugoSeong0721/amazon-affiliate-share/raw/claude/roblox-cat-game-nwoz9h/roblox-cat-game/build/CatGame-v4.rbxl
+https://github.com/HugoSeong0721/amazon-affiliate-share/raw/claude/roblox-cat-game-nwoz9h/roblox-cat-game/build/CatGame-v5.rbxl
 ```
 
 클릭하면 바로 받아지고, 더블클릭하면 Roblox Studio가 열립니다. 로그인·계정 불필요.
 
-> XML 버전(`build/CatGame-v4.rbxlx`)도 같은 내용입니다. 브라우저에서 링크로 열면
-> 다운로드 대신 텍스트가 펼쳐지므로, **공유용 링크는 `.rbxl` 쪽을 쓰세요.**
+> 공유용 링크는 반드시 `.rbxl` 쪽을 쓰세요. `.rbxlx`(XML)는 브라우저가 다운로드
+> 대신 텍스트로 펼쳐 보여줍니다.
+
+## 게임 구조
+
+Pet Simulator 계열의 핵심 순환을 그대로 따릅니다.
+
+```
+고양이가 알아서 물건을 부순다  →  코인이 나온다  →  상자를 열어 더 센 고양이를 뽑는다
+        ↑                                                            │
+        └──────  더 단단한 구역을 해금한다  ←──────────────────────────┘
+```
+
+- **조작이 없습니다.** 서 있기만 하면 데리고 다니는 고양이들이 사거리 안의 물건을 자동으로 때립니다.
+- **파워가 전부입니다.** 고양이마다 파워가 있고, 장착한 4마리의 합이 초당 부수는 힘입니다.
+- **숫자가 커집니다.** 1.23K / 12.3M 처럼 줄여서 표시합니다.
+
+### 구역 5곳
+
+| 구역 | 해금 | 물건 체력 | 개당 코인 | 상자 |
+|---|---|---|---|---|
+| 우리집 마당 | 처음부터 | 10 | 8 | 낡은 상자 50 |
+| 뒷골목 | 320 | 400 | 60 | 종이 상자 300 |
+| 공원 | 2.4K | 1.6K | 900 | 소풍 바구니 4.5K |
+| 항구 | 36K | 12K | 14K | 생선 궤짝 70K |
+| 달빛 옥상 | 560K | 100K | 220K | 별빛 상자 1.1M |
+
+### 고양이 10마리 · 5등급
+
+일반(치즈·고등어) → 고급(까망·하양) → 희귀(삼색·턱시도) → 영웅(샴·벵갈) → 전설(황금·무지개).
+파워는 5에서 시작해 120,000까지 갑니다.
+
+- **자동 장착** — 더 센 고양이를 뽑으면 가장 약한 아이와 알아서 바꿔 낍니다
+- **합성** — 같은 고양이 3마리 → ✨골든 (파워 5배)
+- **환생** — 달빛 옥상까지 열고 5천만 코인을 모으면, 코인·구역은 초기화되고
+  고양이는 남으면서 모든 파워가 영구히 +25%
+
+### 진행 속도
+
+자동 플레이 테스트 기준 **14분**이면 마지막 구역까지 갑니다.
+
+| 구역 도달 | 시간 | 그때 파워 |
+|---|---|---|
+| 우리집 마당 | 0분 | 5 |
+| 뒷골목 | 1.3분 | 65 |
+| 공원 | 7.0분 | 91 |
+| 항구 | 10.4분 | 1.92K |
+| 달빛 옥상 | 14.0분 | 8.66K |
+
+더 긴 그라인드를 원하면 `CatConfig.lua`의 `UnlockCost`와 `EggCost`만 올리면 됩니다.
+
+## 튜토리얼
+
+처음 들어오면 안내창이 뜨고 4단계로 손을 잡아줍니다. 설명을 읽는 게 아니라
+**실제로 해내야** 넘어갑니다.
+
+1. **가만히 서 있기** — 고양이가 알아서 부순다는 걸 알게 됩니다 (코인이 들어오면 통과)
+2. **상자 열기** — 상자 위에 `여기예요! ▼` 화살표가 뜹니다 (고양이가 늘면 통과)
+3. **파워 키우기** — `파워 12 / 30` 처럼 진행도가 실시간으로 보입니다
+4. **뒷골목 해금** — 문 위에 화살표, 구역 버튼이 반짝입니다
+
+언제든 `건너뛰기` 가능. 한 번 끝내면 다시 뜨지 않습니다.
 
 ## Roblox Studio에 넣는 방법
 
 ### 방법 1 — place 파일 바로 열기 (가장 쉬움)
 
 1. [Roblox Studio](https://create.roblox.com/) 설치 후 실행
-2. 위 링크로 `CatGame-v4.rbxl`을 받아서 더블클릭 (또는 Studio에서 *File > Open from File*)
-3. **▶ Play** 버튼으로 바로 테스트
+2. 위 링크로 `CatGame-v5.rbxl`을 받아서 더블클릭 (또는 *File > Open from File*)
+3. **▶ Play**
 
-### 방법 2 — 스크립트 7개 복사-붙여넣기
+### 방법 2 — 스크립트 9개 복사-붙여넣기
 
-Studio에서 새 **Baseplate** 템플릿을 만들고, Explorer 창에서:
-
-| 파일 | 만들 위치 | 만들 종류 | 이름 |
+| 파일 | 위치 | 종류 | 이름 |
 |---|---|---|---|
 | `src/ReplicatedStorage/CatConfig.lua` | ReplicatedStorage | **ModuleScript** | `CatConfig` |
+| `src/ReplicatedStorage/BigNumber.lua` | ReplicatedStorage | **ModuleScript** | `BigNumber` |
 | `src/ServerScriptService/CatGameServer.server.lua` | ServerScriptService | **Script** | `CatGameServer` |
+| `src/ServerScriptService/Breakables.server.lua` | ServerScriptService | **Script** | `Breakables` |
+| `src/ServerScriptService/World.server.lua` | ServerScriptService | **Script** | `World` |
 | `src/ServerScriptService/CharacterSetup.server.lua` | ServerScriptService | **Script** | `CharacterSetup` |
-| `src/ServerScriptService/Shelter.server.lua` | ServerScriptService | **Script** | `Shelter` |
 | `src/StarterPlayerScripts/CatGameClient.client.lua` | StarterPlayer > StarterPlayerScripts | **LocalScript** | `CatGameClient` |
 | `src/StarterPlayerScripts/CatTutorial.client.lua` | StarterPlayer > StarterPlayerScripts | **LocalScript** | `CatTutorial` |
 | `src/StarterCharacterScripts/Animate.client.lua` | StarterPlayer > StarterCharacterScripts | **LocalScript** | `Animate` |
 
-각 위치에서 `+` 버튼으로 해당 종류의 스크립트를 만들고, 파일 내용을 통째로 붙여넣으면 끝입니다.
-⚠️ 종류(Script / LocalScript / ModuleScript)와 이름이 표와 정확히 같아야 합니다.
+⚠️ 종류와 이름이 표와 정확히 같아야 합니다.
 
-### 방법 3 — Rojo (개발자용)
-
-[Rojo](https://rojo.space/)가 설치되어 있다면:
+### 방법 3 — 직접 빌드
 
 ```sh
-rojo build -o CatGame.rbxl     # place 파일 생성
-rojo serve                     # 또는 Studio 플러그인으로 실시간 동기화
+bash tools/build.sh     # build/ 에 .rbxlx 와 .rbxl 둘 다 생성
 ```
 
-Rojo 없이 place 파일을 다시 만들려면 (python3 + Rust 필요):
+새로 배포할 때는 `tools/build_rbxlx.py` 맨 위의 `VERSION`을 올리세요.
+GitHub raw가 같은 경로를 몇 분간 캐싱하기 때문에, 파일명을 바꿔야 확실히 새 버전이 갑니다.
+
+## 🧪 헤드리스 플레이 테스트
+
+Studio 없이 **게임 스크립트를 진짜 Luau로 실행해서** 검증합니다.
+로블록스가 쓰는 것과 같은 Luau VM을 임베드하고, 인스턴스 트리·시그널·
+RemoteEvent 왕복·가상 시계 위의 task 스케줄러를 흉내냈습니다.
 
 ```sh
-bash tools/build.sh            # build/ 에 .rbxlx 와 .rbxl 둘 다 생성
+cargo build --release --manifest-path tests/runner/Cargo.toml
+./tests/runner/target/release/luarun tests/main.luau
+
+SKIP_CLIENT=1 ./tests/runner/target/release/luarun tests/main.luau   # 서버만
 ```
 
-스크립트를 고쳐서 새로 배포할 때는 `tools/build_rbxlx.py` 맨 위의 `VERSION`을
-올려주세요. GitHub raw 링크는 같은 경로의 파일을 몇 분간 캐싱하기 때문에,
-파일명을 바꿔야 받는 사람이 확실히 새 버전을 받습니다.
+38개 항목을 확인합니다 — 접속, 핵심 부수기 루프, 사거리, 상자 뽑기, 장착 제한,
+합성, 구역 해금 순서, 환생 조건, 숫자 표기, 퇴장 처리. 마지막에는 **자동
+플레이어가 처음부터 끝까지 게임을 클리어**하며 각 구역 도달 시간을 재줍니다.
 
-## 튜토리얼
+가상 시계라서 14분짜리 플레이가 몇 초 만에 끝납니다. 덕분에 밸런스를
+"돌려보고" 고칠 수 있습니다.
 
-처음 들어오면 안내창이 뜨고, 4단계로 손을 잡아줍니다. 각 단계는 설명을 읽는 게
-아니라 **실제로 해내야** 넘어갑니다.
+이 도구가 잡아낸 실제 버그:
 
-1. **함께 걸어보기** — 고양이가 따라온다는 걸 알게 됩니다 (14 studs 이동하면 통과)
-2. **밥 주기** — 고양이 위에 `여기예요! ▼` 화살표가 뜹니다 (밥 한 번 주면 통과)
-3. **건강해질 때까지 돌보기** — 고양이가 커지는 걸 보게 됩니다 (Lv.2 도달하면 통과)
-4. **까망냥이 구조하기** — 구조하기 버튼이 반짝이고, 카드에 **`후원금 62 / 80 · 18 더
-   모으면 돼요`** 처럼 실시간 진행도가 뜹니다 (데려오면 통과)
+- **구역 교착** — 현재 구역이 "코인을 벌 때만" 갱신돼서, 다른 구역으로 걸어가면
+  옛 구역이 그대로 잡히고 → 때릴 게 없고 → 코인이 안 들어오고 → 갱신도 안 되는
+  무한 정지. 자동 플레이어가 뒷골목에서 90분을 서 있다가 걸렸습니다.
+- **파워 정체** — 4마리를 채운 뒤에는 더 센 고양이를 뽑아도 자동 장착이 안 돼서
+  파워가 영영 안 올랐습니다.
 
-언제든 `건너뛰기`로 끌 수 있고, 한 번 끝내면 다시 뜨지 않습니다
-(`TutorialDone`으로 저장 — DataStore가 꺼져 있으면 접속할 때마다 다시 뜹니다).
-
-> 4단계가 막히지 않도록 첫 구조 비용을 80으로, 밥 쿨타임을 1.5초, 밥당 후원금을
-> 4로 잡았습니다. 시작 후원금 50에서 **밥 8번(약 12초)** 이면 까망냥이를 데려올 수
-> 있습니다. 더 천천히 크는 게임을 원하면 `CatConfig.lua`에서 이 숫자들을 올리세요.
+**한계:** 화면에 뭐가 어떻게 그려지는지는 못 봅니다. 렌더링·레이아웃·카메라
+문제는 여전히 Studio에서 직접 확인해야 합니다.
 
 ## 캐릭터도 파츠로 직접 만듭니다
 
-게시(publish)하지 않은 place 파일은 PlaceId가 0이라, 플레이 중 로블록스 에셋 서버에
-보내는 요청이 전부 거부됩니다 (콘솔의 `serverplaceid=0` 오류). 기본 아바타는 몸통이
-MeshPart라 인터넷에서 받아와야 하는데 그게 막히면 **캐릭터가 통째로 안 보입니다.**
+게시하지 않은 place는 PlaceId가 0이라 로블록스 에셋 서버 요청이 전부 거부됩니다
+(콘솔의 `serverplaceid=0`). 기본 아바타는 몸통이 MeshPart라 그게 막히면 캐릭터가
+통째로 안 보입니다. 그래서 캐릭터도 R6 규격으로 직접 조립하고
+(`CharacterSetup.server.lua`), 걷기 동작도 관절을 돌려서 만듭니다
+(`Animate.client.lua`). 다운로드하는 에셋이 하나도 없습니다.
 
-그래서 이 게임은 고양이처럼 캐릭터도 파츠로 조립합니다 (`CharacterSetup.server.lua`).
-R6 규격 그대로라 Humanoid가 정상 인식하고, 걷기 동작은 관절을 직접 돌려서 만듭니다
-(`Animate.client.lua` — 이름이 `Animate`라서 애니메이션을 다운로드하는 기본
-스크립트를 대체합니다).
+> 게시한 뒤 플레이어의 진짜 아바타를 쓰고 싶으면 `CharacterSetup.server.lua`를
+> 지우면 됩니다.
 
-덕분에 게시 전에도 캐릭터가 항상 보이고 콘솔도 깨끗합니다. 다운로드하는 에셋이
-하나도 없습니다.
+## 데이터 저장 켜기
 
-> 플레이어의 실제 아바타(옷·액세서리)를 쓰고 싶다면 게임을 게시한 뒤
-> `CharacterSetup.server.lua`를 지우면 됩니다. 게시된 게임에서는 에셋 로딩이
-> 정상 동작합니다.
-
-## 데이터 저장 켜기 (중요)
-
-Studio 테스트에서 저장까지 확인하려면:
-
-1. *File > Game Settings > Security*
-2. **Enable Studio Access to API Services** 켜기 (게임을 Roblox에 게시해야 활성화됨)
-
-끄고 플레이해도 게임은 정상 동작하고, 저장만 되지 않습니다.
-실제로 게시된 게임에서는 자동으로 저장됩니다.
-
-## 이야기·밸런스 바꾸기
-
-전부 `CatConfig.lua` 한 파일에 있습니다.
-
-- **이야기** — `Intro`(도입부), `IntroGoal`(목표), `EndingMessage`(엔딩),
-  그리고 각 고양이의 `Story`(사연). 텍스트만 고치면 세계관이 통째로 바뀝니다.
-- **밸런스** — 밥 쿨타임, 후원금, 건강 증가량, 구조 비용, 함께 다닐 수 있는 마릿수,
-  레벨당 커지는 비율.
-- **새 고양이 추가** — `Breeds` 테이블에 `Id`/`Name`/`Price`/`Story`/색 두 개를
-  넣으면 상점·구조 목록·엔딩 조건에 자동으로 반영됩니다.
-
-## 다음에 추가해볼 만한 아이디어
-
-- 🥚 알 뽑기(가챠): 확률로 희귀 고양이 등장
-- ✨ 희귀도 등급과 반짝이 이펙트 (ParticleEmitter)
-- 🏆 리더보드: 서버 전체 코인 랭킹 (OrderedDataStore)
-- 🎾 장난감/간식 아이템, 고양이 쓰다듬기 애니메이션
-- 🏠 고양이 집 꾸미기, 친구 고양이 구경하기
-- 💎 Robux 게임패스 (코인 2배, 슬롯 확장)
+*File > Game Settings > Security* → **Enable Studio Access to API Services**
+(게임을 게시해야 활성화됨). 꺼도 플레이는 정상, 저장만 안 됩니다.
 
 ## 파일 구조
 
 ```
 roblox-cat-game/
-├── build/
-│   ├── CatGame-v4.rbxl           ← 공유·다운로드용 (바이너리, 링크 클릭 시 바로 받아짐)
-│   ├── CatGame-v4.rbxlx          ← 같은 내용의 XML 버전 (git diff가 읽힘)
-│   └── CatGame-v1~v3.*          ← 이전 버전 (기존 링크가 깨지지 않게 남겨둠)
+├── build/CatGame-v5.rbxl         ← 공유·다운로드용 (v1~v4도 남겨둠)
 ├── default.project.json          ← Rojo 프로젝트 설정
 ├── src/
-│   ├── ReplicatedStorage/CatConfig.lua              (밸런스·품종 설정)
-│   ├── ServerScriptService/CatGameServer.server.lua (서버 게임 로직)
-│   ├── ServerScriptService/CharacterSetup.server.lua (파츠로 만든 플레이어 캐릭터)
-│   ├── ServerScriptService/Shelter.server.lua        (쉼터 건물·마당·울타리)
-│   ├── StarterPlayerScripts/CatGameClient.client.lua (UI)
-│   ├── StarterPlayerScripts/CatTutorial.client.lua   (첫 접속 4단계 튜토리얼)
-│   └── StarterCharacterScripts/Animate.client.lua    (에셋 없는 걷기 동작)
+│   ├── ReplicatedStorage/CatConfig.lua               (모든 수치·고양이·구역)
+│   ├── ReplicatedStorage/BigNumber.lua               (1.23K 표기)
+│   ├── ServerScriptService/CatGameServer.server.lua  (데이터·고양이·뽑기·환생)
+│   ├── ServerScriptService/Breakables.server.lua     (부수기 루프)
+│   ├── ServerScriptService/World.server.lua          (구역 5곳 건설)
+│   ├── ServerScriptService/CharacterSetup.server.lua (파츠로 만든 캐릭터)
+│   ├── StarterPlayerScripts/CatGameClient.client.lua (HUD·패널)
+│   ├── StarterPlayerScripts/CatTutorial.client.lua   (4단계 튜토리얼)
+│   └── StarterCharacterScripts/Animate.client.lua    (에셋 없는 걷기)
+├── tests/
+│   ├── main.luau                 ← 시나리오 + 자동 플레이어
+│   ├── mock/roblox.luau          ← 로블록스 API 흉내
+│   └── runner/                   ← Luau VM 런처 (Rust)
 └── tools/
-    ├── build.sh                  ← .rbxlx + .rbxl 한 번에 빌드
-    ├── build_rbxlx.py            ← 스크립트를 XML place로 묶기
-    └── rbxlx2rbxl/               ← .rbxlx → .rbxl 변환기 (Rust)
+    ├── build.sh                  ← .rbxlx + .rbxl 빌드
+    ├── build_rbxlx.py            ← XML place 조립
+    └── rbxlx2rbxl/               ← XML → 바이너리 변환기
 ```
+
+## 다음에 붙일 만한 것
+
+- 🎰 10연 뽑기, 뽑기 연출 화면
+- 🏆 서버 랭킹 (OrderedDataStore)
+- 🎒 인벤토리 정렬·잠금·대량 합성
+- 💎 다이아 / 게임패스 (코인 2배, 슬롯 확장, 자동 뽑기)
+- 🐣 시즌 한정 고양이, 이벤트 구역

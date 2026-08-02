@@ -231,8 +231,21 @@ local UDimLib = { new = function(scale, offset) return { Scale = scale or 0, Off
 -- 주의: 테이블 안에서 자기 자신을 참조하려면 먼저 선언해야 한다.
 -- (Lua에서 `local t = { f = function() return t.g() end }` 의 t는 전역 nil이다)
 local UDim2Lib = {}
+
+-- 로블록스의 UDim2는 더하기/빼기가 된다 (UI를 조금씩 움직일 때 쓴다)
+local UDim2MT = {}
+UDim2MT.__index = UDim2MT
+UDim2MT.__add = function(a, b)
+	return UDim2Lib.new(a.X.Scale + b.X.Scale, a.X.Offset + b.X.Offset,
+		a.Y.Scale + b.Y.Scale, a.Y.Offset + b.Y.Offset)
+end
+UDim2MT.__sub = function(a, b)
+	return UDim2Lib.new(a.X.Scale - b.X.Scale, a.X.Offset - b.X.Offset,
+		a.Y.Scale - b.Y.Scale, a.Y.Offset - b.Y.Offset)
+end
+
 UDim2Lib.new = function(xs, xo, ys, yo)
-	return { X = UDimLib.new(xs, xo), Y = UDimLib.new(ys, yo) }
+	return setmetatable({ X = UDimLib.new(xs, xo), Y = UDimLib.new(ys, yo) }, UDim2MT)
 end
 UDim2Lib.fromOffset = function(x, y) return UDim2Lib.new(0, x, 0, y) end
 UDim2Lib.fromScale = function(x, y) return UDim2Lib.new(x, 0, y, 0) end

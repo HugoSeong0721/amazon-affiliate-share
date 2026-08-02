@@ -1,0 +1,2582 @@
+<roblox version="4">
+  <Item class="Workspace" referent="RBX0">
+    <Properties>
+      <string name="Name">Workspace</string>
+    </Properties>
+    <Item class="Part" referent="RBX1">
+      <Properties>
+        <string name="Name">Baseplate</string>
+        <bool name="Anchored">true</bool>
+        <bool name="Locked">true</bool>
+        <Vector3 name="size">
+          <X>420</X>
+          <Y>20</Y>
+          <Z>900</Z>
+        </Vector3>
+        <CoordinateFrame name="CFrame">
+          <X>0</X>
+          <Y>-10</Y>
+          <Z>-260</Z>
+          <R00>1</R00>
+          <R01>0</R01>
+          <R02>0</R02>
+          <R10>0</R10>
+          <R11>1</R11>
+          <R12>0</R12>
+          <R20>0</R20>
+          <R21>0</R21>
+          <R22>1</R22>
+        </CoordinateFrame>
+        <Color3uint8 name="Color3uint8">4285179983</Color3uint8>
+        <token name="TopSurface">0</token>
+        <token name="BottomSurface">0</token>
+      </Properties>
+    </Item>
+    <Item class="SpawnLocation" referent="RBX2">
+      <Properties>
+        <string name="Name">SpawnLocation</string>
+        <bool name="Anchored">true</bool>
+        <Vector3 name="size">
+          <X>12</X>
+          <Y>1</Y>
+          <Z>12</Z>
+        </Vector3>
+        <CoordinateFrame name="CFrame">
+          <X>0</X>
+          <Y>0.5</Y>
+          <Z>0</Z>
+          <R00>1</R00>
+          <R01>0</R01>
+          <R02>0</R02>
+          <R10>0</R10>
+          <R11>1</R11>
+          <R12>0</R12>
+          <R20>0</R20>
+          <R21>0</R21>
+          <R22>1</R22>
+        </CoordinateFrame>
+        <Color3uint8 name="Color3uint8">4294956677</Color3uint8>
+        <token name="TopSurface">0</token>
+        <token name="BottomSurface">0</token>
+      </Properties>
+    </Item>
+  </Item>
+  <Item class="ReplicatedStorage" referent="RBX3">
+    <Properties>
+      <string name="Name">ReplicatedStorage</string>
+    </Properties>
+    <Item class="ModuleScript" referent="RBX4">
+      <Properties>
+        <string name="Name">CatConfig</string>
+        <ProtectedString name="Source">-- CatConfig (ModuleScript / ReplicatedStorage)
+--
+-- 게임의 모든 수치와 내용이 여기 모여 있다.
+--
+-- 게임 구조는 Pet Simulator 계열을 따른다:
+--   고양이가 주변 물건을 자동으로 부순다 → 코인이 나온다
+--   → 코인으로 상자를 열어 더 센 고양이를 뽑는다
+--   → 센 고양이로 더 좋은 구역을 해금한다 → 반복
+--   → 끝까지 가면 환생해서 영구 배율을 얻고 다시 시작한다
+
+local CatConfig = {}
+
+---------------------------------------------------------------
+-- 기본 규칙
+---------------------------------------------------------------
+CatConfig.MaxEquipped = 4 -- 동시에 데리고 다니는 고양이 수
+CatConfig.StartCoins = 0
+CatConfig.AttackInterval = 0.25 -- 고양이가 물건을 때리는 주기(초)
+CatConfig.AttackRange = 26 -- 이 거리 안의 물건만 때린다
+CatConfig.RebirthPowerBonus = 0.25 -- 환생 1회당 파워 +25%
+
+---------------------------------------------------------------
+-- 등급
+---------------------------------------------------------------
+CatConfig.Rarities = {
+	Common = { Name = "일반", Color = Color3.fromRGB(178, 178, 178), Order = 1 },
+	Uncommon = { Name = "고급", Color = Color3.fromRGB(108, 196, 118), Order = 2 },
+	Rare = { Name = "희귀", Color = Color3.fromRGB(86, 152, 232), Order = 3 },
+	Epic = { Name = "영웅", Color = Color3.fromRGB(170, 110, 226), Order = 4 },
+	Legendary = { Name = "전설", Color = Color3.fromRGB(255, 186, 58), Order = 5 },
+}
+
+---------------------------------------------------------------
+-- 고양이
+--   Power = 초당 부수는 힘. 이 숫자가 게임의 전부다.
+---------------------------------------------------------------
+CatConfig.Cats = {
+	{ Id = "Cheese", Name = "치즈냥이", Rarity = "Common", Power = 5,
+	  Body = Color3.fromRGB(255, 184, 82), Accent = Color3.fromRGB(255, 231, 171) },
+	{ Id = "Tabby", Name = "고등어냥이", Rarity = "Common", Power = 9,
+	  Body = Color3.fromRGB(128, 134, 142), Accent = Color3.fromRGB(78, 84, 92) },
+	{ Id = "Black", Name = "까망냥이", Rarity = "Uncommon", Power = 22,
+	  Body = Color3.fromRGB(48, 48, 58), Accent = Color3.fromRGB(95, 95, 110) },
+	{ Id = "White", Name = "하양냥이", Rarity = "Uncommon", Power = 55,
+	  Body = Color3.fromRGB(242, 242, 242), Accent = Color3.fromRGB(255, 195, 207) },
+	{ Id = "Calico", Name = "삼색냥이", Rarity = "Rare", Power = 200,
+	  Body = Color3.fromRGB(232, 227, 214), Accent = Color3.fromRGB(154, 92, 42) },
+	{ Id = "Tuxedo", Name = "턱시도냥이", Rarity = "Rare", Power = 480,
+	  Body = Color3.fromRGB(32, 32, 38), Accent = Color3.fromRGB(248, 248, 248) },
+	{ Id = "Siamese", Name = "샴냥이", Rarity = "Epic", Power = 2200,
+	  Body = Color3.fromRGB(232, 214, 186), Accent = Color3.fromRGB(92, 66, 54) },
+	{ Id = "Bengal", Name = "벵갈냥이", Rarity = "Epic", Power = 5500,
+	  Body = Color3.fromRGB(214, 158, 74), Accent = Color3.fromRGB(70, 52, 32) },
+	{ Id = "Golden", Name = "황금냥이", Rarity = "Legendary", Power = 30000,
+	  Body = Color3.fromRGB(255, 199, 44), Accent = Color3.fromRGB(255, 240, 130) },
+	{ Id = "Rainbow", Name = "무지개냥이", Rarity = "Legendary", Power = 120000,
+	  Body = Color3.fromRGB(255, 126, 182), Accent = Color3.fromRGB(126, 214, 255) },
+}
+
+function CatConfig.GetCat(id)
+	for _, cat in ipairs(CatConfig.Cats) do
+		if cat.Id == id then
+			return cat
+		end
+	end
+	return nil
+end
+
+-- 같은 고양이 3마리를 합치면 골든이 된다 (파워 5배)
+CatConfig.FuseCount = 3
+CatConfig.GoldenMultiplier = 5
+
+function CatConfig.PowerOf(entry)
+	local cat = CatConfig.GetCat(entry.Id)
+	if not cat then
+		return 0
+	end
+	return cat.Power * (entry.Golden and CatConfig.GoldenMultiplier or 1)
+end
+
+---------------------------------------------------------------
+-- 구역
+--   부술 물건의 체력과 보상이 구역마다 한 단계씩 뛴다.
+--   해금 비용은 "이전 구역에서 잠깐 모으면 닿는" 수준으로 잡았다.
+---------------------------------------------------------------
+CatConfig.Zones = {
+	{
+		Id = "Yard", Name = "우리집 마당", UnlockCost = 0,
+		Origin = Vector3.new(0, 0, 0),
+		BreakableHp = 10, Reward = 8, BreakableCount = 10,
+		EggName = "낡은 상자", EggCost = 50,
+		EggPool = { Cheese = 70, Tabby = 25, Black = 5 },
+	},
+	{
+		Id = "Alley", Name = "뒷골목", UnlockCost = 320,
+		Origin = Vector3.new(0, 0, -130),
+		BreakableHp = 400, Reward = 60, BreakableCount = 12,
+		EggName = "종이 상자", EggCost = 300,
+		EggPool = { Tabby = 45, Black = 35, White = 18, Calico = 2 },
+	},
+	{
+		Id = "Park", Name = "공원", UnlockCost = 2400,
+		Origin = Vector3.new(0, 0, -260),
+		BreakableHp = 1600, Reward = 900, BreakableCount = 14,
+		EggName = "소풍 바구니", EggCost = 4500,
+		EggPool = { White = 40, Calico = 35, Tuxedo = 22, Siamese = 3 },
+	},
+	{
+		Id = "Harbor", Name = "항구", UnlockCost = 36000,
+		Origin = Vector3.new(0, 0, -390),
+		BreakableHp = 12000, Reward = 14000, BreakableCount = 16,
+		EggName = "생선 궤짝", EggCost = 70000,
+		EggPool = { Tuxedo = 38, Siamese = 36, Bengal = 24, Golden = 2 },
+	},
+	{
+		Id = "Rooftop", Name = "달빛 옥상", UnlockCost = 560000,
+		Origin = Vector3.new(0, 0, -520),
+		BreakableHp = 100000, Reward = 220000, BreakableCount = 18,
+		EggName = "별빛 상자", EggCost = 1100000,
+		EggPool = { Bengal = 45, Golden = 40, Rainbow = 15 },
+	},
+}
+
+function CatConfig.GetZone(id)
+	for index, zone in ipairs(CatConfig.Zones) do
+		if zone.Id == id then
+			return zone, index
+		end
+	end
+	return nil, nil
+end
+
+CatConfig.BreakableRespawn = 3 -- 부순 물건이 다시 나타나기까지(초)
+
+-- 구역마다 부술 물건의 생김새
+CatConfig.BreakableSkins = {
+	Yard = { Name = "털뭉치", Color = Color3.fromRGB(226, 142, 168), Size = 3.2 },
+	Alley = { Name = "사료 포대", Color = Color3.fromRGB(178, 148, 96), Size = 3.6 },
+	Park = { Name = "장난감 상자", Color = Color3.fromRGB(126, 186, 232), Size = 4.0 },
+	Harbor = { Name = "생선 궤짝", Color = Color3.fromRGB(122, 158, 148), Size = 4.4 },
+	Rooftop = { Name = "별조각", Color = Color3.fromRGB(214, 178, 255), Size = 4.8 },
+}
+
+---------------------------------------------------------------
+-- 환생
+---------------------------------------------------------------
+CatConfig.RebirthCost = 50000000 -- 마지막 구역을 열고 이만큼 더 모으면 환생 가능
+
+---------------------------------------------------------------
+-- 이야기 (안내창에 쓰인다)
+---------------------------------------------------------------
+CatConfig.Intro = {
+	"고양이들은 부술 게 있으면 못 참습니다.",
+	"털뭉치든 상자든, 눈에 띄면 일단 달려들죠.",
+	"그 습성을 이용해 온 동네의 물건을 부수고 코인을 모으세요.",
+}
+CatConfig.IntroGoal = "더 센 고양이를 뽑아서, 달빛 옥상까지 올라가는 게 목표예요."
+
+return CatConfig
+</ProtectedString>
+      </Properties>
+    </Item>
+    <Item class="ModuleScript" referent="RBX5">
+      <Properties>
+        <string name="Name">BigNumber</string>
+        <ProtectedString name="Source">-- BigNumber (ModuleScript / ReplicatedStorage)
+--
+-- Pet Simulator 계열 게임은 숫자가 금방 커진다.
+-- 1234567 을 "1.23M" 처럼 읽기 좋게 줄여준다.
+
+local BigNumber = {}
+
+local SUFFIXES = {
+	{ 1e33, "De" }, -- 데실리언
+	{ 1e30, "No" },
+	{ 1e27, "Oc" },
+	{ 1e24, "Sp" },
+	{ 1e21, "Sx" },
+	{ 1e18, "Qi" },
+	{ 1e15, "Qa" },
+	{ 1e12, "T" }, -- 조
+	{ 1e9, "B" }, -- 십억
+	{ 1e6, "M" }, -- 백만
+	{ 1e3, "K" }, -- 천
+}
+
+-- 1234 → "1.23K",  999 → "999",  12300000 → "12.3M"
+function BigNumber.Short(value)
+	value = tonumber(value) or 0
+	local sign = value &lt; 0 and "-" or ""
+	local amount = math.abs(value)
+
+	if amount &lt; 1000 then
+		return sign .. tostring(math.floor(amount))
+	end
+
+	for _, entry in ipairs(SUFFIXES) do
+		local threshold, suffix = entry[1], entry[2]
+		if amount &gt;= threshold then
+			local scaled = amount / threshold
+			-- 자릿수에 따라 소수점을 줄여 항상 4글자 안팎으로 유지
+			local text
+			if scaled &lt; 10 then
+				text = string.format("%.2f", scaled)
+			elseif scaled &lt; 100 then
+				text = string.format("%.1f", scaled)
+			else
+				text = string.format("%.0f", scaled)
+			end
+			-- 1.00K 처럼 의미 없는 0은 지운다
+			text = text:gsub("%.?0+$", "")
+			return sign .. text .. suffix
+		end
+	end
+
+	return sign .. tostring(math.floor(amount))
+end
+
+return BigNumber
+</ProtectedString>
+      </Properties>
+    </Item>
+  </Item>
+  <Item class="ServerScriptService" referent="RBX6">
+    <Properties>
+      <string name="Name">ServerScriptService</string>
+    </Properties>
+    <Item class="Script" referent="RBX7">
+      <Properties>
+        <string name="Name">CatGameServer</string>
+        <ProtectedString name="Source">-- CatGameServer (Script / ServerScriptService)
+--
+-- 플레이어 데이터와 고양이를 담당한다.
+--   · 저장/불러오기
+--   · 고양이 장착(최대 4마리)과 따라다니기
+--   · 상자 뽑기, 합성, 구역 해금, 환생
+--   · 총 파워를 계산해서 Breakables 스크립트가 읽을 수 있게 올려둔다
+--
+-- 물건을 실제로 부수는 건 Breakables.server.lua 가 한다.
+
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local DataStoreService = game:GetService("DataStoreService")
+local RunService = game:GetService("RunService")
+
+local CatConfig = require(ReplicatedStorage:WaitForChild("CatConfig"))
+
+---------------------------------------------------------------
+-- 리모트
+---------------------------------------------------------------
+local remotes = Instance.new("Folder")
+remotes.Name = "CatGameRemotes"
+
+local function makeRemote(name)
+	local remote = Instance.new("RemoteEvent")
+	remote.Name = name
+	remote.Parent = remotes
+	return remote
+end
+
+local hatchRemote = makeRemote("HatchEgg")
+local toggleEquipRemote = makeRemote("ToggleEquip")
+local fuseRemote = makeRemote("FuseCats")
+local unlockZoneRemote = makeRemote("UnlockZone")
+local rebirthRemote = makeRemote("Rebirth")
+local requestDataRemote = makeRemote("RequestData")
+local completeTutorialRemote = makeRemote("CompleteTutorial")
+
+local dataChangedRemote = makeRemote("DataChanged")
+local notifyRemote = makeRemote("Notify")
+local hatchResultRemote = makeRemote("HatchResult") -- 뽑기 연출용
+local rewardRemote = makeRemote("Reward") -- 물건을 부쉈을 때 튀는 숫자
+remotes.Parent = ReplicatedStorage
+
+---------------------------------------------------------------
+-- 저장
+---------------------------------------------------------------
+local dataStore
+pcall(function()
+	dataStore = DataStoreService:GetDataStore("CatSim_v1")
+end)
+
+local profiles = {}
+
+local function newProfile()
+	return {
+		Coins = CatConfig.StartCoins,
+		Cats = { { Uid = 1, Id = "Cheese", Golden = false } },
+		NextUid = 2,
+		Equipped = { 1 },
+		Zones = { Yard = true },
+		Rebirths = 0,
+		TutorialDone = false,
+	}
+end
+
+local function isValidProfile(data)
+	return type(data) == "table"
+		and type(data.Coins) == "number"
+		and type(data.Cats) == "table" and #data.Cats &gt; 0
+		and type(data.Equipped) == "table"
+		and type(data.Zones) == "table"
+end
+
+local function loadProfile(player)
+	if dataStore then
+		local ok, saved = pcall(function()
+			return dataStore:GetAsync("p_" .. player.UserId)
+		end)
+		if ok and isValidProfile(saved) then
+			saved.Rebirths = saved.Rebirths or 0
+			saved.NextUid = saved.NextUid or (#saved.Cats + 1)
+			return saved
+		end
+	end
+	return newProfile()
+end
+
+local function saveProfile(player)
+	local profile = profiles[player]
+	if not (dataStore and profile) then
+		return
+	end
+	pcall(function()
+		dataStore:SetAsync("p_" .. player.UserId, {
+			Coins = profile.Coins,
+			Cats = profile.Cats,
+			NextUid = profile.NextUid,
+			Equipped = profile.Equipped,
+			Zones = profile.Zones,
+			Rebirths = profile.Rebirths,
+			TutorialDone = profile.TutorialDone,
+		})
+	end)
+end
+
+---------------------------------------------------------------
+-- 계산
+---------------------------------------------------------------
+local function findCat(profile, uid)
+	for index, entry in ipairs(profile.Cats) do
+		if entry.Uid == uid then
+			return entry, index
+		end
+	end
+	return nil, nil
+end
+
+local function isEquipped(profile, uid)
+	for _, equippedUid in ipairs(profile.Equipped) do
+		if equippedUid == uid then
+			return true
+		end
+	end
+	return false
+end
+
+-- 새로 얻은 고양이를 알아서 끼워준다.
+-- 자리가 있으면 그냥 넣고, 꽉 찼으면 가장 약한 아이와 바꾼다.
+-- (이게 없으면 처음 하는 사람은 4마리를 채운 뒤 파워가 영영 안 오른다)
+local function tryAutoEquip(profile, entry)
+	if #profile.Equipped &lt; CatConfig.MaxEquipped then
+		table.insert(profile.Equipped, entry.Uid)
+		return true
+	end
+
+	local weakestIndex, weakestPower = nil, math.huge
+	for index, uid in ipairs(profile.Equipped) do
+		local equipped = findCat(profile, uid)
+		local equippedPower = equipped and CatConfig.PowerOf(equipped) or 0
+		if equippedPower &lt; weakestPower then
+			weakestIndex, weakestPower = index, equippedPower
+		end
+	end
+
+	if weakestIndex and CatConfig.PowerOf(entry) &gt; weakestPower then
+		profile.Equipped[weakestIndex] = entry.Uid
+		return true
+	end
+	return false
+end
+
+local function rebirthMultiplier(profile)
+	return 1 + profile.Rebirths * CatConfig.RebirthPowerBonus
+end
+
+local function totalPower(profile)
+	local power = 0
+	for _, uid in ipairs(profile.Equipped) do
+		local entry = findCat(profile, uid)
+		if entry then
+			power += CatConfig.PowerOf(entry)
+		end
+	end
+	return power * rebirthMultiplier(profile)
+end
+
+-- 해금한 구역 중 플레이어와 가장 가까운 곳
+local function currentZone(player, profile)
+	local character = player.Character
+	local rootPart = character and character:FindFirstChild("HumanoidRootPart")
+	local position = rootPart and rootPart.Position or Vector3.new(0, 0, 0)
+
+	local best, bestDistance = nil, math.huge
+	for _, zone in ipairs(CatConfig.Zones) do
+		if profile.Zones[zone.Id] then
+			local distance = (zone.Origin - Vector3.new(position.X, 0, position.Z)).Magnitude
+			if distance &lt; bestDistance then
+				best, bestDistance = zone, distance
+			end
+		end
+	end
+	return best or CatConfig.Zones[1]
+end
+
+---------------------------------------------------------------
+-- 고양이 모델 (파츠로 조립. 에셋을 쓰지 않는다)
+---------------------------------------------------------------
+local function buildCatModel(player, entry)
+	local cat = CatConfig.GetCat(entry.Id)
+	local scale = entry.Golden and 1.35 or 1
+	local body = entry.Golden and Color3.fromRGB(255, 214, 92) or cat.Body
+	local accent = entry.Golden and Color3.fromRGB(255, 246, 196) or cat.Accent
+
+	local model = Instance.new("Model")
+	model.Name = cat.Name
+	model:SetAttribute("CatOwnerUserId", player.UserId)
+	model:SetAttribute("CatUid", entry.Uid)
+
+	local function addPart(name, size, color, offset)
+		local part = Instance.new("Part")
+		part.Name = name
+		part.Size = size * scale
+		part.Color = color
+		part.Material = entry.Golden and Enum.Material.Metal or Enum.Material.SmoothPlastic
+		part.Anchored = true
+		part.CanCollide = false
+		part.CanQuery = false
+		part.CastShadow = false
+		part.CFrame = CFrame.new(offset * scale)
+		part.Parent = model
+		return part
+	end
+
+	local dark = Color3.fromRGB(25, 25, 25)
+	local torso = addPart("Body", Vector3.new(1.5, 1.1, 2.1), body, Vector3.new(0, 0, 0))
+	addPart("Head", Vector3.new(1.2, 1.0, 1.0), body, Vector3.new(0, 0.75, -1.2))
+	addPart("LeftEar", Vector3.new(0.3, 0.45, 0.18), accent, Vector3.new(-0.35, 1.4, -1.2))
+	addPart("RightEar", Vector3.new(0.3, 0.45, 0.18), accent, Vector3.new(0.35, 1.4, -1.2))
+	addPart("Tail", Vector3.new(0.25, 0.25, 1.2), accent, Vector3.new(0, 0.55, 1.5))
+	addPart("LeftEye", Vector3.new(0.16, 0.24, 0.06), dark, Vector3.new(-0.28, 0.88, -1.71))
+	addPart("RightEye", Vector3.new(0.16, 0.24, 0.06), dark, Vector3.new(0.28, 0.88, -1.71))
+	addPart("Nose", Vector3.new(0.2, 0.12, 0.06), Color3.fromRGB(255, 120, 140), Vector3.new(0, 0.62, -1.71))
+	model.PrimaryPart = torso
+
+	local tag = Instance.new("BillboardGui")
+	tag.Name = "NameTag"
+	tag.Size = UDim2.fromOffset(190, 40)
+	tag.StudsOffset = Vector3.new(0, 2.4 * scale, 0)
+	tag.AlwaysOnTop = true
+	tag.Parent = torso
+
+	local label = Instance.new("TextLabel")
+	label.Size = UDim2.fromScale(1, 1)
+	label.BackgroundTransparency = 1
+	label.Text = (entry.Golden and "✨ " or "") .. cat.Name
+	label.TextColor3 = CatConfig.Rarities[cat.Rarity].Color
+	label.TextStrokeTransparency = 0.3
+	label.TextScaled = true
+	label.Font = Enum.Font.GothamBold
+	label.Parent = tag
+
+	return model
+end
+
+local function clearCatModels(player)
+	local profile = profiles[player]
+	if not profile then
+		return
+	end
+	for _, model in pairs(profile.models or {}) do
+		model:Destroy()
+	end
+	profile.models = {}
+end
+
+local function refreshCatModels(player)
+	local profile = profiles[player]
+	if not profile then
+		return
+	end
+	clearCatModels(player)
+
+	local character = player.Character
+	local rootPart = character and character:FindFirstChild("HumanoidRootPart")
+	if not rootPart then
+		return
+	end
+
+	for slot, uid in ipairs(profile.Equipped) do
+		local entry = findCat(profile, uid)
+		if entry then
+			local model = buildCatModel(player, entry)
+			model:PivotTo(CFrame.new(rootPart.Position + Vector3.new(0, 1, 2 + slot)))
+			model.Parent = workspace
+			profile.models[uid] = model
+		end
+	end
+end
+
+---------------------------------------------------------------
+-- 클라이언트로 보내기
+---------------------------------------------------------------
+local function pushData(player)
+	local profile = profiles[player]
+	if not profile then
+		return
+	end
+
+	local power = totalPower(profile)
+	player:SetAttribute("TotalPower", power)
+	player:SetAttribute("ZoneId", currentZone(player, profile).Id)
+
+	local stats = player:FindFirstChild("leaderstats")
+	if stats then
+		stats["코인"].Value = math.min(profile.Coins, 2 ^ 31 - 1)
+		stats["환생"].Value = profile.Rebirths
+	end
+
+	dataChangedRemote:FireClient(player, {
+		Coins = profile.Coins,
+		Cats = profile.Cats,
+		Equipped = profile.Equipped,
+		Zones = profile.Zones,
+		Rebirths = profile.Rebirths,
+		TutorialDone = profile.TutorialDone,
+		Power = power,
+	})
+end
+
+-- Breakables 스크립트가 부순 결과를 알려줄 때 부른다
+local function awardCoins(player, amount)
+	local profile = profiles[player]
+	if not profile then
+		return
+	end
+	profile.Coins += amount
+	rewardRemote:FireClient(player, amount)
+	pushData(player)
+end
+
+-- 다른 서버 스크립트(Breakables, World)가 쓰는 창구.
+-- 아래에서 정의되는 함수들은 나중에 채워 넣는다.
+_G.CatGame = {
+	AwardCoins = awardCoins,
+	CurrentZone = function(player)
+		local profile = profiles[player]
+		return profile and currentZone(player, profile) or nil
+	end,
+	GetProfile = function(player)
+		return profiles[player]
+	end,
+}
+
+---------------------------------------------------------------
+-- 상자 뽑기
+---------------------------------------------------------------
+local function rollFromPool(pool)
+	local total = 0
+	for _, weight in pairs(pool) do
+		total += weight
+	end
+	local roll = math.random() * total
+	local accumulated = 0
+	local fallback = nil
+	for catId, weight in pairs(pool) do
+		fallback = fallback or catId
+		accumulated += weight
+		if roll &lt;= accumulated then
+			return catId
+		end
+	end
+	return fallback
+end
+
+-- 월드의 상자 앞에서 E를 눌러도, UI 버튼을 눌러도 같은 함수를 탄다
+local function doHatch(player, zoneId, count)
+	local profile = profiles[player]
+	if not profile then
+		return
+	end
+	local zone = CatConfig.GetZone(zoneId)
+	if not zone or not profile.Zones[zone.Id] then
+		notifyRemote:FireClient(player, "아직 열지 않은 구역이에요")
+		return
+	end
+
+	count = math.clamp(tonumber(count) or 1, 1, 10)
+	local cost = zone.EggCost * count
+	if profile.Coins &lt; cost then
+		notifyRemote:FireClient(player, ("코인이 부족해요 (%d 필요)"):format(cost))
+		return
+	end
+
+	profile.Coins -= cost
+	local hatched = {}
+	for _ = 1, count do
+		local catId = rollFromPool(zone.EggPool)
+		local entry = { Uid = profile.NextUid, Id = catId, Golden = false }
+		profile.NextUid += 1
+		table.insert(profile.Cats, entry)
+		table.insert(hatched, catId)
+
+		tryAutoEquip(profile, entry)
+	end
+
+	hatchResultRemote:FireClient(player, hatched)
+	refreshCatModels(player)
+	pushData(player)
+end
+
+hatchRemote.OnServerEvent:Connect(doHatch)
+
+---------------------------------------------------------------
+-- 장착 / 합성
+---------------------------------------------------------------
+toggleEquipRemote.OnServerEvent:Connect(function(player, uid)
+	local profile = profiles[player]
+	if not profile or type(uid) ~= "number" then
+		return
+	end
+	if not findCat(profile, uid) then
+		return
+	end
+
+	if isEquipped(profile, uid) then
+		for index, equippedUid in ipairs(profile.Equipped) do
+			if equippedUid == uid then
+				table.remove(profile.Equipped, index)
+				break
+			end
+		end
+	else
+		if #profile.Equipped &gt;= CatConfig.MaxEquipped then
+			notifyRemote:FireClient(player, ("고양이는 최대 %d마리까지 데리고 다닐 수 있어요"):format(CatConfig.MaxEquipped))
+			return
+		end
+		table.insert(profile.Equipped, uid)
+	end
+
+	refreshCatModels(player)
+	pushData(player)
+end)
+
+-- 같은 종류의 일반 고양이 3마리 → 골든 1마리
+fuseRemote.OnServerEvent:Connect(function(player, catId)
+	local profile = profiles[player]
+	if not profile or type(catId) ~= "string" then
+		return
+	end
+
+	local matches = {}
+	for _, entry in ipairs(profile.Cats) do
+		if entry.Id == catId and not entry.Golden then
+			table.insert(matches, entry.Uid)
+			if #matches == CatConfig.FuseCount then
+				break
+			end
+		end
+	end
+
+	if #matches &lt; CatConfig.FuseCount then
+		notifyRemote:FireClient(player, ("합성하려면 같은 고양이 %d마리가 필요해요"):format(CatConfig.FuseCount))
+		return
+	end
+
+	local removing = {}
+	for _, uid in ipairs(matches) do
+		removing[uid] = true
+	end
+
+	for index = #profile.Cats, 1, -1 do
+		if removing[profile.Cats[index].Uid] then
+			table.remove(profile.Cats, index)
+		end
+	end
+	for index = #profile.Equipped, 1, -1 do
+		if removing[profile.Equipped[index]] then
+			table.remove(profile.Equipped, index)
+		end
+	end
+
+	local golden = { Uid = profile.NextUid, Id = catId, Golden = true }
+	profile.NextUid += 1
+	table.insert(profile.Cats, golden)
+	tryAutoEquip(profile, golden)
+
+	notifyRemote:FireClient(player, ("✨ 골든 %s 완성! 파워 %d배"):format(
+		CatConfig.GetCat(catId).Name, CatConfig.GoldenMultiplier))
+	refreshCatModels(player)
+	pushData(player)
+end)
+
+---------------------------------------------------------------
+-- 구역 해금 / 환생
+---------------------------------------------------------------
+local function doUnlockZone(player, zoneId)
+	local profile = profiles[player]
+	if not profile or type(zoneId) ~= "string" then
+		return
+	end
+	local zone, index = CatConfig.GetZone(zoneId)
+	if not zone or profile.Zones[zone.Id] then
+		return
+	end
+
+	-- 바로 앞 구역부터 순서대로만 열 수 있다
+	local previous = CatConfig.Zones[index - 1]
+	if previous and not profile.Zones[previous.Id] then
+		notifyRemote:FireClient(player, ("먼저 %s를 열어야 해요"):format(previous.Name))
+		return
+	end
+
+	if profile.Coins &lt; zone.UnlockCost then
+		notifyRemote:FireClient(player, ("%s는 %d 코인이 필요해요"):format(zone.Name, zone.UnlockCost))
+		return
+	end
+
+	profile.Coins -= zone.UnlockCost
+	profile.Zones[zone.Id] = true
+	notifyRemote:FireClient(player, ("🔓 %s 해금! 더 단단한 물건이 기다려요"):format(zone.Name))
+	pushData(player)
+end
+
+unlockZoneRemote.OnServerEvent:Connect(doUnlockZone)
+
+rebirthRemote.OnServerEvent:Connect(function(player)
+	local profile = profiles[player]
+	if not profile then
+		return
+	end
+	local lastZone = CatConfig.Zones[#CatConfig.Zones]
+	if not profile.Zones[lastZone.Id] then
+		notifyRemote:FireClient(player, ("환생하려면 먼저 %s까지 열어야 해요"):format(lastZone.Name))
+		return
+	end
+	if profile.Coins &lt; CatConfig.RebirthCost then
+		notifyRemote:FireClient(player, ("환생에는 %d 코인이 필요해요"):format(CatConfig.RebirthCost))
+		return
+	end
+
+	-- 고양이는 그대로 두고, 코인과 구역만 초기화한다
+	profile.Coins = 0
+	profile.Zones = { Yard = true }
+	profile.Rebirths += 1
+
+	notifyRemote:FireClient(player, ("🌟 환생 %d회! 모든 고양이의 파워가 %d%% 늘었어요"):format(
+		profile.Rebirths, math.floor(profile.Rebirths * CatConfig.RebirthPowerBonus * 100)))
+	pushData(player)
+end)
+
+-- 월드에 설치된 상자/문에서도 부를 수 있게 열어둔다
+_G.CatGame.HatchEgg = doHatch
+_G.CatGame.UnlockZone = doUnlockZone
+
+requestDataRemote.OnServerEvent:Connect(pushData)
+
+completeTutorialRemote.OnServerEvent:Connect(function(player)
+	local profile = profiles[player]
+	if profile then
+		profile.TutorialDone = true
+	end
+end)
+
+---------------------------------------------------------------
+-- 고양이가 주인 주위를 맴돈다
+---------------------------------------------------------------
+local SLOT_OFFSETS = {
+	Vector3.new(-2.6, 1.2, 2.4),
+	Vector3.new(2.6, 1.2, 2.4),
+	Vector3.new(-1.4, 1.2, 4.0),
+	Vector3.new(1.4, 1.2, 4.0),
+}
+
+RunService.Heartbeat:Connect(function(dt)
+	local now = os.clock()
+	local alpha = 1 - math.exp(-dt * 6)
+	for player, profile in pairs(profiles) do
+		local character = player.Character
+		local rootPart = character and character:FindFirstChild("HumanoidRootPart")
+		if rootPart then
+			for slot, uid in ipairs(profile.Equipped) do
+				local model = profile.models and profile.models[uid]
+				if model and model.PrimaryPart then
+					local offset = SLOT_OFFSETS[(slot - 1) % #SLOT_OFFSETS + 1]
+					local bob = math.sin(now * 4 + slot * 1.7) * 0.3
+					local goal = CFrame.new(rootPart.Position + offset + Vector3.new(0, bob, 0))
+					model:PivotTo(model:GetPivot():Lerp(goal, alpha))
+				end
+			end
+		end
+	end
+end)
+
+---------------------------------------------------------------
+-- 현재 구역/파워를 주기적으로 갱신
+--
+-- 걸어서 다른 구역으로 넘어가면 현재 구역도 바뀌어야 한다.
+-- 이걸 "코인을 벌 때"에만 갱신하면 교착이 생긴다:
+--   구역을 옮김 → 아직 옛 구역으로 잡혀 있음 → 때릴 물건을 못 찾음
+--   → 코인을 못 범 → 갱신이 안 됨 → 영영 그대로
+---------------------------------------------------------------
+task.spawn(function()
+	while true do
+		task.wait(0.5)
+		for player, profile in pairs(profiles) do
+			player:SetAttribute("TotalPower", totalPower(profile))
+			player:SetAttribute("ZoneId", currentZone(player, profile).Id)
+		end
+	end
+end)
+
+---------------------------------------------------------------
+-- 입장 / 퇴장
+---------------------------------------------------------------
+local function onPlayerAdded(player)
+	local profile = loadProfile(player)
+	profile.models = {}
+	profiles[player] = profile
+
+	local stats = Instance.new("Folder")
+	stats.Name = "leaderstats"
+	local coins = Instance.new("IntValue")
+	coins.Name = "코인"
+	coins.Parent = stats
+	local rebirths = Instance.new("IntValue")
+	rebirths.Name = "환생"
+	rebirths.Parent = stats
+	stats.Parent = player
+
+	local function onCharacter(character)
+		character:WaitForChild("HumanoidRootPart", 10)
+		refreshCatModels(player)
+	end
+
+	player.CharacterAdded:Connect(onCharacter)
+	if player.Character then
+		task.spawn(onCharacter, player.Character)
+	end
+	pushData(player)
+end
+
+Players.PlayerAdded:Connect(onPlayerAdded)
+for _, player in ipairs(Players:GetPlayers()) do
+	task.spawn(onPlayerAdded, player)
+end
+
+Players.PlayerRemoving:Connect(function(player)
+	saveProfile(player)
+	clearCatModels(player)
+	profiles[player] = nil
+end)
+
+game:BindToClose(function()
+	for _, player in ipairs(Players:GetPlayers()) do
+		saveProfile(player)
+	end
+end)
+</ProtectedString>
+      </Properties>
+    </Item>
+    <Item class="Script" referent="RBX8">
+      <Properties>
+        <string name="Name">CharacterSetup</string>
+        <ProtectedString name="Source">-- CharacterSetup (Script / ServerScriptService)
+--
+-- 왜 이 스크립트가 필요한가
+--   게시(publish)하지 않은 place 파일은 PlaceId가 0이라서, 플레이 중 로블록스
+--   에셋 서버에 보내는 요청이 전부 거부된다(콘솔의 serverplaceid=0 오류).
+--   기본 아바타는 몸통이 MeshPart라 인터넷에서 받아와야 하는데, 그게 실패하면
+--   HumanoidRootPart만 남아 캐릭터가 통째로 안 보인다.
+--
+--   그래서 이 게임은 고양이와 마찬가지로 캐릭터도 파츠로 직접 조립한다.
+--   에셋을 하나도 받지 않으므로 게시 전에도, 오프라인에서도 항상 보인다.
+
+local Players = game:GetService("Players")
+local StarterPlayer = game:GetService("StarterPlayer")
+
+-- 우리가 만든 리그로만 스폰시킨다
+Players.CharacterAutoLoads = false
+StarterPlayer.LoadCharacterAppearance = false -- 옷·액세서리도 에셋이라 끈다
+
+local SKIN = Color3.fromRGB(253, 205, 106)
+local SHIRT = Color3.fromRGB(87, 141, 216)
+local PANTS = Color3.fromRGB(63, 74, 94)
+local EYE = Color3.fromRGB(20, 20, 20)
+local HALF = math.pi / 2
+
+---------------------------------------------------------------
+-- R6 규격 그대로의 블록 캐릭터를 만든다
+-- (파츠 이름·크기·관절 위치가 R6 표준이라 Humanoid가 그대로 인식한다)
+---------------------------------------------------------------
+local function buildStarterCharacter()
+	local model = Instance.new("Model")
+	model.Name = "StarterCharacter"
+
+	local function addPart(name, size, color, position)
+		local part = Instance.new("Part")
+		part.Name = name
+		part.Size = size
+		part.Color = color
+		part.Material = Enum.Material.SmoothPlastic
+		part.TopSurface = Enum.SurfaceType.Smooth
+		part.BottomSurface = Enum.SurfaceType.Smooth
+		part.CFrame = CFrame.new(position)
+		part.Parent = model
+		return part
+	end
+
+	local root = addPart("HumanoidRootPart", Vector3.new(2, 2, 1), SKIN, Vector3.new(0, 3, 0))
+	root.Transparency = 1
+	root.CanCollide = false
+
+	local torso = addPart("Torso", Vector3.new(2, 2, 1), SHIRT, Vector3.new(0, 3, 0))
+	local head = addPart("Head", Vector3.new(2, 1, 1), SKIN, Vector3.new(0, 4.5, 0))
+	local leftArm = addPart("Left Arm", Vector3.new(1, 2, 1), SKIN, Vector3.new(-1.5, 3, 0))
+	local rightArm = addPart("Right Arm", Vector3.new(1, 2, 1), SKIN, Vector3.new(1.5, 3, 0))
+	local leftLeg = addPart("Left Leg", Vector3.new(1, 2, 1), PANTS, Vector3.new(-0.5, 1, 0))
+	local rightLeg = addPart("Right Leg", Vector3.new(1, 2, 1), PANTS, Vector3.new(0.5, 1, 0))
+
+	-- 머리는 기본 아바타와 같은 둥근 모양 (내장 메시라 다운로드가 없다)
+	local headMesh = Instance.new("SpecialMesh")
+	headMesh.MeshType = Enum.MeshType.Head
+	headMesh.Scale = Vector3.new(1.25, 1.25, 1.25)
+	headMesh.Parent = head
+
+	-- 얼굴도 이미지(Decal)를 쓰면 에셋이 되므로 작은 파츠로 눈을 붙인다
+	for _, offsetX in ipairs({ -0.32, 0.32 }) do
+		local eye = Instance.new("Part")
+		eye.Name = "Eye"
+		eye.Size = Vector3.new(0.16, 0.2, 0.1)
+		eye.Color = EYE
+		eye.Material = Enum.Material.SmoothPlastic
+		eye.CanCollide = false
+		eye.Massless = true
+		eye.CFrame = head.CFrame * CFrame.new(offsetX, 0.12, -0.6)
+		eye.Parent = model
+
+		local weld = Instance.new("WeldConstraint")
+		weld.Part0 = head
+		weld.Part1 = eye
+		weld.Parent = eye
+	end
+
+	local function addMotor(name, part0, part1, c0, c1, parent)
+		local motor = Instance.new("Motor6D")
+		motor.Name = name
+		motor.Part0 = part0
+		motor.Part1 = part1
+		motor.C0 = c0
+		motor.C1 = c1
+		motor.Parent = parent
+	end
+
+	addMotor("RootJoint", root, torso,
+		CFrame.new(0, 0, 0) * CFrame.Angles(-HALF, 0, math.pi),
+		CFrame.new(0, 0, 0) * CFrame.Angles(-HALF, 0, math.pi), root)
+	addMotor("Neck", torso, head,
+		CFrame.new(0, 1, 0) * CFrame.Angles(-HALF, 0, math.pi),
+		CFrame.new(0, -0.5, 0) * CFrame.Angles(-HALF, 0, math.pi), torso)
+	addMotor("Right Shoulder", torso, rightArm,
+		CFrame.new(1, 0.5, 0) * CFrame.Angles(0, HALF, 0),
+		CFrame.new(-0.5, 0.5, 0) * CFrame.Angles(0, HALF, 0), torso)
+	addMotor("Left Shoulder", torso, leftArm,
+		CFrame.new(-1, 0.5, 0) * CFrame.Angles(0, -HALF, 0),
+		CFrame.new(0.5, 0.5, 0) * CFrame.Angles(0, -HALF, 0), torso)
+	addMotor("Right Hip", torso, rightLeg,
+		CFrame.new(1, -1, 0) * CFrame.Angles(0, HALF, 0),
+		CFrame.new(0.5, 1, 0) * CFrame.Angles(0, HALF, 0), torso)
+	addMotor("Left Hip", torso, leftLeg,
+		CFrame.new(-1, -1, 0) * CFrame.Angles(0, -HALF, 0),
+		CFrame.new(-0.5, 1, 0) * CFrame.Angles(0, -HALF, 0), torso)
+
+	local humanoid = Instance.new("Humanoid")
+	humanoid.RigType = Enum.HumanoidRigType.R6
+	humanoid.Parent = model
+
+	model.PrimaryPart = root
+	return model
+end
+
+local existing = StarterPlayer:FindFirstChild("StarterCharacter")
+if existing then
+	existing:Destroy()
+end
+buildStarterCharacter().Parent = StarterPlayer
+
+---------------------------------------------------------------
+-- 스폰 / 리스폰 (CharacterAutoLoads를 껐으니 직접 불러준다)
+---------------------------------------------------------------
+local function onPlayerAdded(player)
+	player.CharacterAdded:Connect(function(character)
+		local humanoid = character:WaitForChild("Humanoid", 10)
+		if not humanoid then
+			return
+		end
+		humanoid.Died:Connect(function()
+			task.wait(Players.RespawnTime)
+			if player.Parent then
+				player:LoadCharacter()
+			end
+		end)
+	end)
+
+	-- defer: 다른 스크립트들이 CharacterAdded를 연결할 틈을 준 뒤 스폰시킨다
+	task.defer(function()
+		if player.Parent then
+			player:LoadCharacter()
+		end
+	end)
+end
+
+Players.PlayerAdded:Connect(onPlayerAdded)
+for _, player in ipairs(Players:GetPlayers()) do
+	task.spawn(onPlayerAdded, player)
+end
+</ProtectedString>
+      </Properties>
+    </Item>
+    <Item class="Script" referent="RBX9">
+      <Properties>
+        <string name="Name">Breakables</string>
+        <ProtectedString name="Source">-- Breakables (Script / ServerScriptService)
+--
+-- 게임의 심장. 구역마다 부술 물건을 깔아두고, 근처 플레이어의 고양이들이
+-- 자동으로 그걸 때린다. 다 부수면 코인이 나오고 잠시 뒤 다시 생긴다.
+--
+-- 플레이어의 총 파워와 현재 구역은 CatGameServer가 Player 속성에 올려둔 값을 읽는다.
+
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+local CatConfig = require(ReplicatedStorage:WaitForChild("CatConfig"))
+
+local folder = Instance.new("Folder")
+folder.Name = "Breakables"
+folder.Parent = workspace
+
+---------------------------------------------------------------
+-- 물건 만들기
+---------------------------------------------------------------
+local breakables = {} -- { part, zone, maxHp, hp, alive, respawnAt, baseSize, label }
+
+local function makeBreakable(zone, index)
+	local skin = CatConfig.BreakableSkins[zone.Id] or CatConfig.BreakableSkins.Yard
+	local count = zone.BreakableCount
+
+	-- 구역 원점 주위에 둥글게 배치
+	local angle = (index - 1) / count * math.pi * 2
+	local radius = 22 + (index % 3) * 7
+	local position = zone.Origin + Vector3.new(math.cos(angle) * radius, skin.Size / 2 + 0.5, math.sin(angle) * radius)
+
+	local part = Instance.new("Part")
+	part.Name = skin.Name
+	part.Size = Vector3.new(skin.Size, skin.Size, skin.Size)
+	part.Position = position
+	part.Color = skin.Color
+	part.Material = Enum.Material.SmoothPlastic
+	part.Anchored = true
+	part.CanCollide = true
+	part.TopSurface = Enum.SurfaceType.Smooth
+	part.BottomSurface = Enum.SurfaceType.Smooth
+	part.Parent = folder
+
+	local gui = Instance.new("BillboardGui")
+	gui.Name = "HpTag"
+	gui.Size = UDim2.fromOffset(150, 34)
+	gui.StudsOffset = Vector3.new(0, skin.Size * 0.8, 0)
+	gui.AlwaysOnTop = true
+	gui.Parent = part
+
+	local label = Instance.new("TextLabel")
+	label.Size = UDim2.fromScale(1, 1)
+	label.BackgroundTransparency = 1
+	label.TextColor3 = Color3.fromRGB(255, 255, 255)
+	label.TextStrokeTransparency = 0.35
+	label.TextScaled = true
+	label.Font = Enum.Font.GothamBold
+	label.Parent = gui
+
+	local record = {
+		Part = part,
+		Label = label,
+		Zone = zone,
+		MaxHp = zone.BreakableHp,
+		Hp = zone.BreakableHp,
+		Alive = true,
+		RespawnAt = 0,
+		BaseSize = part.Size,
+		BasePosition = position,
+	}
+	table.insert(breakables, record)
+	return record
+end
+
+for _, zone in ipairs(CatConfig.Zones) do
+	for index = 1, zone.BreakableCount do
+		makeBreakable(zone, index)
+	end
+end
+
+---------------------------------------------------------------
+-- 표시 갱신
+---------------------------------------------------------------
+local BigNumber = require(ReplicatedStorage:WaitForChild("BigNumber"))
+
+local function refreshVisual(record)
+	if not record.Alive then
+		return
+	end
+	local ratio = math.clamp(record.Hp / record.MaxHp, 0, 1)
+	record.Label.Text = BigNumber.Short(record.Hp)
+	-- 체력이 닳을수록 작아져서 부서지는 느낌을 준다
+	local shrink = 0.45 + ratio * 0.55
+	record.Part.Size = record.BaseSize * shrink
+	record.Part.Position = record.BasePosition
+end
+
+local function breakIt(record, player)
+	record.Alive = false
+	record.RespawnAt = os.clock() + CatConfig.BreakableRespawn
+	record.Part.Transparency = 1
+	record.Part.CanCollide = false
+	record.Label.Text = ""
+
+	if player and _G.CatGame then
+		_G.CatGame.AwardCoins(player, record.Zone.Reward)
+	end
+end
+
+local function respawn(record)
+	record.Alive = true
+	record.Hp = record.MaxHp
+	record.Part.Transparency = 0
+	record.Part.CanCollide = true
+	refreshVisual(record)
+end
+
+for _, record in ipairs(breakables) do
+	refreshVisual(record)
+end
+
+---------------------------------------------------------------
+-- 공격 루프
+---------------------------------------------------------------
+task.spawn(function()
+	while true do
+		task.wait(CatConfig.AttackInterval)
+		local now = os.clock()
+
+		-- 되살아날 때가 된 물건 처리
+		for _, record in ipairs(breakables) do
+			if not record.Alive and now &gt;= record.RespawnAt then
+				respawn(record)
+			end
+		end
+
+		for _, player in ipairs(Players:GetPlayers()) do
+			local power = player:GetAttribute("TotalPower") or 0
+			local zoneId = player:GetAttribute("ZoneId")
+			local character = player.Character
+			local rootPart = character and character:FindFirstChild("HumanoidRootPart")
+
+			if power &gt; 0 and zoneId and rootPart then
+				local origin = rootPart.Position
+
+				-- 사거리 안에서 가장 가까운, 살아있는, 같은 구역의 물건
+				local target, targetDistance = nil, math.huge
+				for _, record in ipairs(breakables) do
+					if record.Alive and record.Zone.Id == zoneId then
+						local distance = (record.Part.Position - origin).Magnitude
+						if distance &lt;= CatConfig.AttackRange and distance &lt; targetDistance then
+							target, targetDistance = record, distance
+						end
+					end
+				end
+
+				if target then
+					target.Hp -= power * CatConfig.AttackInterval
+					if target.Hp &lt;= 0 then
+						breakIt(target, player)
+					else
+						refreshVisual(target)
+					end
+				end
+			end
+		end
+	end
+end)
+</ProtectedString>
+      </Properties>
+    </Item>
+    <Item class="Script" referent="RBX10">
+      <Properties>
+        <string name="Name">World</string>
+        <ProtectedString name="Source">-- World (Script / ServerScriptService)
+--
+-- 구역 다섯 곳을 일렬로 짓는다. 구역마다:
+--   · 바닥 발판과 이름 간판
+--   · 상자 받침대 (E를 누르면 뽑기)
+--   · 다음 구역으로 가는 문 (E를 누르면 코인 내고 해금)
+--
+-- 에셋 없이 파츠 + SurfaceGui/BillboardGui 만 쓴다.
+
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Players = game:GetService("Players")
+
+local CatConfig = require(ReplicatedStorage:WaitForChild("CatConfig"))
+local BigNumber = require(ReplicatedStorage:WaitForChild("BigNumber"))
+
+local world = Instance.new("Folder")
+world.Name = "World"
+world.Parent = workspace
+
+local ZONE_TINTS = {
+	Yard = Color3.fromRGB(120, 174, 96),
+	Alley = Color3.fromRGB(104, 104, 116),
+	Park = Color3.fromRGB(94, 166, 120),
+	Harbor = Color3.fromRGB(96, 138, 156),
+	Rooftop = Color3.fromRGB(78, 74, 112),
+}
+
+local function block(name, size, position, color, parent)
+	local part = Instance.new("Part")
+	part.Name = name
+	part.Size = size
+	part.Position = position
+	part.Color = color
+	part.Material = Enum.Material.SmoothPlastic
+	part.Anchored = true
+	part.TopSurface = Enum.SurfaceType.Smooth
+	part.BottomSurface = Enum.SurfaceType.Smooth
+	part.Parent = parent or world
+	return part
+end
+
+local function billboard(parent, height, text, color, size)
+	local gui = Instance.new("BillboardGui")
+	gui.Size = UDim2.fromOffset(size or 260, 70)
+	gui.StudsOffset = Vector3.new(0, height, 0)
+	gui.AlwaysOnTop = true
+	gui.Parent = parent
+
+	local label = Instance.new("TextLabel")
+	label.Size = UDim2.fromScale(1, 1)
+	label.BackgroundTransparency = 1
+	label.Text = text
+	label.TextColor3 = color or Color3.new(1, 1, 1)
+	label.TextStrokeTransparency = 0.3
+	label.TextScaled = true
+	label.Font = Enum.Font.GothamBold
+	label.Parent = gui
+	return label
+end
+
+---------------------------------------------------------------
+-- 구역별 건설
+---------------------------------------------------------------
+local gateLabels = {} -- zoneId → 문 위 안내문 (해금되면 지운다)
+local gateParts = {}
+
+for index, zone in ipairs(CatConfig.Zones) do
+	local tint = ZONE_TINTS[zone.Id] or Color3.fromRGB(120, 120, 120)
+
+	-- 바닥
+	block("Ground_" .. zone.Id, Vector3.new(110, 2, 110), zone.Origin + Vector3.new(0, -1, 0), tint)
+
+	-- 구역 이름 간판
+	local signPost = block("Sign_" .. zone.Id, Vector3.new(1, 9, 1),
+		zone.Origin + Vector3.new(-46, 4.5, 46), Color3.fromRGB(90, 68, 48))
+	billboard(signPost, 6, ("%s"):format(zone.Name), Color3.fromRGB(255, 240, 200), 300)
+
+	-- 상자 받침대
+	local pedestal = block("EggPedestal_" .. zone.Id, Vector3.new(8, 3, 8),
+		zone.Origin + Vector3.new(0, 1.5, 0), Color3.fromRGB(86, 74, 66))
+	local egg = block("Egg_" .. zone.Id, Vector3.new(5, 5, 5),
+		zone.Origin + Vector3.new(0, 5.6, 0), Color3.fromRGB(236, 222, 196))
+	egg.Shape = Enum.PartType.Ball
+
+	billboard(egg, 4.6, ("📦 %s\n%s 코인"):format(zone.EggName, BigNumber.Short(zone.EggCost)),
+		Color3.fromRGB(255, 236, 180), 320)
+
+	local hatchPrompt = Instance.new("ProximityPrompt")
+	hatchPrompt.ObjectText = zone.EggName
+	hatchPrompt.ActionText = "상자 열기"
+	hatchPrompt.HoldDuration = 0
+	hatchPrompt.MaxActivationDistance = 16
+	hatchPrompt.RequiresLineOfSight = false
+	hatchPrompt.Parent = egg
+
+	hatchPrompt.Triggered:Connect(function(player)
+		if _G.CatGame and _G.CatGame.HatchEgg then
+			_G.CatGame.HatchEgg(player, zone.Id, 1)
+		end
+	end)
+
+	-- 다음 구역으로 가는 문
+	local nextZone = CatConfig.Zones[index + 1]
+	if nextZone then
+		local midpoint = (zone.Origin + nextZone.Origin) * 0.5
+		local gate = block("Gate_" .. nextZone.Id, Vector3.new(30, 14, 3),
+			midpoint + Vector3.new(0, 7, 0), Color3.fromRGB(58, 52, 62))
+		gate.Transparency = 0.25
+
+		local label = billboard(gate, 9,
+			("🔒 %s\n%s 코인"):format(nextZone.Name, BigNumber.Short(nextZone.UnlockCost)),
+			Color3.fromRGB(255, 198, 120), 340)
+
+		local unlockPrompt = Instance.new("ProximityPrompt")
+		unlockPrompt.ObjectText = nextZone.Name
+		unlockPrompt.ActionText = "문 열기"
+		unlockPrompt.HoldDuration = 0
+		unlockPrompt.MaxActivationDistance = 18
+		unlockPrompt.RequiresLineOfSight = false
+		unlockPrompt.Parent = gate
+
+		unlockPrompt.Triggered:Connect(function(player)
+			if _G.CatGame and _G.CatGame.UnlockZone then
+				_G.CatGame.UnlockZone(player, nextZone.Id)
+			end
+		end)
+
+		gateLabels[nextZone.Id] = label
+		gateParts[nextZone.Id] = gate
+	end
+end
+
+---------------------------------------------------------------
+-- 해금 상태에 맞춰 문을 열어준다
+--
+-- 문은 플레이어마다 상태가 다르므로, 서버에서 전부 없앨 수는 없다.
+-- 대신 잠긴 사람에게만 막힌 것처럼 보이도록 충돌만 조절한다.
+-- (1인 데모 기준. 여러 명이면 구역별 개인 서버나 로컬 처리로 바꿔야 한다)
+---------------------------------------------------------------
+task.spawn(function()
+	while true do
+		task.wait(0.5)
+		for zoneId, gate in pairs(gateParts) do
+			local anyoneUnlocked = false
+			for _, player in ipairs(Players:GetPlayers()) do
+				local profile = _G.CatGame and _G.CatGame.GetProfile and _G.CatGame.GetProfile(player)
+				if profile and profile.Zones[zoneId] then
+					anyoneUnlocked = true
+					break
+				end
+			end
+
+			gate.CanCollide = not anyoneUnlocked
+			gate.Transparency = anyoneUnlocked and 0.85 or 0.25
+			local label = gateLabels[zoneId]
+			if label then
+				local zone = CatConfig.GetZone(zoneId)
+				label.Text = anyoneUnlocked
+					and ("✅ %s"):format(zone.Name)
+					or ("🔒 %s\n%s 코인"):format(zone.Name, BigNumber.Short(zone.UnlockCost))
+			end
+		end
+	end
+end)
+</ProtectedString>
+      </Properties>
+    </Item>
+  </Item>
+  <Item class="StarterPlayer" referent="RBX11">
+    <Properties>
+      <string name="Name">StarterPlayer</string>
+      <bool name="LoadCharacterAppearance">false</bool>
+    </Properties>
+    <Item class="StarterPlayerScripts" referent="RBX12">
+      <Properties>
+        <string name="Name">StarterPlayerScripts</string>
+      </Properties>
+      <Item class="LocalScript" referent="RBX13">
+        <Properties>
+          <string name="Name">CatGameClient</string>
+          <ProtectedString name="Source">-- CatGameClient (LocalScript / StarterPlayer &gt; StarterPlayerScripts)
+--
+-- 화면 UI 전부를 코드로 만든다.
+--   위      : 코인 · 파워 · 현재 구역
+--   왼쪽    : 고양이 / 구역 / 환생 버튼
+--   가운데  : 패널 (열었을 때만)
+--   부술 때 : 화면에 코인이 튀어오르는 표시
+
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+local player = Players.LocalPlayer
+local CatConfig = require(ReplicatedStorage:WaitForChild("CatConfig"))
+local BigNumber = require(ReplicatedStorage:WaitForChild("BigNumber"))
+
+local remotes = ReplicatedStorage:WaitForChild("CatGameRemotes")
+local hatchRemote = remotes:WaitForChild("HatchEgg")
+local toggleEquipRemote = remotes:WaitForChild("ToggleEquip")
+local fuseRemote = remotes:WaitForChild("FuseCats")
+local unlockZoneRemote = remotes:WaitForChild("UnlockZone")
+local rebirthRemote = remotes:WaitForChild("Rebirth")
+local requestDataRemote = remotes:WaitForChild("RequestData")
+local dataChangedRemote = remotes:WaitForChild("DataChanged")
+local notifyRemote = remotes:WaitForChild("Notify")
+local hatchResultRemote = remotes:WaitForChild("HatchResult")
+local rewardRemote = remotes:WaitForChild("Reward")
+
+---------------------------------------------------------------
+-- UI 헬퍼
+---------------------------------------------------------------
+local function make(className, props, parent)
+	local inst = Instance.new(className)
+	for key, value in pairs(props) do
+		inst[key] = value
+	end
+	inst.Parent = parent
+	return inst
+end
+
+local function round(inst, radius)
+	make("UICorner", { CornerRadius = UDim.new(0, radius) }, inst)
+end
+
+local DARK = Color3.fromRGB(32, 30, 40)
+local PANEL = Color3.fromRGB(248, 244, 238)
+local ROW = Color3.fromRGB(236, 230, 222)
+local TEXT = Color3.fromRGB(52, 46, 40)
+local SUB = Color3.fromRGB(140, 128, 116)
+local ACCENT = Color3.fromRGB(255, 158, 56)
+local OFF = Color3.fromRGB(186, 178, 170)
+
+local gui = make("ScreenGui", { Name = "CatGameGui", ResetOnSpawn = false }, player:WaitForChild("PlayerGui"))
+
+local latest = { Coins = 0, Cats = {}, Equipped = {}, Zones = {}, Power = 0, Rebirths = 0 }
+
+---------------------------------------------------------------
+-- 상단 HUD
+---------------------------------------------------------------
+local function makeChip(name, x, width, icon, color)
+	local frame = make("Frame", {
+		Name = name,
+		Size = UDim2.fromOffset(width, 44),
+		Position = UDim2.new(0.5, x, 0, 10),
+		BackgroundColor3 = DARK,
+		BackgroundTransparency = 0.1,
+	}, gui)
+	round(frame, 12)
+
+	local label = make("TextLabel", {
+		Name = "Value",
+		Size = UDim2.fromScale(1, 1),
+		BackgroundTransparency = 1,
+		Text = icon .. " 0",
+		TextColor3 = color,
+		TextSize = 20,
+		Font = Enum.Font.GothamBold,
+	}, frame)
+	return label
+end
+
+local coinLabel = makeChip("CoinChip", -230, 150, "🪙", Color3.fromRGB(255, 214, 92))
+local powerLabel = makeChip("PowerChip", -74, 150, "⚡", Color3.fromRGB(255, 138, 138))
+local zoneLabel = makeChip("ZoneChip", 82, 150, "📍", Color3.fromRGB(158, 214, 255))
+
+---------------------------------------------------------------
+-- 안내 토스트
+---------------------------------------------------------------
+local toast = make("TextLabel", {
+	Name = "Toast",
+	Size = UDim2.new(0, 620, 0, 48),
+	Position = UDim2.new(0.5, -310, 0, 62),
+	BackgroundColor3 = DARK,
+	BackgroundTransparency = 0.08,
+	Text = "",
+	TextColor3 = Color3.new(1, 1, 1),
+	TextSize = 17,
+	Font = Enum.Font.GothamBold,
+	TextWrapped = true,
+	ZIndex = 60,
+	Visible = false,
+}, gui)
+round(toast, 12)
+
+local toastToken = 0
+local function showToast(message)
+	toastToken += 1
+	local token = toastToken
+	toast.Text = tostring(message)
+	toast.Visible = true
+	task.delay(3.5, function()
+		if toastToken == token then
+			toast.Visible = false
+		end
+	end)
+end
+
+notifyRemote.OnClientEvent:Connect(showToast)
+
+---------------------------------------------------------------
+-- 부술 때 튀어오르는 코인 표시
+---------------------------------------------------------------
+local rewardHolder = make("Frame", {
+	Name = "RewardHolder",
+	Size = UDim2.fromOffset(300, 200),
+	Position = UDim2.new(0.5, 60, 0.5, -100),
+	BackgroundTransparency = 1,
+}, gui)
+
+rewardRemote.OnClientEvent:Connect(function(amount)
+	local label = make("TextLabel", {
+		Size = UDim2.fromOffset(220, 34),
+		Position = UDim2.fromOffset(math.random(0, 60), 150),
+		BackgroundTransparency = 1,
+		Text = "+" .. BigNumber.Short(amount),
+		TextColor3 = Color3.fromRGB(255, 226, 120),
+		TextStrokeTransparency = 0.3,
+		TextSize = 26,
+		Font = Enum.Font.GothamBold,
+		TextXAlignment = Enum.TextXAlignment.Left,
+	}, rewardHolder)
+
+	-- 위로 떠오르며 사라진다
+	task.spawn(function()
+		for step = 1, 18 do
+			label.Position = label.Position - UDim2.fromOffset(0, 6)
+			label.TextTransparency = step / 18
+			task.wait(0.03)
+		end
+		label:Destroy()
+	end)
+end)
+
+---------------------------------------------------------------
+-- 패널 공통
+---------------------------------------------------------------
+local panels = {}
+
+local function makePanel(name, titleText)
+	local panel = make("Frame", {
+		Name = name,
+		Size = UDim2.fromOffset(460, 470),
+		Position = UDim2.new(0.5, -230, 0.5, -235),
+		BackgroundColor3 = PANEL,
+		Visible = false,
+	}, gui)
+	round(panel, 16)
+
+	make("TextLabel", {
+		Size = UDim2.new(1, -70, 0, 46),
+		Position = UDim2.fromOffset(20, 6),
+		BackgroundTransparency = 1,
+		Text = titleText,
+		TextColor3 = TEXT,
+		TextSize = 22,
+		Font = Enum.Font.GothamBold,
+		TextXAlignment = Enum.TextXAlignment.Left,
+	}, panel)
+
+	local closeButton = make("TextButton", {
+		Size = UDim2.fromOffset(34, 34),
+		Position = UDim2.new(1, -46, 0, 10),
+		BackgroundColor3 = Color3.fromRGB(232, 104, 96),
+		Text = "✕",
+		TextColor3 = Color3.new(1, 1, 1),
+		TextSize = 17,
+		Font = Enum.Font.GothamBold,
+	}, panel)
+	round(closeButton, 10)
+	closeButton.Activated:Connect(function()
+		panel.Visible = false
+	end)
+
+	local list = make("ScrollingFrame", {
+		Size = UDim2.new(1, -24, 1, -62),
+		Position = UDim2.fromOffset(12, 52),
+		BackgroundTransparency = 1,
+		BorderSizePixel = 0,
+		CanvasSize = UDim2.new(),
+		AutomaticCanvasSize = Enum.AutomaticSize.Y,
+		ScrollBarThickness = 6,
+	}, panel)
+	local layout = make("UIListLayout", { SortOrder = Enum.SortOrder.LayoutOrder }, list)
+	layout.Padding = UDim.new(0, 8)
+
+	table.insert(panels, panel)
+	return panel, list
+end
+
+local catsPanel, catsList = makePanel("CatsPanel", "🐱 내 고양이")
+local zonesPanel, zonesList = makePanel("ZonesPanel", "🗺️ 구역")
+local rebirthPanel, rebirthList = makePanel("RebirthPanel", "🌟 환생")
+
+local function openOnly(target)
+	for _, panel in ipairs(panels) do
+		panel.Visible = (panel == target) and not panel.Visible or false
+	end
+end
+
+local function makeRow(list, order, height)
+	local row = make("Frame", {
+		Size = UDim2.new(1, -8, 0, height),
+		BackgroundColor3 = ROW,
+		LayoutOrder = order,
+	}, list)
+	round(row, 12)
+	return row
+end
+
+---------------------------------------------------------------
+-- 내 고양이 (장착 / 합성)
+---------------------------------------------------------------
+local function isEquipped(uid)
+	for _, equippedUid in ipairs(latest.Equipped) do
+		if equippedUid == uid then
+			return true
+		end
+	end
+	return false
+end
+
+local function rebuildCats()
+	for _, child in ipairs(catsList:GetChildren()) do
+		if child:IsA("Frame") then
+			child:Destroy()
+		end
+	end
+
+	-- 같은 종류끼리 묶어서 보여준다 (마리 수가 금방 많아지기 때문)
+	local groups, order = {}, {}
+	for _, entry in ipairs(latest.Cats) do
+		local key = entry.Id .. (entry.Golden and "_G" or "")
+		if not groups[key] then
+			groups[key] = { Id = entry.Id, Golden = entry.Golden, Entries = {} }
+			table.insert(order, key)
+		end
+		table.insert(groups[key].Entries, entry)
+	end
+
+	table.sort(order, function(a, b)
+		return CatConfig.PowerOf(groups[a]) &gt; CatConfig.PowerOf(groups[b])
+	end)
+
+	for index, key in ipairs(order) do
+		local group = groups[key]
+		local cat = CatConfig.GetCat(group.Id)
+		local rarity = CatConfig.Rarities[cat.Rarity]
+		local row = makeRow(catsList, index, 78)
+
+		local swatch = make("Frame", {
+			Size = UDim2.fromOffset(46, 46),
+			Position = UDim2.fromOffset(12, 16),
+			BackgroundColor3 = group.Golden and Color3.fromRGB(255, 214, 92) or cat.Body,
+		}, row)
+		round(swatch, 10)
+		make("UIStroke", { Color = rarity.Color, Thickness = 2.5 }, swatch)
+
+		make("TextLabel", {
+			Size = UDim2.new(1, -230, 0, 24),
+			Position = UDim2.fromOffset(70, 10),
+			BackgroundTransparency = 1,
+			Text = ("%s%s  ×%d"):format(group.Golden and "✨ 골든 " or "", cat.Name, #group.Entries),
+			TextColor3 = TEXT,
+			TextSize = 17,
+			Font = Enum.Font.GothamBold,
+			TextXAlignment = Enum.TextXAlignment.Left,
+		}, row)
+
+		make("TextLabel", {
+			Size = UDim2.new(1, -230, 0, 20),
+			Position = UDim2.fromOffset(70, 34),
+			BackgroundTransparency = 1,
+			Text = ("%s  ·  파워 %s"):format(rarity.Name, BigNumber.Short(CatConfig.PowerOf(group))),
+			TextColor3 = rarity.Color,
+			TextSize = 14,
+			Font = Enum.Font.GothamBold,
+			TextXAlignment = Enum.TextXAlignment.Left,
+		}, row)
+
+		local equippedHere = 0
+		for _, entry in ipairs(group.Entries) do
+			if isEquipped(entry.Uid) then
+				equippedHere += 1
+			end
+		end
+
+		make("TextLabel", {
+			Size = UDim2.new(1, -230, 0, 18),
+			Position = UDim2.fromOffset(70, 54),
+			BackgroundTransparency = 1,
+			Text = equippedHere &gt; 0 and ("데리고 다니는 중 %d마리"):format(equippedHere) or "쉬는 중",
+			TextColor3 = SUB,
+			TextSize = 13,
+			Font = Enum.Font.GothamMedium,
+			TextXAlignment = Enum.TextXAlignment.Left,
+		}, row)
+
+		-- 장착 토글: 그룹의 첫 마리를 대상으로 한다
+		local target = group.Entries[1]
+		for _, entry in ipairs(group.Entries) do
+			if isEquipped(entry.Uid) then
+				target = entry
+				break
+			end
+		end
+		local targetEquipped = isEquipped(target.Uid)
+
+		local equipButton = make("TextButton", {
+			Size = UDim2.fromOffset(96, 38),
+			Position = UDim2.new(1, -212, 0, 20),
+			BackgroundColor3 = targetEquipped and OFF or ACCENT,
+			Text = targetEquipped and "빼기" or "데려가기",
+			TextColor3 = Color3.new(1, 1, 1),
+			TextSize = 15,
+			Font = Enum.Font.GothamBold,
+		}, row)
+		round(equipButton, 9)
+		equipButton.Activated:Connect(function()
+			toggleEquipRemote:FireServer(target.Uid)
+		end)
+
+		-- 합성
+		local canFuse = (not group.Golden) and #group.Entries &gt;= CatConfig.FuseCount
+		local fuseButton = make("TextButton", {
+			Size = UDim2.fromOffset(100, 38),
+			Position = UDim2.new(1, -108, 0, 20),
+			BackgroundColor3 = canFuse and Color3.fromRGB(196, 148, 255) or OFF,
+			Text = canFuse and "✨ 합성" or ("합성 %d/%d"):format(
+				math.min(#group.Entries, CatConfig.FuseCount), CatConfig.FuseCount),
+			TextColor3 = Color3.new(1, 1, 1),
+			TextSize = 14,
+			Font = Enum.Font.GothamBold,
+		}, row)
+		round(fuseButton, 9)
+		fuseButton.Activated:Connect(function()
+			if group.Golden then
+				showToast("골든끼리는 합성할 수 없어요")
+			else
+				fuseRemote:FireServer(group.Id)
+			end
+		end)
+	end
+end
+
+---------------------------------------------------------------
+-- 구역 목록
+---------------------------------------------------------------
+local function rebuildZones()
+	for _, child in ipairs(zonesList:GetChildren()) do
+		if child:IsA("Frame") then
+			child:Destroy()
+		end
+	end
+
+	for index, zone in ipairs(CatConfig.Zones) do
+		local unlocked = latest.Zones[zone.Id] == true
+		local previous = CatConfig.Zones[index - 1]
+		local previousDone = (previous == nil) or (latest.Zones[previous.Id] == true)
+		local row = makeRow(zonesList, index, 84)
+
+		make("TextLabel", {
+			Size = UDim2.new(1, -140, 0, 24),
+			Position = UDim2.fromOffset(16, 10),
+			BackgroundTransparency = 1,
+			Text = ("%s %s"):format(unlocked and "✅" or "🔒", zone.Name),
+			TextColor3 = TEXT,
+			TextSize = 18,
+			Font = Enum.Font.GothamBold,
+			TextXAlignment = Enum.TextXAlignment.Left,
+		}, row)
+
+		make("TextLabel", {
+			Size = UDim2.new(1, -140, 0, 20),
+			Position = UDim2.fromOffset(16, 34),
+			BackgroundTransparency = 1,
+			Text = ("물건 체력 %s  ·  개당 %s 코인"):format(
+				BigNumber.Short(zone.BreakableHp), BigNumber.Short(zone.Reward)),
+			TextColor3 = SUB,
+			TextSize = 13,
+			Font = Enum.Font.GothamMedium,
+			TextXAlignment = Enum.TextXAlignment.Left,
+		}, row)
+
+		make("TextLabel", {
+			Size = UDim2.new(1, -140, 0, 20),
+			Position = UDim2.fromOffset(16, 54),
+			BackgroundTransparency = 1,
+			Text = ("📦 %s  %s 코인"):format(zone.EggName, BigNumber.Short(zone.EggCost)),
+			TextColor3 = Color3.fromRGB(186, 146, 66),
+			TextSize = 13,
+			Font = Enum.Font.GothamBold,
+			TextXAlignment = Enum.TextXAlignment.Left,
+		}, row)
+
+		if not unlocked then
+			local affordable = latest.Coins &gt;= zone.UnlockCost and previousDone
+			local button = make("TextButton", {
+				Size = UDim2.fromOffset(112, 44),
+				Position = UDim2.new(1, -124, 0, 20),
+				BackgroundColor3 = affordable and ACCENT or OFF,
+				Text = previousDone
+					and (affordable and "열기" or ("🪙 " .. BigNumber.Short(zone.UnlockCost - latest.Coins) .. " 더"))
+					or "이전 구역 먼저",
+				TextColor3 = Color3.new(1, 1, 1),
+				TextSize = 14,
+				Font = Enum.Font.GothamBold,
+			}, row)
+			round(button, 9)
+			button.Activated:Connect(function()
+				unlockZoneRemote:FireServer(zone.Id)
+			end)
+		else
+			local button = make("TextButton", {
+				Size = UDim2.fromOffset(112, 44),
+				Position = UDim2.new(1, -124, 0, 20),
+				BackgroundColor3 = latest.Coins &gt;= zone.EggCost and ACCENT or OFF,
+				Text = "📦 상자 열기",
+				TextColor3 = Color3.new(1, 1, 1),
+				TextSize = 14,
+				Font = Enum.Font.GothamBold,
+			}, row)
+			round(button, 9)
+			button.Activated:Connect(function()
+				hatchRemote:FireServer(zone.Id, 1)
+			end)
+		end
+	end
+end
+
+---------------------------------------------------------------
+-- 환생
+---------------------------------------------------------------
+local function rebuildRebirth()
+	for _, child in ipairs(rebirthList:GetChildren()) do
+		if child:IsA("Frame") then
+			child:Destroy()
+		end
+	end
+
+	local lastZone = CatConfig.Zones[#CatConfig.Zones]
+	local reachedEnd = latest.Zones[lastZone.Id] == true
+	local canRebirth = reachedEnd and latest.Coins &gt;= CatConfig.RebirthCost
+
+	local info = makeRow(rebirthList, 1, 150)
+	local infoLabel = make("TextLabel", {
+		Size = UDim2.new(1, -32, 1, -70),
+		Position = UDim2.fromOffset(16, 12),
+		BackgroundTransparency = 1,
+		Text = ("환생하면 코인과 구역이 처음으로 돌아가지만,\n"
+			.. "고양이는 그대로 남고 모든 파워가 %d%% 늘어납니다.\n\n"
+			.. "지금까지 환생 %d회  ·  현재 배율 %d%%\n"
+			.. "조건: %s 해금 + 코인 %s"):format(
+			math.floor(CatConfig.RebirthPowerBonus * 100),
+			latest.Rebirths,
+			100 + math.floor(latest.Rebirths * CatConfig.RebirthPowerBonus * 100),
+			lastZone.Name, BigNumber.Short(CatConfig.RebirthCost)),
+		TextColor3 = TEXT,
+		TextSize = 14,
+		Font = Enum.Font.GothamMedium,
+		TextXAlignment = Enum.TextXAlignment.Left,
+		TextYAlignment = Enum.TextYAlignment.Top,
+		TextWrapped = true,
+	}, info)
+	infoLabel.LineHeight = 1.3
+
+	local button = make("TextButton", {
+		Size = UDim2.new(1, -32, 0, 44),
+		Position = UDim2.new(0, 16, 1, -56),
+		BackgroundColor3 = canRebirth and Color3.fromRGB(255, 186, 58) or OFF,
+		Text = canRebirth and "🌟 환생하기"
+			or (reachedEnd and ("🪙 " .. BigNumber.Short(CatConfig.RebirthCost - latest.Coins) .. " 더")
+				or (lastZone.Name .. " 먼저 해금")),
+		TextColor3 = Color3.new(1, 1, 1),
+		TextSize = 16,
+		Font = Enum.Font.GothamBold,
+	}, info)
+	round(button, 10)
+	button.Activated:Connect(function()
+		rebirthRemote:FireServer()
+	end)
+end
+
+---------------------------------------------------------------
+-- 뽑기 결과 연출
+---------------------------------------------------------------
+hatchResultRemote.OnClientEvent:Connect(function(hatched)
+	if type(hatched) ~= "table" or #hatched == 0 then
+		return
+	end
+	local names = {}
+	for _, catId in ipairs(hatched) do
+		local cat = CatConfig.GetCat(catId)
+		if cat then
+			table.insert(names, ("%s(%s)"):format(cat.Name, CatConfig.Rarities[cat.Rarity].Name))
+		end
+	end
+	showToast("📦 " .. table.concat(names, ", ") .. " 획득!")
+end)
+
+---------------------------------------------------------------
+-- 데이터 갱신
+---------------------------------------------------------------
+dataChangedRemote.OnClientEvent:Connect(function(data)
+	latest = data
+	coinLabel.Text = "🪙 " .. BigNumber.Short(data.Coins)
+	powerLabel.Text = "⚡ " .. BigNumber.Short(data.Power or 0)
+
+	local zoneId = player:GetAttribute("ZoneId")
+	local zone = zoneId and CatConfig.GetZone(zoneId)
+	zoneLabel.Text = "📍 " .. (zone and zone.Name or "?")
+
+	if catsPanel.Visible then rebuildCats() end
+	if zonesPanel.Visible then rebuildZones() end
+	if rebirthPanel.Visible then rebuildRebirth() end
+end)
+
+---------------------------------------------------------------
+-- 왼쪽 버튼
+---------------------------------------------------------------
+local function makeSideButton(name, text, offsetY, panel, rebuild)
+	local button = make("TextButton", {
+		Name = name,
+		Size = UDim2.fromOffset(146, 46),
+		Position = UDim2.new(0, 14, 0.5, offsetY),
+		BackgroundColor3 = ACCENT,
+		Text = text,
+		TextColor3 = Color3.new(1, 1, 1),
+		TextSize = 17,
+		Font = Enum.Font.GothamBold,
+	}, gui)
+	round(button, 11)
+	button.Activated:Connect(function()
+		openOnly(panel)
+		if panel.Visible then
+			rebuild()
+		end
+	end)
+	return button
+end
+
+makeSideButton("CatsButton", "🐱 내 고양이", -80, catsPanel, rebuildCats)
+makeSideButton("ZonesButton", "🗺️ 구역", -26, zonesPanel, rebuildZones)
+makeSideButton("RebirthButton", "🌟 환생", 28, rebirthPanel, rebuildRebirth)
+
+-- 아래쪽 조작 안내 (튜토리얼이 도는 동안에는 숨긴다)
+local hint = make("TextLabel", {
+	Name = "Hint",
+	Size = UDim2.new(0, 600, 0, 30),
+	Position = UDim2.new(0.5, -300, 1, -42),
+	BackgroundTransparency = 1,
+	Text = "고양이가 알아서 부숴요. 상자 앞에서 [E]를 눌러 새 고양이를 뽑으세요 📦",
+	TextColor3 = Color3.new(1, 1, 1),
+	TextStrokeTransparency = 0.4,
+	TextSize = 16,
+	Font = Enum.Font.GothamMedium,
+	TextWrapped = true,
+}, gui)
+
+requestDataRemote:FireServer()
+</ProtectedString>
+        </Properties>
+      </Item>
+      <Item class="LocalScript" referent="RBX14">
+        <Properties>
+          <string name="Name">CatTutorial</string>
+          <ProtectedString name="Source">-- CatTutorial (LocalScript / StarterPlayer &gt; StarterPlayerScripts)
+--
+-- 처음 들어온 사람이 "부순다 → 코인 → 상자 → 더 센 고양이 → 다음 구역"
+-- 이 흐름을 몸으로 익히도록 4단계로 안내한다.
+-- 각 단계는 설명을 읽는 게 아니라 실제로 해내야 넘어간다.
+
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local RunService = game:GetService("RunService")
+
+local player = Players.LocalPlayer
+local CatConfig = require(ReplicatedStorage:WaitForChild("CatConfig"))
+local BigNumber = require(ReplicatedStorage:WaitForChild("BigNumber"))
+
+local remotes = ReplicatedStorage:WaitForChild("CatGameRemotes")
+local dataChangedRemote = remotes:WaitForChild("DataChanged")
+local requestDataRemote = remotes:WaitForChild("RequestData")
+local completeTutorialRemote = remotes:WaitForChild("CompleteTutorial")
+
+local playerGui = player:WaitForChild("PlayerGui")
+local gameGui = playerGui:WaitForChild("CatGameGui")
+local zonesButton = gameGui:WaitForChild("ZonesButton")
+local bottomHint = gameGui:WaitForChild("Hint")
+
+---------------------------------------------------------------
+local function make(className, props, parent)
+	local inst = Instance.new(className)
+	for key, value in pairs(props) do
+		inst[key] = value
+	end
+	inst.Parent = parent
+	return inst
+end
+
+local function round(inst, radius)
+	make("UICorner", { CornerRadius = UDim.new(0, radius) }, inst)
+end
+
+local PANEL = Color3.fromRGB(248, 244, 238)
+local TEXT = Color3.fromRGB(52, 46, 40)
+local SUB = Color3.fromRGB(140, 128, 116)
+local ACCENT = Color3.fromRGB(255, 158, 56)
+
+local firstZone = CatConfig.Zones[1]
+local secondZone = CatConfig.Zones[2]
+local POWER_GOAL = 30
+
+---------------------------------------------------------------
+-- 단계
+---------------------------------------------------------------
+local STEPS = {
+	{
+		Title = "가만히 서 있어 보세요",
+		Hint = "고양이가 알아서 주변 물건을 부숩니다. 코인이 저절로 쌓여요.",
+		PointAt = "Breakable",
+	},
+	{
+		Title = ("%s를 열어 새 고양이를 뽑으세요"):format(firstZone.EggName),
+		Hint = "",
+		PointAt = "Egg",
+		Progress = "Egg",
+	},
+	{
+		Title = "파워를 키우세요",
+		Hint = "",
+		Progress = "Power",
+	},
+	{
+		Title = ("%s로 가는 문을 여세요"):format(secondZone.Name),
+		Hint = "",
+		PointAt = "Gate",
+		Progress = "Unlock",
+		HighlightZones = true,
+	},
+}
+
+---------------------------------------------------------------
+-- UI
+---------------------------------------------------------------
+local gui = make("ScreenGui", {
+	Name = "CatTutorialGui",
+	ResetOnSpawn = false,
+	DisplayOrder = 20,
+	Enabled = false,
+}, playerGui)
+
+local backdrop = make("Frame", {
+	Size = UDim2.fromScale(1, 1),
+	BackgroundColor3 = Color3.new(0, 0, 0),
+	BackgroundTransparency = 0.45,
+	Visible = false,
+}, gui)
+
+local welcome = make("Frame", {
+	Size = UDim2.fromOffset(520, 400),
+	Position = UDim2.new(0.5, -260, 0.5, -200),
+	BackgroundColor3 = PANEL,
+}, backdrop)
+round(welcome, 18)
+
+make("TextLabel", {
+	Size = UDim2.new(1, 0, 0, 54),
+	Position = UDim2.fromOffset(0, 16),
+	BackgroundTransparency = 1,
+	Text = "🐱💥",
+	TextSize = 40,
+	Font = Enum.Font.GothamBold,
+}, welcome)
+
+make("TextLabel", {
+	Size = UDim2.new(1, -40, 0, 34),
+	Position = UDim2.fromOffset(20, 68),
+	BackgroundTransparency = 1,
+	Text = "고양이 시뮬레이터",
+	TextColor3 = TEXT,
+	TextSize = 27,
+	Font = Enum.Font.GothamBold,
+}, welcome)
+
+local story = make("TextLabel", {
+	Size = UDim2.new(1, -64, 0, 84),
+	Position = UDim2.fromOffset(32, 108),
+	BackgroundTransparency = 1,
+	Text = table.concat(CatConfig.Intro, "\n"),
+	TextColor3 = TEXT,
+	TextSize = 15,
+	Font = Enum.Font.GothamMedium,
+	TextWrapped = true,
+}, welcome)
+story.LineHeight = 1.4
+
+local rules = make("TextLabel", {
+	Size = UDim2.new(1, -64, 0, 96),
+	Position = UDim2.fromOffset(32, 196),
+	BackgroundTransparency = 1,
+	Text = "💥  고양이가 알아서 물건을 부숩니다 (조작 안 해도 돼요)\n"
+		.. "🪙  부수면 코인이 나옵니다\n"
+		.. "📦  코인으로 상자를 열면 더 센 고양이가 나옵니다\n"
+		.. "🗺️  세지면 더 단단한 구역을 열 수 있습니다",
+	TextColor3 = Color3.fromRGB(112, 98, 84),
+	TextSize = 14,
+	Font = Enum.Font.GothamMedium,
+	TextXAlignment = Enum.TextXAlignment.Left,
+	TextWrapped = true,
+}, welcome)
+rules.LineHeight = 1.5
+
+make("TextLabel", {
+	Size = UDim2.new(1, -64, 0, 22),
+	Position = UDim2.fromOffset(32, 292),
+	BackgroundTransparency = 1,
+	Text = CatConfig.IntroGoal,
+	TextColor3 = ACCENT,
+	TextSize = 14,
+	Font = Enum.Font.GothamBold,
+}, welcome)
+
+local startButton = make("TextButton", {
+	Size = UDim2.fromOffset(220, 46),
+	Position = UDim2.new(0.5, -110, 1, -74),
+	BackgroundColor3 = ACCENT,
+	Text = "시작하기",
+	TextColor3 = Color3.new(1, 1, 1),
+	TextSize = 19,
+	Font = Enum.Font.GothamBold,
+}, welcome)
+round(startButton, 12)
+
+local skipWelcome = make("TextButton", {
+	Size = UDim2.fromOffset(220, 22),
+	Position = UDim2.new(0.5, -110, 1, -26),
+	BackgroundTransparency = 1,
+	Text = "튜토리얼 건너뛰기",
+	TextColor3 = SUB,
+	TextSize = 13,
+	Font = Enum.Font.GothamMedium,
+}, welcome)
+
+-- 단계 카드
+local card = make("Frame", {
+	Size = UDim2.fromOffset(560, 116),
+	Position = UDim2.new(0.5, -280, 1, -170),
+	BackgroundColor3 = PANEL,
+	Visible = false,
+}, gui)
+round(card, 16)
+
+local stepCounter = make("TextLabel", {
+	Size = UDim2.fromOffset(200, 22),
+	Position = UDim2.fromOffset(22, 12),
+	BackgroundTransparency = 1,
+	Text = "",
+	TextColor3 = SUB,
+	TextSize = 14,
+	Font = Enum.Font.GothamBold,
+	TextXAlignment = Enum.TextXAlignment.Left,
+}, card)
+
+local skipButton = make("TextButton", {
+	Size = UDim2.fromOffset(80, 24),
+	Position = UDim2.new(1, -96, 0, 10),
+	BackgroundTransparency = 1,
+	Text = "건너뛰기",
+	TextColor3 = SUB,
+	TextSize = 13,
+	Font = Enum.Font.GothamMedium,
+}, card)
+
+local stepTitle = make("TextLabel", {
+	Size = UDim2.new(1, -44, 0, 30),
+	Position = UDim2.fromOffset(22, 36),
+	BackgroundTransparency = 1,
+	Text = "",
+	TextColor3 = TEXT,
+	TextSize = 22,
+	Font = Enum.Font.GothamBold,
+	TextXAlignment = Enum.TextXAlignment.Left,
+}, card)
+
+local stepHint = make("TextLabel", {
+	Size = UDim2.new(1, -44, 0, 22),
+	Position = UDim2.fromOffset(22, 70),
+	BackgroundTransparency = 1,
+	Text = "",
+	TextColor3 = SUB,
+	TextSize = 14,
+	Font = Enum.Font.GothamMedium,
+	TextXAlignment = Enum.TextXAlignment.Left,
+}, card)
+
+local dots = {}
+for index = 1, #STEPS do
+	dots[index] = make("Frame", {
+		Size = UDim2.fromOffset(24, 5),
+		Position = UDim2.new(1, -34 - (#STEPS - index) * 30, 1, -18),
+		BackgroundColor3 = SUB,
+		BackgroundTransparency = 0.6,
+		BorderSizePixel = 0,
+	}, card)
+	round(dots[index], 3)
+end
+
+local zonesStroke = make("UIStroke", {
+	Color = Color3.fromRGB(255, 255, 255),
+	Thickness = 0,
+	Transparency = 0.1,
+}, zonesButton)
+
+---------------------------------------------------------------
+-- 월드 화살표
+---------------------------------------------------------------
+local arrowGui = nil
+
+local function destroyArrow()
+	if arrowGui then
+		arrowGui:Destroy()
+		arrowGui = nil
+	end
+end
+
+local function findTargetPart(kind)
+	local world = workspace:FindFirstChild("World")
+	if kind == "Egg" and world then
+		return world:FindFirstChild("Egg_" .. firstZone.Id)
+	elseif kind == "Gate" and world then
+		return world:FindFirstChild("Gate_" .. secondZone.Id)
+	elseif kind == "Breakable" then
+		local folder = workspace:FindFirstChild("Breakables")
+		if folder then
+			-- 첫 구역의 살아있는 물건 아무거나
+			for _, part in ipairs(folder:GetChildren()) do
+				if part.Transparency == 0 then
+					return part
+				end
+			end
+		end
+	end
+	return nil
+end
+
+local function updateArrow(kind)
+	if not kind then
+		destroyArrow()
+		return
+	end
+	local target = findTargetPart(kind)
+	if not target then
+		destroyArrow()
+		return
+	end
+	if arrowGui and arrowGui.Parent == target then
+		return
+	end
+	destroyArrow()
+
+	arrowGui = make("BillboardGui", {
+		Name = "TutorialArrow",
+		Size = UDim2.fromOffset(170, 70),
+		StudsOffset = Vector3.new(0, 6, 0),
+		AlwaysOnTop = true,
+	}, target)
+
+	make("TextLabel", {
+		Size = UDim2.fromScale(1, 1),
+		BackgroundTransparency = 1,
+		Text = "여기예요!\n▼",
+		TextColor3 = Color3.fromRGB(255, 228, 120),
+		TextStrokeTransparency = 0.2,
+		TextSize = 22,
+		Font = Enum.Font.GothamBold,
+	}, arrowGui)
+end
+
+---------------------------------------------------------------
+-- 진행
+---------------------------------------------------------------
+local currentStep = 0
+local finished = false
+local latest = nil
+local startPower = nil
+
+local function renderStep()
+	local step = STEPS[currentStep]
+	if not step then
+		return
+	end
+	stepCounter.Text = ("튜토리얼  %d / %d"):format(currentStep, #STEPS)
+	stepTitle.Text = step.Title
+
+	local coins = latest and latest.Coins or 0
+	local power = latest and latest.Power or 0
+
+	if step.Progress == "Egg" then
+		stepHint.Text = coins &gt;= firstZone.EggCost
+			and ("코인 %s / %s  ·  이제 열 수 있어요! 상자 앞에서 [E]"):format(
+				BigNumber.Short(coins), BigNumber.Short(firstZone.EggCost))
+			or ("코인 %s / %s  ·  조금만 더 기다리면 돼요"):format(
+				BigNumber.Short(coins), BigNumber.Short(firstZone.EggCost))
+	elseif step.Progress == "Power" then
+		stepHint.Text = ("파워 %s / %s  ·  상자를 더 열면 올라가요"):format(
+			BigNumber.Short(power), BigNumber.Short(POWER_GOAL))
+	elseif step.Progress == "Unlock" then
+		stepHint.Text = coins &gt;= secondZone.UnlockCost
+			and ("코인 %s / %s  ·  문 앞에서 [E] 또는 왼쪽 [🗺️ 구역]"):format(
+				BigNumber.Short(coins), BigNumber.Short(secondZone.UnlockCost))
+			or ("코인 %s / %s  ·  %s 더 모으면 돼요"):format(
+				BigNumber.Short(coins), BigNumber.Short(secondZone.UnlockCost),
+				BigNumber.Short(secondZone.UnlockCost - coins))
+	else
+		stepHint.Text = step.Hint
+	end
+
+	for index, dot in ipairs(dots) do
+		dot.BackgroundColor3 = index &lt;= currentStep and ACCENT or SUB
+		dot.BackgroundTransparency = index &lt;= currentStep and 0 or 0.6
+	end
+end
+
+local function finish(showCongrats)
+	if finished then
+		return
+	end
+	finished = true
+	currentStep = 0
+	destroyArrow()
+	zonesStroke.Thickness = 0
+	backdrop.Visible = false
+	completeTutorialRemote:FireServer()
+
+	if showCongrats then
+		card.Visible = true
+		stepCounter.Text = ""
+		stepTitle.Text = "이제 혼자서도 할 수 있어요 🎉"
+		stepHint.Text = "구역을 하나씩 열면서 달빛 옥상까지 올라가 보세요. 같은 고양이 3마리는 합성!"
+		skipButton.Visible = false
+		for _, dot in ipairs(dots) do
+			dot.BackgroundColor3 = ACCENT
+			dot.BackgroundTransparency = 0
+		end
+		task.delay(7, function()
+			gui:Destroy()
+			bottomHint.Visible = true
+		end)
+	else
+		gui:Destroy()
+		bottomHint.Visible = true
+	end
+end
+
+local function advance()
+	if finished then
+		return
+	end
+	currentStep += 1
+	if currentStep &gt; #STEPS then
+		finish(true)
+		return
+	end
+	if currentStep == 3 then
+		startPower = latest and latest.Power or 0
+	end
+	renderStep()
+end
+
+local function beginTutorial()
+	backdrop.Visible = false
+	card.Visible = true
+	bottomHint.Visible = false
+	currentStep = 1
+	renderStep()
+end
+
+startButton.Activated:Connect(beginTutorial)
+skipWelcome.Activated:Connect(function() finish(false) end)
+skipButton.Activated:Connect(function() finish(false) end)
+
+---------------------------------------------------------------
+-- 단계 통과 판정
+---------------------------------------------------------------
+dataChangedRemote.OnClientEvent:Connect(function(data)
+	local firstPayload = (latest == nil)
+	latest = data
+
+	if firstPayload then
+		if data.TutorialDone then
+			gui:Destroy()
+			return
+		end
+		gui.Enabled = true
+		backdrop.Visible = true
+		return
+	end
+
+	if finished or currentStep == 0 then
+		return
+	end
+
+	if currentStep == 1 and data.Coins &gt; 0 then
+		advance()
+	elseif currentStep == 2 and #data.Cats &gt;= 2 then
+		advance()
+	elseif currentStep == 3 and (data.Power or 0) &gt;= POWER_GOAL then
+		advance()
+	elseif currentStep == 4 and data.Zones[secondZone.Id] then
+		advance()
+	else
+		renderStep()
+	end
+end)
+
+requestDataRemote:FireServer()
+
+---------------------------------------------------------------
+RunService.Heartbeat:Connect(function()
+	if finished or currentStep == 0 then
+		return
+	end
+	local step = STEPS[currentStep]
+	if not step then
+		return
+	end
+
+	updateArrow(step.PointAt)
+	if arrowGui then
+		arrowGui.StudsOffset = Vector3.new(0, 6 + math.sin(os.clock() * 4) * 0.4, 0)
+	end
+
+	zonesStroke.Thickness = step.HighlightZones
+		and (2.5 + math.sin(os.clock() * 5) * 1.5)
+		or 0
+end)
+</ProtectedString>
+        </Properties>
+      </Item>
+    </Item>
+    <Item class="StarterCharacterScripts" referent="RBX15">
+      <Properties>
+        <string name="Name">StarterCharacterScripts</string>
+      </Properties>
+      <Item class="LocalScript" referent="RBX16">
+        <Properties>
+          <string name="Name">Animate</string>
+          <ProtectedString name="Source">-- Animate (LocalScript / StarterPlayer &gt; StarterCharacterScripts)
+--
+-- 로블록스 기본 Animate 스크립트를 대체한다.
+-- 기본 스크립트는 걷기·점프 애니메이션을 rbxassetid로 인터넷에서 받아오는데,
+-- 게시하지 않은 place에서는 그 요청이 전부 막혀 콘솔에 오류가 수십 개 쌓인다.
+-- (StarterCharacterScripts에 같은 이름의 스크립트가 있으면 기본 것이 들어오지 않는다.)
+--
+-- 대신 관절(Motor6D)을 직접 돌려서 걷는 모습을 만든다. 다운로드가 없다.
+
+local RunService = game:GetService("RunService")
+
+local character = script.Parent
+local humanoid = character:WaitForChild("Humanoid")
+local rootPart = character:WaitForChild("HumanoidRootPart")
+local torso = character:WaitForChild("Torso")
+
+local JOINT_NAMES = { "Right Shoulder", "Left Shoulder", "Right Hip", "Left Hip" }
+
+local joints = {}
+local restC0 = {}
+for _, name in ipairs(JOINT_NAMES) do
+	local motor = torso:WaitForChild(name, 10)
+	if not motor then
+		return -- R6 리그가 아니면 아무것도 하지 않는다
+	end
+	joints[name] = motor
+	restC0[name] = motor.C0
+end
+
+-- 어깨/엉덩이 관절의 로컬 Z축은 좌우가 서로 반대 방향을 향한다.
+-- 같은 부호를 주면 팔다리가 서로 엇갈리고(걷기), 부호를 뒤집으면 나란히 움직인다.
+local WALK_SPEED_REFERENCE = 16 -- 기본 걷기 속도
+local MAX_SWING = 0.9 -- 최대 스윙 각(라디안)
+
+local phase = 0
+local swingScale = 0
+
+RunService.RenderStepped:Connect(function(dt)
+	local velocity = rootPart.AssemblyLinearVelocity
+	local speed = Vector3.new(velocity.X, 0, velocity.Z).Magnitude
+	local airborne = humanoid.FloorMaterial == Enum.Material.Air
+
+	-- 멈추면 팔다리가 툭 끊기지 않고 부드럽게 제자리로 돌아오도록
+	local target = airborne and 0 or math.clamp(speed / WALK_SPEED_REFERENCE, 0, 1)
+	swingScale = swingScale + (target - swingScale) * math.min(dt * 10, 1)
+	phase = phase + dt * math.clamp(speed, 0, 24) * 1.1
+
+	local swing = math.sin(phase) * swingScale * MAX_SWING
+	local jumpPose = airborne and 1.2 or 0 -- 공중에서는 두 팔을 앞으로 든다
+
+	joints["Right Shoulder"].C0 = restC0["Right Shoulder"] * CFrame.Angles(0, 0, swing + jumpPose)
+	joints["Left Shoulder"].C0 = restC0["Left Shoulder"] * CFrame.Angles(0, 0, swing - jumpPose)
+	joints["Right Hip"].C0 = restC0["Right Hip"] * CFrame.Angles(0, 0, -swing)
+	joints["Left Hip"].C0 = restC0["Left Hip"] * CFrame.Angles(0, 0, -swing)
+end)
+</ProtectedString>
+        </Properties>
+      </Item>
+    </Item>
+  </Item>
+</roblox>

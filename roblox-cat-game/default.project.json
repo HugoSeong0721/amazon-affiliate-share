@@ -6,6 +6,9 @@
       "$className": "ReplicatedStorage",
       "CatConfig": {
         "$path": "src/ReplicatedStorage/CatConfig.lua"
+      },
+      "BigNumber": {
+        "$path": "src/ReplicatedStorage/BigNumber.lua"
       }
     },
     "ServerScriptService": {
@@ -16,8 +19,11 @@
       "CharacterSetup": {
         "$path": "src/ServerScriptService/CharacterSetup.server.lua"
       },
-      "Shelter": {
-        "$path": "src/ServerScriptService/Shelter.server.lua"
+      "Breakables": {
+        "$path": "src/ServerScriptService/Breakables.server.lua"
+      },
+      "World": {
+        "$path": "src/ServerScriptService/World.server.lua"
       }
     },
     "StarterPlayer": {
