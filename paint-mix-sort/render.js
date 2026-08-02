@@ -122,7 +122,7 @@ export class Renderer {
     const padX = 16;
     const gap = Math.max(12, Math.min(18, (this.cssW - padX * 2) * 0.045));
     const RATIO = 2.5; // 병 높이/너비
-    let bw = Math.min(60, (this.cssW - padX * 2 - gap * (perRow - 1)) / perRow);
+    let bw = Math.min(74, (this.cssW - padX * 2 - gap * (perRow - 1)) / perRow);
     const topPad = 30; // 배지/들어올림 여유
     const bottomPad = 18;
     const rowGap = 46;

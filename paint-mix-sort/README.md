@@ -22,6 +22,18 @@ python3 -m http.server 8000
 
 `?debug`를 붙이면 `window.__pms` 디버그 API(레벨 점프, 자동 클리어 등)가 열린다.
 
+## 단일 파일로 빌드
+
+외부 요청이 전혀 없는 자립형 HTML 하나로 묶는다. 공유 링크, 웹뷰 앱 패키징
+(Capacitor 등), 오프라인 배포에 그대로 쓸 수 있다.
+
+```bash
+node paint-mix-sort/tools/build-single-file.mjs
+# → paint-mix-sort/dist/paint-mix-sort.html (약 52KB)
+```
+
+`localStorage`가 막힌 샌드박스에서도 죽지 않도록 메모리 폴백이 자동으로 들어간다.
+
 ## 레벨 추가/수정
 
 1. `levels.js`에서 스펙(목표색, 빈 병 수, 시드) 수정
