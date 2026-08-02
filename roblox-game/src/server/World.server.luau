@@ -190,19 +190,43 @@ end
 -- Winding road with 38 zones (fixed seed = identical on every server)
 ----------------------------------------------------------------------
 
+local MIN_ZONE_GAP = 62
+
 local rng = Random.new(38)
 local position = Vector2.new(0, -70)
 local heading = math.rad(-90) -- start walking away from the plaza
 
+-- The road can curve back on itself, so every zone site is checked against
+-- the ones already placed (and the spawn plaza) before it is accepted.
+local placed: { Vector2 } = { Vector2.new(0, 0), Vector2.new(0, 20) }
+
+local function isClear(candidate: Vector2): boolean
+	for _, other in placed do
+		if (candidate - other).Magnitude < MIN_ZONE_GAP then
+			return false
+		end
+	end
+	return true
+end
+
 local previous = Vector2.new(0, -20)
 for index = 1, 38 do
-	heading += rng:NextNumber(-0.65, 0.65)
-	-- steer back toward the middle when drifting too far out
-	if position.Magnitude > 360 then
-		heading = math.atan2(-position.Y, -position.X)
+	local candidate = position
+	for attempt = 1, 16 do
+		local tryHeading = heading + rng:NextNumber(-0.65, 0.65)
+		-- steer back toward the middle when drifting too far out
+		if position.Magnitude > 340 then
+			tryHeading = math.atan2(-position.Y, -position.X) + rng:NextNumber(-0.35, 0.35)
+		end
+		local step = rng:NextNumber(56, 88) + attempt * 5
+		candidate = position + Vector2.new(math.cos(tryHeading), math.sin(tryHeading)) * step
+		if isClear(candidate) then
+			heading = tryHeading
+			break
+		end
 	end
-	local step = rng:NextNumber(48, 78)
-	position += Vector2.new(math.cos(heading), math.sin(heading)) * step
+	position = candidate
+	table.insert(placed, position)
 
 	-- candy road segment
 	local from = Vector3.new(previous.X, 0.53, previous.Y)
