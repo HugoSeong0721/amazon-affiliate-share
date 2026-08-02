@@ -42,30 +42,35 @@
 나머지(플롯, 그리드 건축, 가구 카탈로그, 데일리 보너스, 게임패스 구조)는
 검증된 공식을 그대로 따른다. **새로운 것은 딱 하나, 마켓뿐.**
 
-## 실행 방법
+## 바로 받기 (툴체인 불필요)
+
+**⬇️ [BlueprintHomes-v1.rbxl 다운로드](https://github.com/HugoSeong0721/amazon-affiliate-share/raw/claude/roblox-house-building-game-sxuk4g/roblox-blueprint-homes/build/BlueprintHomes-v1.rbxl)**
+
+받아서 Roblox Studio로 열고 **Play(F5)** 누르면 바로 플레이된다.
+Studio에서 파일을 열었을 때 Workspace가 비어 보이는 건 정상이다 — 동네 맵(도로,
+플롯 8개, 스폰)은 서버 스크립트가 런타임에 생성한다.
+
+> 마켓의 블루프린트 저장·거래를 테스트하려면 Studio에서
+> **Game Settings → Security → Enable Studio Access to API Services**를 켤 것.
+> 꺼져 있어도 건축·경제는 인메모리로 전부 동작한다(마켓 영속만 비활성).
+
+## 소스에서 빌드 / 개발
 
 이 저장소는 [Rojo](https://rojo.space) 프로젝트다. 맵/아이템 전부 코드로 생성되므로
-`.rbxl` 에셋 없이 바로 돈다.
+외부 에셋 의존성이 없다.
 
 ```bash
-# 1) 툴체인 설치 (한 번만)
+# 툴체인 설치 (한 번만)
 aftman install        # rojo 7.4.4
 
-# 2) 동기화 서버 실행
+# A) 코드를 고치면서 개발 — Studio의 Rojo 플러그인으로 Connect
 rojo serve
 
-# 3) Roblox Studio에서 Rojo 플러그인으로 Connect → Play (F5)
+# B) 배포용 .rbxl 재빌드 (위 다운로드 파일을 만든 명령)
+rojo build default.project.json -o build/BlueprintHomes-v1.rbxl
 ```
 
-Rojo 없이 테스트하려면: Studio에서 빈 Baseplate를 열고 `src/shared`의 모듈들을
-`ReplicatedStorage/Shared`(Folder)에, `src/server`를 `ServerScriptService/Server`(Script)에,
-`src/client`를 `StarterPlayerScripts/Client`(LocalScript)에 수동으로 복사해도 된다.
-(`init.*.luau`가 해당 Script 본문, 나머지 파일이 자식 ModuleScript)
-
-- DataStore가 없는 미퍼블리시 Studio 세션에서도 **인메모리로 전부 동작**한다
-  (마켓 영속만 비활성). 실서비스 전 Game Settings → Security → *Enable Studio
-  Access to API Services* 활성화.
-- 서버당 플롯 8개이므로 place 설정에서 **최대 플레이어 8명**으로 맞출 것.
+서버당 플롯이 8개이므로 퍼블리시할 때 place 설정에서 **최대 플레이어 8명**으로 맞출 것.
 
 ## 조작
 
