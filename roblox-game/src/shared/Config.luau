@@ -12,6 +12,12 @@ Config.PhotoRewardCoins = 15
 Config.PhotoCooldownSeconds = 60
 Config.ItemsPerSearch = 30
 
+-- Social play
+Config.GroupPhotoBonus = 20
+Config.EventIntervalSeconds = 240
+Config.EventDurationSeconds = 90
+Config.EventRewardCoins = 100
+
 -- Ages 6-12 across the US: skin tones must cover a wide, even range.
 Config.SkinTones = {
 	Color3.fromRGB(255, 220, 196),

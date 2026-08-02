@@ -59,6 +59,7 @@ type PlayerData = {
 	lastDaily: number,
 	newsSeen: number?,
 	signed: boolean?,
+	photos: number?,
 }
 
 -- GetDataStore throws in Studio when the place isn't published; the game
@@ -72,6 +73,10 @@ if not dataStoreOk then
 end
 local sessions: { [Player]: PlayerData } = {}
 local photoTimestamps: { [Player]: number } = {}
+
+-- Defined by the social layer near the bottom of this script.
+local announcePhoto: (host: Player) -> ()
+local updateNameTag: (player: Player) -> ()
 
 local function defaultData(): PlayerData
 	return {
@@ -566,6 +571,9 @@ local function attachRide(player: Player)
 	humanoid.WalkSpeed = spec.speed
 	humanoid.JumpHeight = spec.jump
 	humanoid:SetAttribute("RideSpeed", spec.speed)
+	if updateNameTag then
+		updateNameTag(player)
+	end
 end
 
 ----------------------------------------------------------------------
@@ -583,12 +591,13 @@ local function applyOutfitNow(player: Player)
 		return
 	end
 
-	local ok, description = pcall(function()
+	local ok, applied = pcall(function()
 		return humanoid:GetAppliedDescription()
 	end)
-	if not ok or not description then
+	if not ok or not applied then
 		return
 	end
+	local description = applied:Clone()
 
 	for categoryKey, assetId in data.equipped do
 		if categoryKey == "Props" or categoryKey == "Ride" then
@@ -623,11 +632,11 @@ local function applyOutfitNow(player: Player)
 		humanoid:ApplyDescription(description)
 	end)
 	if not ok2 then
-		-- A failed apply can leave the character half-built; retry once.
-		task.wait(0.5)
+		-- Asset delivery can fail mid-rebuild and leave the avatar invisible;
+		-- put the previous look back so the player is never a ghost.
 		pcall(function()
 			if humanoid.Parent and humanoid.Health > 0 then
-				humanoid:ApplyDescription(description)
+				humanoid:ApplyDescription(applied)
 			end
 		end)
 	end
@@ -821,7 +830,14 @@ photoRemote.OnServerInvoke = function(player: Player)
 	end
 	photoTimestamps[player] = now
 	data.coins += Config.PhotoRewardCoins
+	data.photos = (data.photos or 0) + 1
 	pushCoins(player)
+	if announcePhoto then
+		task.spawn(announcePhoto, player)
+	end
+	if updateNameTag then
+		task.spawn(updateNameTag, player)
+	end
 	return { ok = true, coins = data.coins, rewarded = true }
 end
 
@@ -1175,4 +1191,500 @@ end
 
 Players.PlayerRemoving:Connect(function(player)
 	placeCooldown[player] = nil
+end)
+
+----------------------------------------------------------------------
+-- Social layer: live feed, photo shoutouts, group photos, gather events
+----------------------------------------------------------------------
+
+local CollectionService = game:GetService("CollectionService")
+
+local feedRemote = Instance.new("RemoteEvent")
+feedRemote.Name = "FeedEvent"
+feedRemote.Parent = remotesFolder
+
+local photoInviteRemote = Instance.new("RemoteEvent")
+photoInviteRemote.Name = "PhotoInvite"
+photoInviteRemote.Parent = remotesFolder
+
+local eventStateRemote = Instance.new("RemoteEvent")
+eventStateRemote.Name = "EventState"
+eventStateRemote.Parent = remotesFolder
+
+local joinPhotoRemote = makeRemoteFunction("JoinPhoto")
+
+local function broadcastFeed(icon: string, text: string)
+	feedRemote:FireAllClients(icon, text)
+end
+
+local function worldPart(props: { [string]: any }): Part
+	local p = Instance.new("Part")
+	p.Anchored = true
+	p.CanCollide = false
+	p.TopSurface = Enum.SurfaceType.Smooth
+	p.BottomSurface = Enum.SurfaceType.Smooth
+	for key, value in props do
+		(p :: any)[key] = value
+	end
+	p.Parent = workspace
+	return p
+end
+
+----------------------------------------------------------------------
+-- Zone lookup (pads are tagged by the world script)
+----------------------------------------------------------------------
+
+local function zonePads(): { BasePart }
+	local pads: { BasePart } = {}
+	for _, instance in CollectionService:GetTagged("PhotoZone") do
+		if instance:IsA("BasePart") then
+			table.insert(pads, instance)
+		end
+	end
+	table.sort(pads, function(a, b)
+		return ((a:GetAttribute("ZoneIndex") :: number?) or 0) < ((b:GetAttribute("ZoneIndex") :: number?) or 0)
+	end)
+	return pads
+end
+
+local function nearestZoneName(position: Vector3): string
+	local bestName, bestDistance = "the studio", 95
+	for _, pad in zonePads() do
+		local distance = (pad.Position - position).Magnitude
+		if distance < bestDistance then
+			bestDistance = distance
+			bestName = (pad:GetAttribute("ZoneName") :: string?) or bestName
+		end
+	end
+	return bestName
+end
+
+----------------------------------------------------------------------
+-- Name tags: who is here, what they ride, how many photos they took
+----------------------------------------------------------------------
+
+local function rideIconFor(key: any): string
+	if type(key) ~= "string" then
+		return ""
+	end
+	for _, ride in Config.Rides do
+		if ride.key == key then
+			return ride.icon
+		end
+	end
+	return ""
+end
+
+updateNameTag = function(player: Player)
+	local data = sessions[player]
+	local character = player.Character
+	local head = character and character:FindFirstChild("Head")
+	if not data or not head or not head:IsA("BasePart") then
+		return
+	end
+
+	local tag = head:FindFirstChild("ComebackTag") :: BillboardGui?
+	if not tag then
+		tag = Instance.new("BillboardGui")
+		tag.Name = "ComebackTag"
+		tag.Size = UDim2.fromOffset(230, 56)
+		tag.StudsOffset = Vector3.new(0, 2.6, 0)
+		tag.MaxDistance = 140
+		tag.Parent = head
+
+		local nameLabel = Instance.new("TextLabel")
+		nameLabel.Name = "NameLabel"
+		nameLabel.Size = UDim2.new(1, 0, 0.58, 0)
+		nameLabel.BackgroundTransparency = 1
+		nameLabel.Font = Enum.Font.FredokaOne
+		nameLabel.TextScaled = true
+		nameLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+		nameLabel.TextStrokeColor3 = Color3.fromRGB(226, 58, 130)
+		nameLabel.TextStrokeTransparency = 0.1
+		nameLabel.Parent = tag
+
+		local subLabel = Instance.new("TextLabel")
+		subLabel.Name = "SubLabel"
+		subLabel.Size = UDim2.new(1, 0, 0.42, 0)
+		subLabel.Position = UDim2.fromScale(0, 0.58)
+		subLabel.BackgroundTransparency = 1
+		subLabel.Font = Enum.Font.FredokaOne
+		subLabel.TextScaled = true
+		subLabel.TextColor3 = Color3.fromRGB(255, 232, 245)
+		subLabel.TextStrokeColor3 = Color3.fromRGB(90, 40, 110)
+		subLabel.TextStrokeTransparency = 0.2
+		subLabel.Parent = tag
+	end
+
+	local nameLabel = tag:FindFirstChild("NameLabel") :: TextLabel?
+	local subLabel = tag:FindFirstChild("SubLabel") :: TextLabel?
+	if nameLabel then
+		nameLabel.Text = player.DisplayName
+	end
+	if subLabel then
+		local ride = rideIconFor(data.equipped.Ride)
+		subLabel.Text = `{ride ~= "" and ride .. " " or ""}\u{1F4F8} {data.photos or 0}`
+	end
+end
+
+----------------------------------------------------------------------
+-- Photo shoutouts + group photos
+----------------------------------------------------------------------
+
+local GROUP_RADIUS = 45
+local INVITE_SECONDS = 12
+local photoInvites: { [Player]: number } = {}
+
+local function photoPop(player: Player)
+	local character = player.Character
+	local head = character and character:FindFirstChild("Head")
+	if not head or not head:IsA("BasePart") then
+		return
+	end
+	local pop = Instance.new("BillboardGui")
+	pop.Name = "PhotoPop"
+	pop.Size = UDim2.fromOffset(200, 64)
+	pop.StudsOffset = Vector3.new(0, 4.4, 0)
+	pop.AlwaysOnTop = true
+	pop.Parent = head
+	local label = Instance.new("TextLabel")
+	label.Size = UDim2.fromScale(1, 1)
+	label.BackgroundTransparency = 1
+	label.Text = "\u{1F4F8} CLICK!"
+	label.Font = Enum.Font.FredokaOne
+	label.TextScaled = true
+	label.TextColor3 = Color3.fromRGB(255, 255, 255)
+	label.TextStrokeColor3 = Color3.fromRGB(226, 58, 130)
+	label.TextStrokeTransparency = 0
+	label.Parent = pop
+	task.delay(3, function()
+		pop:Destroy()
+	end)
+end
+
+announcePhoto = function(host: Player)
+	local character = host.Character
+	local root = character and character:FindFirstChild("HumanoidRootPart")
+	if not root or not root:IsA("BasePart") then
+		return
+	end
+	local zoneName = nearestZoneName(root.Position)
+	photoPop(host)
+
+	local friends: { Player } = {}
+	for _, other in Players:GetPlayers() do
+		if other ~= host then
+			local otherRoot = other.Character and other.Character:FindFirstChild("HumanoidRootPart")
+			if otherRoot and otherRoot:IsA("BasePart") and (otherRoot.Position - root.Position).Magnitude <= GROUP_RADIUS then
+				table.insert(friends, other)
+			end
+		end
+	end
+
+	for _, friend in friends do
+		local friendData = sessions[friend]
+		if friendData then
+			friendData.coins += Config.GroupPhotoBonus
+			pushCoins(friend)
+			serverToast:FireClient(friend, `Group photo with {host.DisplayName}! +{Config.GroupPhotoBonus} \u{1F496}`)
+			photoPop(friend)
+		end
+	end
+
+	if #friends > 0 then
+		broadcastFeed("\u{1F4F8}", `{host.DisplayName} + {#friends} took a group photo at {zoneName}!`)
+		return
+	end
+
+	broadcastFeed("\u{1F4F8}", `{host.DisplayName} is taking photos at {zoneName}!`)
+	photoInvites[host] = os.clock() + INVITE_SECONDS
+	for _, other in Players:GetPlayers() do
+		if other ~= host then
+			photoInviteRemote:FireClient(other, host.UserId, host.DisplayName, zoneName, INVITE_SECONDS)
+		end
+	end
+end
+
+joinPhotoRemote.OnServerInvoke = function(player: Player, hostUserId: unknown)
+	if type(hostUserId) ~= "number" then
+		return { ok = false }
+	end
+	local host = Players:GetPlayerByUserId(hostUserId)
+	if not host or host == player then
+		return { ok = false }
+	end
+	local expiresAt = photoInvites[host]
+	if not expiresAt or os.clock() > expiresAt then
+		return { ok = false, message = "Too late! \u{1F97A}" }
+	end
+	local hostRoot = host.Character and host.Character:FindFirstChild("HumanoidRootPart")
+	local myRoot = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
+	if not hostRoot or not hostRoot:IsA("BasePart") or not myRoot or not myRoot:IsA("BasePart") then
+		return { ok = false }
+	end
+
+	-- Pop in beside the host, facing the same way.
+	local side = (math.random(0, 1) == 0) and -1 or 1
+	myRoot.CFrame = hostRoot.CFrame * CFrame.new(side * math.random(4, 7), 0, math.random(0, 3))
+	local data = sessions[player]
+	if data then
+		data.coins += Config.GroupPhotoBonus
+		pushCoins(player)
+	end
+	photoPop(player)
+	broadcastFeed("\u{1F91D}", `{player.DisplayName} joined {host.DisplayName}'s photo!`)
+	return { ok = true }
+end
+
+----------------------------------------------------------------------
+-- Gather events: everyone to one zone, then a monument stays behind
+----------------------------------------------------------------------
+
+local eventStoreOk, eventStore = pcall(function()
+	return DataStoreService:GetDataStore("ComebackEvents_v1")
+end)
+if not eventStoreOk then
+	eventStore = nil
+end
+
+type EventRecord = { z: number, d: string, c: number }
+
+local eventHistory: { EventRecord } = {}
+
+local function buildEventMonument(record: EventRecord, ordinal: number)
+	local pad: BasePart? = nil
+	for _, candidate in zonePads() do
+		if candidate:GetAttribute("ZoneIndex") == record.z then
+			pad = candidate
+			break
+		end
+	end
+	if not pad then
+		return
+	end
+
+	-- Later monuments are taller and brighter, so the world visibly grows.
+	local height = math.min(10 + ordinal * 0.8, 30)
+	local hue = (ordinal * 0.17) % 1
+	local color = Color3.fromHSV(hue, 0.65, 1)
+	local lateral = 13 + (ordinal % 3) * 5
+
+	local pillar = worldPart({
+		Name = "EventMonument",
+		Size = Vector3.new(3, height, 3),
+		CFrame = pad.CFrame * CFrame.new(lateral, height / 2, 0),
+		Color = color,
+		Material = Enum.Material.Neon,
+		Transparency = 0.15,
+	})
+	worldPart({
+		Name = "EventMonumentBase",
+		Size = Vector3.new(6, 1, 6),
+		CFrame = pad.CFrame * CFrame.new(lateral, 0.5, 0),
+		Color = Color3.fromRGB(58, 34, 84),
+		Material = Enum.Material.SmoothPlastic,
+		CanCollide = true,
+	})
+
+	local sign = Instance.new("BillboardGui")
+	sign.Size = UDim2.fromOffset(260, 90)
+	sign.StudsOffset = Vector3.new(0, height / 2 + 3, 0)
+	sign.MaxDistance = 220
+	sign.Parent = pillar
+	local title = Instance.new("TextLabel")
+	title.Size = UDim2.new(1, 0, 0.5, 0)
+	title.BackgroundTransparency = 1
+	title.Text = `\u{1F389} EVENT #{ordinal}`
+	title.Font = Enum.Font.FredokaOne
+	title.TextScaled = true
+	title.TextColor3 = Color3.fromRGB(255, 255, 255)
+	title.TextStrokeColor3 = Color3.fromRGB(90, 40, 110)
+	title.TextStrokeTransparency = 0.1
+	title.Parent = sign
+	local detail = Instance.new("TextLabel")
+	detail.Size = UDim2.new(1, 0, 0.5, 0)
+	detail.Position = UDim2.fromScale(0, 0.5)
+	detail.BackgroundTransparency = 1
+	detail.Text = `{record.d} \u{00B7} {record.c} stars came`
+	detail.Font = Enum.Font.FredokaOne
+	detail.TextScaled = true
+	detail.TextColor3 = Color3.fromRGB(255, 232, 245)
+	detail.TextStrokeColor3 = Color3.fromRGB(90, 40, 110)
+	detail.TextStrokeTransparency = 0.25
+	detail.Parent = sign
+
+	local attachment = Instance.new("Attachment")
+	attachment.Parent = pillar
+	local sparkles = Instance.new("ParticleEmitter")
+	sparkles.Texture = "rbxasset://textures/particles/sparkles_main.dds"
+	sparkles.Rate = math.min(2 + ordinal, 12)
+	sparkles.Speed = NumberRange.new(2, 4)
+	sparkles.Lifetime = NumberRange.new(1.2, 2.2)
+	sparkles.SpreadAngle = Vector2.new(180, 180)
+	sparkles.Color = ColorSequence.new(color)
+	sparkles.Parent = attachment
+end
+
+local function makeBeacon(pad: BasePart): Model
+	local model = Instance.new("Model")
+	model.Name = "EventBeacon"
+
+	local column = worldPart({
+		Name = "Column",
+		Shape = Enum.PartType.Cylinder,
+		Size = Vector3.new(180, 12, 12),
+		CFrame = pad.CFrame * CFrame.new(0, 90, 0) * CFrame.Angles(0, 0, math.rad(90)),
+		Color = Color3.fromRGB(255, 214, 74),
+		Material = Enum.Material.Neon,
+		Transparency = 0.72,
+		CanQuery = false,
+	})
+	column.Parent = model
+
+	local ring = worldPart({
+		Name = "Ring",
+		Size = Vector3.new(18, 0.2, 18),
+		CFrame = pad.CFrame * CFrame.new(0, 0.7, 0),
+		Color = Color3.fromRGB(255, 214, 74),
+		Material = Enum.Material.Neon,
+		Transparency = 0.3,
+		CanQuery = false,
+	})
+	ring.Parent = model
+
+	local sign = Instance.new("BillboardGui")
+	sign.Size = UDim2.fromOffset(320, 90)
+	sign.StudsOffset = Vector3.new(0, 14, 0)
+	sign.AlwaysOnTop = true
+	sign.Parent = ring
+	local label = Instance.new("TextLabel")
+	label.Size = UDim2.fromScale(1, 1)
+	label.BackgroundTransparency = 1
+	label.Text = "\u{1F389} EVENT HERE!"
+	label.Font = Enum.Font.FredokaOne
+	label.TextScaled = true
+	label.TextColor3 = Color3.fromRGB(255, 255, 255)
+	label.TextStrokeColor3 = Color3.fromRGB(255, 140, 0)
+	label.TextStrokeTransparency = 0
+	label.Parent = sign
+
+	model.Parent = workspace
+	return model
+end
+
+local recentZoneIndices: { number } = {}
+
+local function runEvent()
+	local pads = zonePads()
+	if #pads == 0 then
+		return
+	end
+
+	local pad: BasePart? = nil
+	for _ = 1, 12 do
+		local candidate = pads[math.random(1, #pads)]
+		local index = (candidate:GetAttribute("ZoneIndex") :: number?) or 0
+		if not table.find(recentZoneIndices, index) then
+			pad = candidate
+			table.insert(recentZoneIndices, index)
+			while #recentZoneIndices > 6 do
+				table.remove(recentZoneIndices, 1)
+			end
+			break
+		end
+	end
+	pad = pad or pads[math.random(1, #pads)]
+	local activePad = pad :: BasePart
+	local zoneName = (activePad:GetAttribute("ZoneName") :: string?) or "a photo zone"
+
+	local beacon = makeBeacon(activePad)
+	broadcastFeed("\u{1F389}", `EVENT at {zoneName}! Everyone gather — big hearts!`)
+	eventStateRemote:FireAllClients({
+		active = true,
+		zoneName = zoneName,
+		position = activePad.Position,
+		seconds = Config.EventDurationSeconds,
+	})
+
+	task.wait(Config.EventDurationSeconds)
+
+	local attendees = 0
+	for _, player in Players:GetPlayers() do
+		local root = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
+		if root and root:IsA("BasePart") and (root.Position - activePad.Position).Magnitude <= 45 then
+			attendees += 1
+			local data = sessions[player]
+			if data then
+				data.coins += Config.EventRewardCoins
+				pushCoins(player)
+				serverToast:FireClient(player, `Event reward! +{Config.EventRewardCoins} \u{1F496}`)
+			end
+		end
+	end
+
+	beacon:Destroy()
+	eventStateRemote:FireAllClients({ active = false })
+
+	local record: EventRecord = { z = (activePad:GetAttribute("ZoneIndex") :: number?) or 0, d = os.date("!%b %d") :: any, c = attendees }
+	table.insert(eventHistory, record)
+	buildEventMonument(record, #eventHistory)
+	broadcastFeed("\u{1F3C6}", `Event done at {zoneName} — {attendees} stars came! A monument now stands there.`)
+
+	task.spawn(function()
+		pcall(function()
+			if eventStore then
+				eventStore:UpdateAsync("history", function(old)
+					old = type(old) == "table" and old or {}
+					table.insert(old, record)
+					while #old > 60 do
+						table.remove(old, 1)
+					end
+					return old
+				end)
+			end
+		end)
+	end)
+end
+
+task.spawn(function()
+	-- Rebuild past monuments once the world exists.
+	local waited = 0
+	while #zonePads() < 38 and waited < 30 do
+		task.wait(0.5)
+		waited += 0.5
+	end
+	pcall(function()
+		if eventStore then
+			local stored = eventStore:GetAsync("history")
+			if type(stored) == "table" then
+				eventHistory = stored
+			end
+		end
+	end)
+	for ordinal, record in eventHistory do
+		buildEventMonument(record, ordinal)
+	end
+
+	while true do
+		task.wait(Config.EventIntervalSeconds)
+		if #Players:GetPlayers() > 0 then
+			runEvent()
+		end
+	end
+end)
+
+----------------------------------------------------------------------
+-- Keep name tags fresh
+----------------------------------------------------------------------
+
+Players.PlayerAdded:Connect(function(player)
+	player.CharacterAdded:Connect(function()
+		task.wait(1.5)
+		updateNameTag(player)
+	end)
+	broadcastFeed("\u{1F44B}", `{player.DisplayName} arrived!`)
+end)
+
+Players.PlayerRemoving:Connect(function(player)
+	photoInvites[player] = nil
 end)

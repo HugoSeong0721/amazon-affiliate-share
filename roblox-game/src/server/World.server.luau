@@ -131,6 +131,9 @@ local function buildZone(index: number, theme: Theme, cf: CFrame, scale: number)
 		Transparency = 0.4,
 	})
 	table.insert(pulsePads, pad)
+	pad:SetAttribute("ZoneIndex", index)
+	pad:SetAttribute("ZoneName", `#{index} {theme.name}`)
+	game:GetService("CollectionService"):AddTag(pad, "PhotoZone")
 
 	local signGui = Instance.new("SurfaceGui")
 	signGui.Face = Enum.NormalId.Front

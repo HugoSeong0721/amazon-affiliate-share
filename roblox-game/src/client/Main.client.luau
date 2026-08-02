@@ -767,41 +767,26 @@ local countdownLabel = create("TextLabel", {
 	Parent = gui,
 })
 
--- Poses: official Roblox emote animations, held (looped) for the shot.
+-- Poses use built-in Roblox emotes: nothing to download, nothing to fail.
 local POSES = {
-	{ icon = "\u{1F44B}", id = 507770239 }, -- wave
-	{ icon = "\u{1F389}", id = 507770677 }, -- cheer
-	{ icon = "\u{1F449}", id = 507770453 }, -- point
-	{ icon = "\u{1F483}", id = 507771019 }, -- dance
-	{ icon = "\u{1F57A}", id = 507776043 }, -- dance 2
+	{ icon = "\u{1F44B}", emote = "wave" },
+	{ icon = "\u{1F389}", emote = "cheer" },
+	{ icon = "\u{1F449}", emote = "point" },
+	{ icon = "\u{1F483}", emote = "dance" },
+	{ icon = "\u{1F57A}", emote = "dance2" },
 }
-local currentPose: AnimationTrack? = nil
 
-local function stopPose()
-	if currentPose then
-		currentPose:Stop(0.2)
-		currentPose = nil
-	end
-end
+local function stopPose() end
 
-local function playPose(assetId: number)
-	stopPose()
+local function playPose(emote: string)
 	local character = player.Character
 	local humanoid = character and character:FindFirstChildOfClass("Humanoid")
-	local animator = humanoid and humanoid:FindFirstChildOfClass("Animator")
-	if not animator then
+	if not humanoid then
 		return
 	end
-	local animation = Instance.new("Animation")
-	animation.AnimationId = `rbxassetid://{assetId}`
-	local ok, track = pcall(function()
-		return animator:LoadAnimation(animation)
+	pcall(function()
+		humanoid:PlayEmote(emote)
 	end)
-	if ok and track then
-		track.Looped = true
-		track:Play(0.2)
-		currentPose = track
-	end
 end
 
 local poseBar = create("Frame", {
@@ -831,7 +816,8 @@ for _, pose in POSES do
 		Parent = poseBar,
 	}, { round(25) })
 	poseButton.MouseButton1Click:Connect(function()
-		playPose(pose.id)
+		playPose(pose.emote)
+		sfx(1.15)
 	end)
 end
 
@@ -1202,5 +1188,220 @@ task.spawn(function()
 		setCoins(state.coins or 0)
 		owned = state.owned or {}
 		equipped = state.equipped or {}
+	end
+end)
+
+----------------------------------------------------------------------
+-- Live feed: who is doing what, right now
+----------------------------------------------------------------------
+
+local feedRemote = remotes:WaitForChild("FeedEvent") :: RemoteEvent
+local photoInviteRemote = remotes:WaitForChild("PhotoInvite") :: RemoteEvent
+local eventStateRemote = remotes:WaitForChild("EventState") :: RemoteEvent
+local joinPhotoRemote = remotes:WaitForChild("JoinPhoto") :: RemoteFunction
+
+local feedList = create("Frame", {
+	Size = UDim2.fromOffset(430, 190),
+	Position = UDim2.fromOffset(16, 66),
+	BackgroundTransparency = 1,
+	Parent = gui,
+}, {
+	create("UIListLayout", {
+		Padding = UDim.new(0, 5),
+		VerticalAlignment = Enum.VerticalAlignment.Top,
+		SortOrder = Enum.SortOrder.LayoutOrder,
+	}),
+})
+
+local feedOrder = 0
+
+feedRemote.OnClientEvent:Connect(function(icon: string, text: string)
+	feedOrder += 1
+	local line = create("TextLabel", {
+		Size = UDim2.fromOffset(430, 32),
+		BackgroundColor3 = PURPLE_DARK,
+		BackgroundTransparency = 0.25,
+		Text = ` {icon}  {text} `,
+		Font = FONT,
+		TextSize = 19,
+		TextColor3 = WHITE,
+		TextXAlignment = Enum.TextXAlignment.Left,
+		TextTruncate = Enum.TextTruncate.AtEnd,
+		LayoutOrder = feedOrder,
+		Parent = feedList,
+	}, { round(16) })
+	popIn(line)
+
+	-- Keep the feed short so it never covers the world.
+	local lines = {}
+	for _, child in feedList:GetChildren() do
+		if child:IsA("TextLabel") then
+			table.insert(lines, child)
+		end
+	end
+	table.sort(lines, function(a, b)
+		return a.LayoutOrder < b.LayoutOrder
+	end)
+	while #lines > 5 do
+		local oldest = table.remove(lines, 1)
+		if oldest then
+			oldest:Destroy()
+		end
+	end
+
+	task.delay(9, function()
+		if line.Parent then
+			local fade = TweenService:Create(line, TweenInfo.new(0.6), { BackgroundTransparency = 1, TextTransparency = 1 })
+			fade:Play()
+			fade.Completed:Wait()
+			line:Destroy()
+		end
+	end)
+end)
+
+----------------------------------------------------------------------
+-- "Join my photo!" invitation
+----------------------------------------------------------------------
+
+local inviteCard = create("Frame", {
+	Size = UDim2.fromOffset(330, 128),
+	Position = UDim2.new(0, 16, 1, -300),
+	BackgroundColor3 = WHITE,
+	Visible = false,
+	Parent = gui,
+}, { round(18) })
+
+local inviteText = create("TextLabel", {
+	Size = UDim2.new(1, -20, 0, 56),
+	Position = UDim2.fromOffset(10, 10),
+	BackgroundTransparency = 1,
+	Text = "",
+	Font = FONT,
+	TextSize = 20,
+	TextWrapped = true,
+	TextColor3 = PURPLE_DARK,
+	Parent = inviteCard,
+})
+
+local inviteJoin = create("TextButton", {
+	Size = UDim2.fromOffset(150, 46),
+	Position = UDim2.new(0, 14, 1, -56),
+	BackgroundColor3 = PINK,
+	Text = "\u{1F4F8} Join!",
+	Font = FONT,
+	TextSize = 22,
+	TextColor3 = WHITE,
+	Parent = inviteCard,
+}, { round(23) })
+
+local inviteSkip = create("TextButton", {
+	Size = UDim2.fromOffset(140, 46),
+	Position = UDim2.new(1, -154, 1, -56),
+	BackgroundColor3 = Color3.fromRGB(236, 231, 242),
+	Text = "Later",
+	Font = FONT,
+	TextSize = 22,
+	TextColor3 = PURPLE_DARK,
+	Parent = inviteCard,
+}, { round(23) })
+
+local inviteHostId: number? = nil
+local inviteToken = 0
+
+local function hideInvite()
+	inviteCard.Visible = false
+	inviteHostId = nil
+end
+
+inviteSkip.MouseButton1Click:Connect(hideInvite)
+
+inviteJoin.MouseButton1Click:Connect(function()
+	local hostId = inviteHostId
+	hideInvite()
+	if not hostId then
+		return
+	end
+	local result = joinPhotoRemote:InvokeServer(hostId)
+	if result and result.ok then
+		sfx(1.3)
+		sparkleBurst(24)
+		toast("You joined the photo! \u{1F91D}")
+	elseif result and result.message then
+		toast(result.message)
+	end
+end)
+
+photoInviteRemote.OnClientEvent:Connect(function(hostId: number, hostName: string, zoneName: string, seconds: number)
+	inviteHostId = hostId
+	inviteText.Text = `\u{1F4F8} {hostName} is taking photos at {zoneName}. Join them?`
+	inviteCard.Visible = true
+	popIn(inviteCard)
+	sfx(1.45, 0.25)
+	inviteToken += 1
+	local token = inviteToken
+	task.delay(seconds, function()
+		if inviteToken == token then
+			hideInvite()
+		end
+	end)
+end)
+
+----------------------------------------------------------------------
+-- Gather events: banner with countdown and distance
+----------------------------------------------------------------------
+
+local eventBanner = create("Frame", {
+	Size = UDim2.fromOffset(460, 56),
+	Position = UDim2.new(0.5, -230, 0, 140),
+	BackgroundColor3 = YELLOW,
+	Visible = false,
+	Parent = gui,
+}, { round(28) })
+
+local eventLabel = create("TextLabel", {
+	Size = UDim2.fromScale(1, 1),
+	BackgroundTransparency = 1,
+	Text = "",
+	Font = FONT,
+	TextSize = 22,
+	TextColor3 = PURPLE_DARK,
+	Parent = eventBanner,
+})
+
+local eventEndsAt = 0
+local eventPosition: Vector3? = nil
+local eventZoneName = ""
+
+eventStateRemote.OnClientEvent:Connect(function(state)
+	if not state or not state.active then
+		eventBanner.Visible = false
+		eventPosition = nil
+		return
+	end
+	eventZoneName = tostring(state.zoneName)
+	eventPosition = state.position
+	eventEndsAt = os.clock() + (state.seconds or 90)
+	eventBanner.Visible = true
+	popIn(eventBanner)
+	sfx(0.8, 0.5)
+	task.delay(0.15, function()
+		sfx(1.2, 0.5)
+	end)
+end)
+
+task.spawn(function()
+	while true do
+		task.wait(0.5)
+		if eventBanner.Visible and eventPosition then
+			local remaining = math.max(0, math.floor(eventEndsAt - os.clock()))
+			local character = player.Character
+			local root = character and character:FindFirstChild("HumanoidRootPart")
+			local distanceText = ""
+			if root and root:IsA("BasePart") then
+				local distance = math.floor((root.Position - eventPosition).Magnitude)
+				distanceText = distance <= 45 and "  \u{2705} You're here!" or `  \u{1F3C3} {distance} away`
+			end
+			eventLabel.Text = `\u{1F389} EVENT at {eventZoneName}  \u{00B7}  {remaining}s{distanceText}`
+		end
 	end
 end)
