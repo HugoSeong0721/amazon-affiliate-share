@@ -13,6 +13,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 
 local player = Players.LocalPlayer
+local CatConfig = require(ReplicatedStorage:WaitForChild("CatConfig"))
 
 local remotes = ReplicatedStorage:WaitForChild("CatGameRemotes")
 local dataChangedRemote = remotes:WaitForChild("DataChanged")
@@ -49,26 +50,38 @@ local COLOR_BUTTON = Color3.fromRGB(255, 166, 61)
 ---------------------------------------------------------------
 -- 단계 정의
 ---------------------------------------------------------------
+-- 구조 대상 1호 = 가격이 매겨진 첫 고양이 (까망냥이)
+local FIRST_RESCUE = nil
+for _, breed in ipairs(CatConfig.Breeds) do
+	if breed.Price > 0 and (FIRST_RESCUE == nil or breed.Price < FIRST_RESCUE.Price) then
+		FIRST_RESCUE = breed
+	end
+end
+
 local STEPS = {
 	{
-		Title = "먼저 움직여 볼까요?",
-		Hint = "W A S D 키로 이동  ·  고양이가 옆에 붙어서 따라와요",
+		Title = "치즈냥이와 함께 걸어보세요",
+		Hint = "W A S D 키로 이동  ·  이 아이는 이제 당신을 따라다녀요",
 		ShowArrow = true,
 	},
 	{
-		Title = "고양이에게 밥을 주세요",
-		Hint = "고양이 근처에서 [E] 키  ·  코인 +2, 경험치 +10",
+		Title = "밥을 주세요",
+		Hint = string.format(
+			"고양이 근처에서 [E] 키  ·  돌보는 걸 본 이웃이 후원금 %d을 놓고 가요",
+			CatConfig.FeedCoins),
 		ShowArrow = true,
 	},
 	{
-		Title = "밥을 더 줘서 Lv.2 를 만들어 보세요",
-		Hint = "레벨이 오르면 고양이가 눈에 띄게 커져요",
+		Title = "건강해질 때까지 더 돌봐주세요",
+		Hint = "밥을 계속 주면 Lv.2 · 건강해진 고양이는 눈에 띄게 자라요",
 		ShowArrow = true,
 	},
 	{
-		Title = "코인을 모아 새 고양이를 입양해 보세요",
-		Hint = "왼쪽 [🛒 상점] → 까망냥이 100 코인",
+		Title = string.format("후원금을 모아 %s를 구조해 주세요", FIRST_RESCUE.Name),
+		-- 아래 Hint는 후원금이 바뀔 때마다 실시간으로 다시 씌워진다
+		Hint = "",
 		HighlightShop = true,
+		ShowRescueProgress = true,
 	},
 }
 
@@ -92,50 +105,75 @@ local backdrop = make("Frame", {
 }, gui)
 
 local welcome = make("Frame", {
-	Size = UDim2.fromOffset(440, 320),
-	Position = UDim2.new(0.5, -220, 0.5, -160),
+	Size = UDim2.fromOffset(500, 424),
+	Position = UDim2.new(0.5, -250, 0.5, -212),
 	BackgroundColor3 = COLOR_PANEL,
 }, backdrop)
 round(welcome, 18)
 
 make("TextLabel", {
-	Size = UDim2.new(1, 0, 0, 64),
-	Position = UDim2.fromOffset(0, 18),
+	Size = UDim2.new(1, 0, 0, 56),
+	Position = UDim2.fromOffset(0, 16),
 	BackgroundTransparency = 1,
-	Text = "🐱",
-	TextSize = 52,
+	Text = "🏠🐱",
+	TextSize = 42,
 	Font = Enum.Font.GothamBold,
 }, welcome)
 
 make("TextLabel", {
 	Size = UDim2.new(1, -40, 0, 34),
-	Position = UDim2.fromOffset(20, 82),
+	Position = UDim2.fromOffset(20, 72),
 	BackgroundTransparency = 1,
-	Text = "고양이 키우기",
+	Text = "작은 고양이 쉼터",
 	TextColor3 = COLOR_TITLE,
-	TextSize = 28,
+	TextSize = 27,
 	Font = Enum.Font.GothamBold,
 }, welcome)
 
-local welcomeBody = make("TextLabel", {
-	Size = UDim2.new(1, -56, 0, 100),
-	Position = UDim2.fromOffset(28, 124),
+-- 도입부 이야기 (CatConfig.Intro)
+local story = make("TextLabel", {
+	Size = UDim2.new(1, -64, 0, 92),
+	Position = UDim2.fromOffset(32, 114),
 	BackgroundTransparency = 1,
-	Text = "고양이에게 밥을 주면 코인과 경험치를 받아요.\n"
-		.. "레벨이 오르면 고양이가 점점 커지고,\n"
-		.. "코인을 모으면 새 고양이를 입양할 수 있어요.",
+	Text = table.concat(CatConfig.Intro, "\n"),
 	TextColor3 = COLOR_TEXT,
-	TextSize = 17,
+	TextSize = 16,
 	Font = Enum.Font.GothamMedium,
 	TextWrapped = true,
 }, welcome)
-welcomeBody.LineHeight = 1.35
+story.LineHeight = 1.4
+
+-- 게임의 규칙이 왜 그런지 한 번에 설명해주는 부분
+local rules = make("TextLabel", {
+	Size = UDim2.new(1, -64, 0, 78),
+	Position = UDim2.fromOffset(32, 210),
+	BackgroundTransparency = 1,
+	Text = "🍚  밥을 주면 고양이가 건강해집니다\n"
+		.. "🪙  돌보는 모습을 본 이웃이 후원금을 놓고 갑니다\n"
+		.. "🐾  후원금이 모이면 거리의 다음 아이를 구조할 수 있어요",
+	TextColor3 = Color3.fromRGB(120, 96, 66),
+	TextSize = 14,
+	Font = Enum.Font.GothamMedium,
+	TextXAlignment = Enum.TextXAlignment.Left,
+	TextWrapped = true,
+}, welcome)
+rules.LineHeight = 1.5
+
+make("TextLabel", {
+	Size = UDim2.new(1, -64, 0, 22),
+	Position = UDim2.fromOffset(32, 296),
+	BackgroundTransparency = 1,
+	Text = CatConfig.IntroGoal,
+	TextColor3 = COLOR_TITLE,
+	TextSize = 15,
+	Font = Enum.Font.GothamBold,
+}, welcome)
 
 local startButton = make("TextButton", {
-	Size = UDim2.fromOffset(200, 48),
-	Position = UDim2.new(0.5, -100, 1, -78),
+	Size = UDim2.fromOffset(220, 48),
+	Position = UDim2.new(0.5, -110, 1, -78),
 	BackgroundColor3 = COLOR_BUTTON,
-	Text = "시작하기",
+	Text = "쉼터 문 열기",
 	TextColor3 = Color3.new(1, 1, 1),
 	TextSize = 20,
 	Font = Enum.Font.GothamBold,
@@ -317,7 +355,23 @@ local function renderStep()
 	end
 	stepCounter.Text = string.format("튜토리얼  %d / %d", currentStep, #STEPS)
 	stepTitle.Text = step.Title
-	stepHint.Text = step.Hint
+
+	if step.ShowRescueProgress then
+		-- 후원금이 얼마나 모였는지 실시간으로 보여준다.
+		-- 예전에는 얼마가 모자란지 화면 어디에도 없어서 "입양이 안 된다"고 느껴졌다.
+		local coins = latestData and latestData.Coins or 0
+		if coins >= FIRST_RESCUE.Price then
+			stepHint.Text = string.format(
+				"후원금 %d / %d  ·  이제 데려올 수 있어요! 왼쪽 [🐾 구조하기]",
+				coins, FIRST_RESCUE.Price)
+		else
+			stepHint.Text = string.format(
+				"후원금 %d / %d  ·  %d 더 모으면 돼요 (밥 한 번에 %d)",
+				coins, FIRST_RESCUE.Price, FIRST_RESCUE.Price - coins, CatConfig.FeedCoins)
+		end
+	else
+		stepHint.Text = step.Hint
+	end
 	for index, dot in ipairs(dots) do
 		dot.BackgroundColor3 = index <= currentStep and COLOR_BUTTON or COLOR_SUB
 		dot.BackgroundTransparency = index <= currentStep and 0 or 0.6
@@ -338,8 +392,8 @@ local function finish(showCongrats)
 	if showCongrats then
 		card.Visible = true
 		stepCounter.Text = ""
-		stepTitle.Text = "튜토리얼 완료! 🎉"
-		stepHint.Text = "이제 마음껏 키워보세요. 고양이는 최대 3마리까지 데리고 다닐 수 있어요."
+		stepTitle.Text = "쉼터에 두 번째 식구가 생겼어요 🎉"
+		stepHint.Text = "거리에는 아직 세 마리가 더 있어요. 함께 다닐 수 있는 건 한 번에 3마리까지."
 		skipButton.Visible = false
 		for _, dot in ipairs(dots) do
 			dot.BackgroundColor3 = COLOR_BUTTON
@@ -415,6 +469,8 @@ dataChangedRemote.OnClientEvent:Connect(function(data)
 		advance()
 	elseif currentStep == 4 and #data.Cats >= 2 then
 		advance()
+	elseif currentStep == 4 then
+		renderStep() -- 후원금 진행도를 갱신
 	end
 end)
 

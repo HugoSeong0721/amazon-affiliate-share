@@ -103,7 +103,7 @@ local function pushData(player)
 	end
 	local stats = player:FindFirstChild("leaderstats")
 	if stats then
-		stats["코인"].Value = profile.Coins
+		stats["후원금"].Value = profile.Coins
 		stats["고양이"].Value = #profile.Cats
 	end
 	dataChangedRemote:FireClient(player, {
@@ -274,8 +274,18 @@ buyCatRemote.OnServerEvent:Connect(function(player, breedId)
 	if not breed or breed.Price <= 0 then
 		return
 	end
+	-- 이미 데려온 아이는 다시 데려올 수 없다 (쉼터에 한 마리씩)
+	for _, cat in ipairs(profile.Cats) do
+		if cat.Breed == breed.Id then
+			notifyRemote:FireClient(player, breed.Name .. "는 이미 쉼터에 있어요 🏠")
+			return
+		end
+	end
+
 	if profile.Coins < breed.Price then
-		notifyRemote:FireClient(player, "코인이 부족해요! 고양이에게 밥을 주고 코인을 모으세요 🪙")
+		notifyRemote:FireClient(player, string.format(
+			"구조 비용이 %d 모자라요. 고양이를 돌보면 후원금이 쌓여요 🪙",
+			breed.Price - profile.Coins))
 		return
 	end
 
@@ -286,9 +296,17 @@ buyCatRemote.OnServerEvent:Connect(function(player, breedId)
 		Xp = 0,
 		Equipped = countEquipped(profile) < CatConfig.MaxEquipped,
 	})
-	notifyRemote:FireClient(player, breed.Name .. "를 입양했어요! 🐱")
+	notifyRemote:FireClient(player, breed.Name .. "가 쉼터에 왔어요! " .. breed.Story .. " 🐱")
 	refreshCatModels(player)
 	pushData(player)
+
+	if #profile.Cats >= #CatConfig.Breeds then
+		task.delay(3, function()
+			if profiles[player] then
+				notifyRemote:FireClient(player, CatConfig.EndingMessage)
+			end
+		end)
+	end
 end)
 
 toggleEquipRemote.OnServerEvent:Connect(function(player, catIndex)
@@ -388,7 +406,7 @@ local function onPlayerAdded(player)
 	local stats = Instance.new("Folder")
 	stats.Name = "leaderstats"
 	local coins = Instance.new("IntValue")
-	coins.Name = "코인"
+	coins.Name = "후원금"
 	coins.Value = profile.Coins
 	coins.Parent = stats
 	local catCount = Instance.new("IntValue")

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""src/ 안의 Lua 스크립트 3개를 Roblox Studio에서 바로 열 수 있는
+"""src/ 안의 Lua 스크립트들을 Roblox Studio에서 바로 열 수 있는
 XML place 파일(build/CatGame-v{VERSION}.rbxlx)로 묶는다.
 
 사용법:  python3 tools/build_rbxlx.py
@@ -12,7 +12,7 @@ XML place 파일(build/CatGame-v{VERSION}.rbxlx)로 묶는다.
 import xml.etree.ElementTree as ET
 from pathlib import Path
 
-VERSION = 3
+VERSION = 4
 
 ROOT = Path(__file__).resolve().parent.parent
 SRC = ROOT / "src"
@@ -91,7 +91,7 @@ prop(spawn_props, "Color3uint8", "Color3uint8", color3uint8(255, 214, 133))
 prop(spawn_props, "token", "TopSurface", "0")
 prop(spawn_props, "token", "BottomSurface", "0")
 
-# ── 스크립트 3개를 각 서비스에 배치 ───────────────────────────
+# ── 스크립트를 각 서비스에 배치 ─────────────────────────────
 replicated, rep_props = item(root, "ReplicatedStorage")
 prop(rep_props, "string", "Name", "ReplicatedStorage")
 script_item(replicated, "ModuleScript", "CatConfig",
@@ -103,6 +103,8 @@ script_item(server_service, "Script", "CatGameServer",
             SRC / "ServerScriptService" / "CatGameServer.server.lua")
 script_item(server_service, "Script", "CharacterSetup",
             SRC / "ServerScriptService" / "CharacterSetup.server.lua")
+script_item(server_service, "Script", "Shelter",
+            SRC / "ServerScriptService" / "Shelter.server.lua")
 
 starter_player, sp_props = item(root, "StarterPlayer")
 prop(sp_props, "string", "Name", "StarterPlayer")

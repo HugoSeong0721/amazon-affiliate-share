@@ -15,6 +15,9 @@
       },
       "CharacterSetup": {
         "$path": "src/ServerScriptService/CharacterSetup.server.lua"
+      },
+      "Shelter": {
+        "$path": "src/ServerScriptService/Shelter.server.lua"
       }
     },
     "StarterPlayer": {

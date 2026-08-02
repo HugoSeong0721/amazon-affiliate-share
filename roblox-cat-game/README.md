@@ -1,32 +1,52 @@
-# 🐱 로블록스 고양이 키우기 (Cat Care Starter)
+# 🐱 작은 고양이 쉼터 (Roblox Cat Shelter)
 
-로블록스에서 바로 돌아가는 **고양이 키우기(펫 시뮬레이터) 스타터 게임**입니다.
-별도 에셋 없이 스크립트만으로 고양이 모델·UI·게임 로직이 전부 만들어집니다.
+로블록스에서 바로 돌아가는 **고양이 키우기 게임**입니다.
+별도 에셋 없이 스크립트만으로 쉼터·고양이·캐릭터·UI가 전부 만들어집니다.
+
+## 이야기
+
+> 비가 몹시 오던 밤, 쉼터 문 앞에 상자 하나가 놓여 있었습니다.
+> 안에는 치즈색 새끼 고양이 한 마리.
+> 오늘부터 당신은 이 작은 쉼터의 주인입니다.
+
+거리에는 아직 네 마리가 더 기다리고 있어요. 목표는 **다섯 마리를 모두 쉼터로 데려오는 것**입니다.
+
+이 설정이 게임의 모든 규칙을 설명해 줍니다:
+
+| 하는 일 | 왜 그런가 |
+|---|---|
+| 밥을 준다 | 고양이가 **건강해집니다** (레벨) |
+| 그러면 후원금이 생긴다 | **돌보는 모습을 본 이웃**이 후원금을 놓고 갑니다 |
+| 후원금을 모은다 | 거리의 다음 아이를 데려올 **구조 비용**(병원비·이동장·첫 달 사료값)이 됩니다 |
+| 다 모으면 | 쉼터가 가득 찹니다 — 엔딩 |
 
 ## 게임 내용
 
-- 처음 들어오면 **4단계 튜토리얼**이 뭘 해야 하는지 하나씩 알려줍니다
-- 시작하면 **치즈냥이** 한 마리와 코인 50개를 받습니다
-- 고양이가 플레이어 옆에 둥둥 떠서 따라다닙니다 (최대 3마리)
-- 고양이 근처에서 **E 키**(모바일은 화면 버튼)로 밥을 줄 수 있습니다
-  - 밥을 주면 코인 +4, 고양이 경험치 +10
-  - 레벨이 오르면 고양이가 점점 **커집니다** (최대 2.5배)
-- 데리고 다니는 고양이 레벨 합만큼 10초마다 코인이 자동으로 들어옵니다
-- **상점**에서 새 고양이 입양: 까망냥이(100) · 하양냥이(250) · 삼색냥이(600) · 황금냥이(2000)
-- **내 고양이** 메뉴에서 데려갈 고양이를 골라 장착/해제
-- 코인·고양이·레벨은 DataStore에 **자동 저장**됩니다 (아래 설정 필요)
+- 처음 들어오면 도입부 이야기와 **4단계 튜토리얼**이 손을 잡아줍니다
+- 시작하면 **치즈냥이** 한 마리와 후원금 50을 받습니다
+- 고양이가 플레이어 옆에 둥둥 떠서 따라다닙니다 (한 번에 3마리까지)
+- 고양이 근처에서 **E 키**(모바일은 화면 버튼)로 밥을 줍니다
+  - 밥을 주면 후원금 +4, 건강 +10
+  - 건강해지면 고양이가 점점 **커집니다** (최대 2.5배)
+- 함께 다니는 고양이 수만큼 10초마다 후원금이 조금씩 쌓입니다
+- **🐾 구조하기**에서 다음 아이를 데려옵니다 — 각자 사연이 있습니다
+  까망냥이(80) · 하양냥이(250) · 삼색냥이(600) · 황금냥이(2000)
+  - 후원금이 모자라면 버튼에 **`🪙 30 더`** 처럼 얼마가 부족한지 그대로 표시됩니다
+  - 이미 데려온 아이는 `쉼터에 있음`으로 잠깁니다
+- **🏠 우리 고양이**에서 함께 다닐 아이를 고릅니다
+- 후원금·고양이·건강은 DataStore에 **자동 저장**됩니다 (아래 설정 필요)
 
 ## 📥 바로 다운로드
 
-**[CatGame-v3.rbxl 다운로드](https://github.com/HugoSeong0721/amazon-affiliate-share/raw/claude/roblox-cat-game-nwoz9h/roblox-cat-game/build/CatGame-v3.rbxl)**
+**[CatGame-v4.rbxl 다운로드](https://github.com/HugoSeong0721/amazon-affiliate-share/raw/claude/roblox-cat-game-nwoz9h/roblox-cat-game/build/CatGame-v4.rbxl)**
 
 ```
-https://github.com/HugoSeong0721/amazon-affiliate-share/raw/claude/roblox-cat-game-nwoz9h/roblox-cat-game/build/CatGame-v3.rbxl
+https://github.com/HugoSeong0721/amazon-affiliate-share/raw/claude/roblox-cat-game-nwoz9h/roblox-cat-game/build/CatGame-v4.rbxl
 ```
 
 클릭하면 바로 받아지고, 더블클릭하면 Roblox Studio가 열립니다. 로그인·계정 불필요.
 
-> XML 버전(`build/CatGame-v3.rbxlx`)도 같은 내용입니다. 브라우저에서 링크로 열면
+> XML 버전(`build/CatGame-v4.rbxlx`)도 같은 내용입니다. 브라우저에서 링크로 열면
 > 다운로드 대신 텍스트가 펼쳐지므로, **공유용 링크는 `.rbxl` 쪽을 쓰세요.**
 
 ## Roblox Studio에 넣는 방법
@@ -34,10 +54,10 @@ https://github.com/HugoSeong0721/amazon-affiliate-share/raw/claude/roblox-cat-ga
 ### 방법 1 — place 파일 바로 열기 (가장 쉬움)
 
 1. [Roblox Studio](https://create.roblox.com/) 설치 후 실행
-2. 위 링크로 `CatGame-v3.rbxl`을 받아서 더블클릭 (또는 Studio에서 *File > Open from File*)
+2. 위 링크로 `CatGame-v4.rbxl`을 받아서 더블클릭 (또는 Studio에서 *File > Open from File*)
 3. **▶ Play** 버튼으로 바로 테스트
 
-### 방법 2 — 스크립트 6개 복사-붙여넣기
+### 방법 2 — 스크립트 7개 복사-붙여넣기
 
 Studio에서 새 **Baseplate** 템플릿을 만들고, Explorer 창에서:
 
@@ -46,6 +66,7 @@ Studio에서 새 **Baseplate** 템플릿을 만들고, Explorer 창에서:
 | `src/ReplicatedStorage/CatConfig.lua` | ReplicatedStorage | **ModuleScript** | `CatConfig` |
 | `src/ServerScriptService/CatGameServer.server.lua` | ServerScriptService | **Script** | `CatGameServer` |
 | `src/ServerScriptService/CharacterSetup.server.lua` | ServerScriptService | **Script** | `CharacterSetup` |
+| `src/ServerScriptService/Shelter.server.lua` | ServerScriptService | **Script** | `Shelter` |
 | `src/StarterPlayerScripts/CatGameClient.client.lua` | StarterPlayer > StarterPlayerScripts | **LocalScript** | `CatGameClient` |
 | `src/StarterPlayerScripts/CatTutorial.client.lua` | StarterPlayer > StarterPlayerScripts | **LocalScript** | `CatTutorial` |
 | `src/StarterCharacterScripts/Animate.client.lua` | StarterPlayer > StarterCharacterScripts | **LocalScript** | `Animate` |
@@ -77,17 +98,18 @@ bash tools/build.sh            # build/ 에 .rbxlx 와 .rbxl 둘 다 생성
 처음 들어오면 안내창이 뜨고, 4단계로 손을 잡아줍니다. 각 단계는 설명을 읽는 게
 아니라 **실제로 해내야** 넘어갑니다.
 
-1. **움직여 보기** — 고양이가 따라온다는 걸 알게 됩니다 (14 studs 이동하면 통과)
+1. **함께 걸어보기** — 고양이가 따라온다는 걸 알게 됩니다 (14 studs 이동하면 통과)
 2. **밥 주기** — 고양이 위에 `여기예요! ▼` 화살표가 뜹니다 (밥 한 번 주면 통과)
-3. **레벨 올리기** — 고양이가 커지는 걸 보게 됩니다 (Lv.2 도달하면 통과)
-4. **새 고양이 입양** — 상점 버튼이 반짝입니다 (한 마리 사면 통과)
+3. **건강해질 때까지 돌보기** — 고양이가 커지는 걸 보게 됩니다 (Lv.2 도달하면 통과)
+4. **까망냥이 구조하기** — 구조하기 버튼이 반짝이고, 카드에 **`후원금 62 / 80 · 18 더
+   모으면 돼요`** 처럼 실시간 진행도가 뜹니다 (데려오면 통과)
 
 언제든 `건너뛰기`로 끌 수 있고, 한 번 끝내면 다시 뜨지 않습니다
 (`TutorialDone`으로 저장 — DataStore가 꺼져 있으면 접속할 때마다 다시 뜹니다).
 
-> 튜토리얼 마지막 단계까지 2분 안에 도달하도록 `CatConfig.lua`의 밥 쿨타임을
-> 1.5초, 밥 한 번당 코인을 4로 잡았습니다. 더 천천히 크는 게임을 원하면
-> 이 두 숫자만 낮추면 됩니다.
+> 4단계가 막히지 않도록 첫 구조 비용을 80으로, 밥 쿨타임을 1.5초, 밥당 후원금을
+> 4로 잡았습니다. 시작 후원금 50에서 **밥 8번(약 12초)** 이면 까망냥이를 데려올 수
+> 있습니다. 더 천천히 크는 게임을 원하면 `CatConfig.lua`에서 이 숫자들을 올리세요.
 
 ## 캐릭터도 파츠로 직접 만듭니다
 
@@ -117,10 +139,16 @@ Studio 테스트에서 저장까지 확인하려면:
 끄고 플레이해도 게임은 정상 동작하고, 저장만 되지 않습니다.
 실제로 게시된 게임에서는 자동으로 저장됩니다.
 
-## 게임 밸런스 바꾸기
+## 이야기·밸런스 바꾸기
 
-`CatConfig.lua` 숫자만 고치면 됩니다 — 밥 쿨타임, 경험치, 가격, 최대 마리 수,
-레벨당 커지는 비율 등. 새 품종을 추가하려면 `Breeds` 테이블에 항목 하나만 더 넣으세요.
+전부 `CatConfig.lua` 한 파일에 있습니다.
+
+- **이야기** — `Intro`(도입부), `IntroGoal`(목표), `EndingMessage`(엔딩),
+  그리고 각 고양이의 `Story`(사연). 텍스트만 고치면 세계관이 통째로 바뀝니다.
+- **밸런스** — 밥 쿨타임, 후원금, 건강 증가량, 구조 비용, 함께 다닐 수 있는 마릿수,
+  레벨당 커지는 비율.
+- **새 고양이 추가** — `Breeds` 테이블에 `Id`/`Name`/`Price`/`Story`/색 두 개를
+  넣으면 상점·구조 목록·엔딩 조건에 자동으로 반영됩니다.
 
 ## 다음에 추가해볼 만한 아이디어
 
@@ -136,14 +164,15 @@ Studio 테스트에서 저장까지 확인하려면:
 ```
 roblox-cat-game/
 ├── build/
-│   ├── CatGame-v3.rbxl           ← 공유·다운로드용 (바이너리, 링크 클릭 시 바로 받아짐)
-│   ├── CatGame-v3.rbxlx          ← 같은 내용의 XML 버전 (git diff가 읽힘)
-│   └── CatGame-v1.*, v2.*        ← 이전 버전 (기존 링크가 깨지지 않게 남겨둠)
+│   ├── CatGame-v4.rbxl           ← 공유·다운로드용 (바이너리, 링크 클릭 시 바로 받아짐)
+│   ├── CatGame-v4.rbxlx          ← 같은 내용의 XML 버전 (git diff가 읽힘)
+│   └── CatGame-v1~v3.*          ← 이전 버전 (기존 링크가 깨지지 않게 남겨둠)
 ├── default.project.json          ← Rojo 프로젝트 설정
 ├── src/
 │   ├── ReplicatedStorage/CatConfig.lua              (밸런스·품종 설정)
 │   ├── ServerScriptService/CatGameServer.server.lua (서버 게임 로직)
 │   ├── ServerScriptService/CharacterSetup.server.lua (파츠로 만든 플레이어 캐릭터)
+│   ├── ServerScriptService/Shelter.server.lua        (쉼터 건물·마당·울타리)
 │   ├── StarterPlayerScripts/CatGameClient.client.lua (UI)
 │   ├── StarterPlayerScripts/CatTutorial.client.lua   (첫 접속 4단계 튜토리얼)
 │   └── StarterCharacterScripts/Animate.client.lua    (에셋 없는 걷기 동작)

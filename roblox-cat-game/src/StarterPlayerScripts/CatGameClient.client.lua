@@ -42,13 +42,13 @@ local gui = make("ScreenGui", { Name = "CatGameGui", ResetOnSpawn = false }, pla
 -- 코인 표시 (화면 위 가운데)
 ---------------------------------------------------------------
 local coinLabel = make("TextLabel", {
-	Size = UDim2.fromOffset(190, 46),
-	Position = UDim2.new(0.5, -95, 0, 10),
+	Size = UDim2.fromOffset(250, 46),
+	Position = UDim2.new(0.5, -125, 0, 10),
 	BackgroundColor3 = Color3.fromRGB(45, 36, 26),
 	BackgroundTransparency = 0.15,
-	Text = "🪙 0",
+	Text = "🪙 후원금 0",
 	TextColor3 = Color3.fromRGB(255, 216, 92),
-	TextSize = 26,
+	TextSize = 24,
 	Font = Enum.Font.GothamBold,
 }, gui)
 round(coinLabel, 14)
@@ -56,10 +56,10 @@ round(coinLabel, 14)
 -- 조작 힌트 (화면 아래). 튜토리얼이 도는 동안에는 튜토리얼이 이걸 숨긴다.
 local hint = make("TextLabel", {
 	Name = "Hint",
-	Size = UDim2.new(0, 460, 0, 30),
-	Position = UDim2.new(0.5, -230, 1, -42),
+	Size = UDim2.new(0, 520, 0, 30),
+	Position = UDim2.new(0.5, -260, 1, -42),
 	BackgroundTransparency = 1,
-	Text = "고양이 근처에서 [E] 키로 밥을 줄 수 있어요! 밥을 주면 코인과 경험치를 받아요 🍚",
+	Text = "고양이 근처에서 [E] 키로 밥을 주세요. 돌보는 걸 본 이웃이 후원금을 놓고 갑니다 🍚",
 	TextColor3 = Color3.new(1, 1, 1),
 	TextStrokeTransparency = 0.4,
 	TextSize = 16,
@@ -70,15 +70,19 @@ hint.TextWrapped = true
 ---------------------------------------------------------------
 -- 알림 토스트
 ---------------------------------------------------------------
+-- 상점 패널 위로 확실히 보이도록 ZIndex를 높게 잡는다.
+-- (예전에는 "구조 비용이 모자라요" 안내가 패널에 가려 버튼이 고장난 것처럼 보였다)
 local toast = make("TextLabel", {
-	Size = UDim2.new(0, 420, 0, 40),
-	Position = UDim2.new(0.5, -210, 0, 64),
+	Size = UDim2.new(0, 560, 0, 50),
+	Position = UDim2.new(0.5, -280, 0, 62),
 	BackgroundColor3 = Color3.fromRGB(45, 36, 26),
-	BackgroundTransparency = 0.15,
+	BackgroundTransparency = 0.08,
 	Text = "",
 	TextColor3 = Color3.new(1, 1, 1),
 	TextSize = 18,
 	Font = Enum.Font.GothamBold,
+	TextWrapped = true,
+	ZIndex = 50,
 	Visible = false,
 }, gui)
 round(toast, 12)
@@ -89,7 +93,7 @@ notifyRemote.OnClientEvent:Connect(function(message)
 	local myToken = toastToken
 	toast.Text = tostring(message)
 	toast.Visible = true
-	task.delay(2.5, function()
+	task.delay(3.5, function()
 		if toastToken == myToken then
 			toast.Visible = false
 		end
@@ -101,8 +105,8 @@ end)
 ---------------------------------------------------------------
 local function makePanel(titleText)
 	local panel = make("Frame", {
-		Size = UDim2.fromOffset(340, 420),
-		Position = UDim2.new(0.5, -170, 0.5, -210),
+		Size = UDim2.fromOffset(420, 440),
+		Position = UDim2.new(0.5, -210, 0.5, -220),
 		BackgroundColor3 = COLOR_PANEL,
 		Visible = false,
 	}, gui)
@@ -114,7 +118,7 @@ local function makePanel(titleText)
 		BackgroundTransparency = 1,
 		Text = titleText,
 		TextColor3 = COLOR_TITLE,
-		TextSize = 24,
+		TextSize = 23,
 		Font = Enum.Font.GothamBold,
 		TextXAlignment = Enum.TextXAlignment.Left,
 	}, panel)
@@ -148,9 +152,9 @@ local function makePanel(titleText)
 	return panel, list
 end
 
-local function makeRow(list, order)
+local function makeRow(list, order, height)
 	local row = make("Frame", {
-		Size = UDim2.new(1, -8, 0, 64),
+		Size = UDim2.new(1, -8, 0, height or 64),
 		BackgroundColor3 = Color3.fromRGB(255, 238, 214),
 		LayoutOrder = order,
 	}, list)
@@ -158,58 +162,102 @@ local function makeRow(list, order)
 	return row
 end
 
-local shopPanel, shopList = makePanel("🛒 고양이 상점")
-local invPanel, invList = makePanel("🐱 내 고양이")
+local shopPanel, shopList = makePanel("🐾 도움이 필요한 고양이들")
+local invPanel, invList = makePanel("🏠 쉼터의 고양이들")
 
 ---------------------------------------------------------------
--- 상점: 품종 목록은 고정이라 한 번만 만든다
+-- 구조 목록: 줄 자체는 고정이지만, 버튼은 후원금에 따라 매번 바뀐다.
+-- 후원금이 모자라면 "얼마나 더 필요한지"를 버튼에 그대로 적는다.
 ---------------------------------------------------------------
+local rescueRows = {}
+
 for order, breed in ipairs(CatConfig.Breeds) do
 	if breed.Price > 0 then
-		local row = makeRow(shopList, order)
+		local row = makeRow(shopList, order, 88)
 
 		local swatch = make("Frame", {
-			Size = UDim2.fromOffset(40, 40),
-			Position = UDim2.fromOffset(12, 12),
+			Size = UDim2.fromOffset(44, 44),
+			Position = UDim2.fromOffset(12, 14),
 			BackgroundColor3 = breed.BodyColor,
 		}, row)
 		round(swatch, 10)
 
 		make("TextLabel", {
-			Size = UDim2.new(1, -160, 0, 26),
-			Position = UDim2.fromOffset(62, 8),
+			Size = UDim2.new(1, -180, 0, 24),
+			Position = UDim2.fromOffset(66, 8),
 			BackgroundTransparency = 1,
 			Text = breed.Name,
 			TextColor3 = COLOR_TEXT,
-			TextSize = 19,
-			Font = Enum.Font.GothamBold,
-			TextXAlignment = Enum.TextXAlignment.Left,
-		}, row)
-
-		make("TextLabel", {
-			Size = UDim2.new(1, -160, 0, 20),
-			Position = UDim2.fromOffset(62, 34),
-			BackgroundTransparency = 1,
-			Text = "🪙 " .. breed.Price,
-			TextColor3 = Color3.fromRGB(180, 140, 60),
-			TextSize = 16,
-			Font = Enum.Font.GothamMedium,
-			TextXAlignment = Enum.TextXAlignment.Left,
-		}, row)
-
-		local buyButton = make("TextButton", {
-			Size = UDim2.fromOffset(76, 40),
-			Position = UDim2.new(1, -88, 0, 12),
-			BackgroundColor3 = COLOR_BUTTON,
-			Text = "입양",
-			TextColor3 = Color3.new(1, 1, 1),
 			TextSize = 18,
 			Font = Enum.Font.GothamBold,
+			TextXAlignment = Enum.TextXAlignment.Left,
 		}, row)
-		round(buyButton, 10)
-		buyButton.Activated:Connect(function()
+
+		local storyLabel = make("TextLabel", {
+			Size = UDim2.new(1, -180, 0, 32),
+			Position = UDim2.fromOffset(66, 30),
+			BackgroundTransparency = 1,
+			Text = breed.Story,
+			TextColor3 = Color3.fromRGB(150, 122, 90),
+			TextSize = 13,
+			Font = Enum.Font.GothamMedium,
+			TextXAlignment = Enum.TextXAlignment.Left,
+			TextYAlignment = Enum.TextYAlignment.Top,
+			TextWrapped = true,
+		}, row)
+		storyLabel.LineHeight = 1.15
+
+		make("TextLabel", {
+			Size = UDim2.new(1, -180, 0, 18),
+			Position = UDim2.fromOffset(66, 64),
+			BackgroundTransparency = 1,
+			Text = "구조 비용 🪙 " .. breed.Price,
+			TextColor3 = Color3.fromRGB(180, 140, 60),
+			TextSize = 14,
+			Font = Enum.Font.GothamBold,
+			TextXAlignment = Enum.TextXAlignment.Left,
+		}, row)
+
+		local rescueButton = make("TextButton", {
+			Size = UDim2.fromOffset(100, 44),
+			Position = UDim2.new(1, -112, 0, 22),
+			BackgroundColor3 = COLOR_BUTTON,
+			Text = "데려오기",
+			TextColor3 = Color3.new(1, 1, 1),
+			TextSize = 16,
+			Font = Enum.Font.GothamBold,
+		}, row)
+		round(rescueButton, 10)
+		rescueButton.Activated:Connect(function()
 			buyCatRemote:FireServer(breed.Id)
 		end)
+
+		table.insert(rescueRows, { Breed = breed, Button = rescueButton })
+	end
+end
+
+-- 후원금/보유 현황이 바뀔 때마다 버튼 상태를 다시 칠한다
+local function refreshRescueButtons(data)
+	local alreadyHome = {}
+	for _, cat in ipairs(data.Cats) do
+		alreadyHome[cat.Breed] = true
+	end
+
+	for _, entry in ipairs(rescueRows) do
+		local breed, button = entry.Breed, entry.Button
+		if alreadyHome[breed.Id] then
+			button.Text = "쉼터에 있음"
+			button.BackgroundColor3 = Color3.fromRGB(168, 196, 150)
+			button.AutoButtonColor = false
+		elseif data.Coins >= breed.Price then
+			button.Text = "데려오기"
+			button.BackgroundColor3 = COLOR_BUTTON
+			button.AutoButtonColor = true
+		else
+			button.Text = string.format("🪙 %d 더", breed.Price - data.Coins)
+			button.BackgroundColor3 = COLOR_BUTTON_OFF
+			button.AutoButtonColor = true
+		end
 	end
 end
 
@@ -226,44 +274,56 @@ local function rebuildInventory(cats)
 	for index, cat in ipairs(cats) do
 		local breed = CatConfig.GetBreed(cat.Breed)
 		if breed then
-			local row = makeRow(invList, index)
+			local row = makeRow(invList, index, 76)
 
 			local swatch = make("Frame", {
-				Size = UDim2.fromOffset(40, 40),
-				Position = UDim2.fromOffset(12, 12),
+				Size = UDim2.fromOffset(44, 44),
+				Position = UDim2.fromOffset(12, 16),
 				BackgroundColor3 = breed.BodyColor,
 			}, row)
 			round(swatch, 10)
 
 			make("TextLabel", {
-				Size = UDim2.new(1, -180, 0, 26),
-				Position = UDim2.fromOffset(62, 8),
+				Size = UDim2.new(1, -180, 0, 24),
+				Position = UDim2.fromOffset(66, 10),
 				BackgroundTransparency = 1,
-				Text = string.format("%s Lv.%d", breed.Name, cat.Level),
+				Text = string.format("%s  Lv.%d", breed.Name, cat.Level),
 				TextColor3 = COLOR_TEXT,
-				TextSize = 19,
+				TextSize = 18,
 				Font = Enum.Font.GothamBold,
 				TextXAlignment = Enum.TextXAlignment.Left,
 			}, row)
 
 			make("TextLabel", {
 				Size = UDim2.new(1, -180, 0, 20),
-				Position = UDim2.fromOffset(62, 34),
+				Position = UDim2.fromOffset(66, 34),
 				BackgroundTransparency = 1,
-				Text = string.format("경험치 %d / %d", cat.Xp, CatConfig.XpForLevel(cat.Level)),
+				Text = string.format("건강 %d / %d", cat.Xp, CatConfig.XpForLevel(cat.Level)),
 				TextColor3 = Color3.fromRGB(180, 140, 60),
-				TextSize = 15,
+				TextSize = 14,
 				Font = Enum.Font.GothamMedium,
 				TextXAlignment = Enum.TextXAlignment.Left,
 			}, row)
 
+			make("TextLabel", {
+				Size = UDim2.new(1, -180, 0, 18),
+				Position = UDim2.fromOffset(66, 54),
+				BackgroundTransparency = 1,
+				Text = breed.Story,
+				TextColor3 = Color3.fromRGB(170, 145, 115),
+				TextSize = 12,
+				Font = Enum.Font.GothamMedium,
+				TextXAlignment = Enum.TextXAlignment.Left,
+				TextTruncate = Enum.TextTruncate.AtEnd,
+			}, row)
+
 			local equipButton = make("TextButton", {
-				Size = UDim2.fromOffset(96, 40),
-				Position = UDim2.new(1, -108, 0, 12),
+				Size = UDim2.fromOffset(100, 42),
+				Position = UDim2.new(1, -112, 0, 17),
 				BackgroundColor3 = cat.Equipped and COLOR_BUTTON_OFF or COLOR_BUTTON,
-				Text = cat.Equipped and "쉬게 하기" or "데려가기",
+				Text = cat.Equipped and "쉬게 하기" or "함께 다니기",
 				TextColor3 = Color3.new(1, 1, 1),
-				TextSize = 16,
+				TextSize = 15,
 				Font = Enum.Font.GothamBold,
 			}, row)
 			round(equipButton, 10)
@@ -275,8 +335,9 @@ local function rebuildInventory(cats)
 end
 
 dataChangedRemote.OnClientEvent:Connect(function(data)
-	coinLabel.Text = "🪙 " .. tostring(data.Coins)
+	coinLabel.Text = "🪙 후원금 " .. tostring(data.Coins)
 	rebuildInventory(data.Cats)
+	refreshRescueButtons(data)
 end)
 
 ---------------------------------------------------------------
@@ -301,8 +362,8 @@ local function makeSideButton(name, text, offsetY, panelToOpen, panelToClose)
 	return button
 end
 
-makeSideButton("ShopButton", "🛒 상점", -56, shopPanel, invPanel)
-makeSideButton("InventoryButton", "🐱 내 고양이", 4, invPanel, shopPanel)
+makeSideButton("ShopButton", "🐾 구조하기", -56, shopPanel, invPanel)
+makeSideButton("InventoryButton", "🏠 우리 고양이", 4, invPanel, shopPanel)
 
 -- UI 준비 완료 → 서버에 첫 데이터 요청
 requestDataRemote:FireServer()
