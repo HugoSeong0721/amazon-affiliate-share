@@ -109,7 +109,7 @@ make("TextLabel", {
 
 make("TextLabel", {
 	Size = UDim2.new(1, -40, 0, 34),
-	Position = UDim2.fromOffset(20, 68),
+	Position = UDim2.fromOffset(20, 72),
 	BackgroundTransparency = 1,
 	Text = "고양이 시뮬레이터",
 	TextColor3 = TEXT,

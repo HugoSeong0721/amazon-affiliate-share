@@ -12,7 +12,7 @@ XML place 파일(build/CatGame-v{VERSION}.rbxlx)로 묶는다.
 import xml.etree.ElementTree as ET
 from pathlib import Path
 
-VERSION = 5
+VERSION = 6
 
 ROOT = Path(__file__).resolve().parent.parent
 SRC = ROOT / "src"

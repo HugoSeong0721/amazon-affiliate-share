@@ -70,6 +70,14 @@ fn install_host_api(lua: &Lua, entry: &str) -> mlua::Result<()> {
         })?,
     )?;
 
+    // 파일 쓰기 (UI 배치 도면을 SVG로 뽑을 때 쓴다)
+    globals.set(
+        "_writeFile",
+        lua.create_function(|_, (path, contents): (String, String)| {
+            fs::write(&path, contents).map_err(|e| mlua::Error::runtime(format!("{path}: {e}")))
+        })?,
+    )?;
+
     // 기본 전역으로 청크를 컴파일 (Luau에는 loadstring이 없다)
     globals.set(
         "_loadChunk",

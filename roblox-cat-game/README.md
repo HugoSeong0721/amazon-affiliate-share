@@ -5,10 +5,10 @@
 
 ## 📥 바로 다운로드
 
-**[CatGame-v5.rbxl 다운로드](https://github.com/HugoSeong0721/amazon-affiliate-share/raw/claude/roblox-cat-game-nwoz9h/roblox-cat-game/build/CatGame-v5.rbxl)**
+**[CatGame-v6.rbxl 다운로드](https://github.com/HugoSeong0721/amazon-affiliate-share/raw/claude/roblox-cat-game-nwoz9h/roblox-cat-game/build/CatGame-v6.rbxl)**
 
 ```
-https://github.com/HugoSeong0721/amazon-affiliate-share/raw/claude/roblox-cat-game-nwoz9h/roblox-cat-game/build/CatGame-v5.rbxl
+https://github.com/HugoSeong0721/amazon-affiliate-share/raw/claude/roblox-cat-game-nwoz9h/roblox-cat-game/build/CatGame-v6.rbxl
 ```
 
 클릭하면 바로 받아지고, 더블클릭하면 Roblox Studio가 열립니다. 로그인·계정 불필요.
@@ -81,7 +81,7 @@ Pet Simulator 계열의 핵심 순환을 그대로 따릅니다.
 ### 방법 1 — place 파일 바로 열기 (가장 쉬움)
 
 1. [Roblox Studio](https://create.roblox.com/) 설치 후 실행
-2. 위 링크로 `CatGame-v5.rbxl`을 받아서 더블클릭 (또는 *File > Open from File*)
+2. 위 링크로 `CatGame-v6.rbxl`을 받아서 더블클릭 (또는 *File > Open from File*)
 3. **▶ Play**
 
 ### 방법 2 — 스크립트 9개 복사-붙여넣기
@@ -120,6 +120,7 @@ cargo build --release --manifest-path tests/runner/Cargo.toml
 ./tests/runner/target/release/luarun tests/main.luau
 
 SKIP_CLIENT=1 ./tests/runner/target/release/luarun tests/main.luau   # 서버만
+./tests/runner/target/release/luarun tests/layout.luau               # UI 배치 검사
 ```
 
 38개 항목을 확인합니다 — 접속, 핵심 부수기 루프, 사거리, 상자 뽑기, 장착 제한,
@@ -137,7 +138,17 @@ SKIP_CLIENT=1 ./tests/runner/target/release/luarun tests/main.luau   # 서버만
 - **파워 정체** — 4마리를 채운 뒤에는 더 센 고양이를 뽑아도 자동 장착이 안 돼서
   파워가 영영 안 올랐습니다.
 
-**한계:** 화면에 뭐가 어떻게 그려지는지는 못 봅니다. 렌더링·레이아웃·카메라
+### UI 배치 검사 (`tests/layout.luau`)
+
+클라이언트를 실행해서 만들어진 UI 요소들의 화면 좌표를 계산하고,
+**화면 밖으로 나감 / 같은 층에서 겹침 / 글자가 칸보다 넘침**을 찾아냅니다.
+결과는 `build/ui-layout.svg` 도면으로도 나옵니다.
+
+예전에 겪었던 "안내가 상점 패널 뒤에 가려져서 버튼이 먹통처럼 보이던" 문제가
+바로 이 검사가 잡는 종류입니다. 실제로 튜토리얼 안내창의 2px 겹침을 잡아냈습니다.
+
+**한계:** 진짜 렌더링은 아닙니다. 색·폰트·실제 글자 폭은 확인할 수 없고,
+화면에 뭐가 어떻게 그려지는지는 못 봅니다. 렌더링·레이아웃·카메라
 문제는 여전히 Studio에서 직접 확인해야 합니다.
 
 ## 캐릭터도 파츠로 직접 만듭니다
@@ -160,7 +171,7 @@ SKIP_CLIENT=1 ./tests/runner/target/release/luarun tests/main.luau   # 서버만
 
 ```
 roblox-cat-game/
-├── build/CatGame-v5.rbxl         ← 공유·다운로드용 (v1~v4도 남겨둠)
+├── build/CatGame-v6.rbxl         ← 공유·다운로드용 (v1~v5도 남겨둠)
 ├── default.project.json          ← Rojo 프로젝트 설정
 ├── src/
 │   ├── ReplicatedStorage/CatConfig.lua               (모든 수치·고양이·구역)
@@ -174,6 +185,8 @@ roblox-cat-game/
 │   └── StarterCharacterScripts/Animate.client.lua    (에셋 없는 걷기)
 ├── tests/
 │   ├── main.luau                 ← 시나리오 + 자동 플레이어
+│   ├── layout.luau               ← UI 배치 검사 + SVG 도면
+│   ├── boot.luau                 ← 게임 부팅 공용 코드
 │   ├── mock/roblox.luau          ← 로블록스 API 흉내
 │   └── runner/                   ← Luau VM 런처 (Rust)
 └── tools/
