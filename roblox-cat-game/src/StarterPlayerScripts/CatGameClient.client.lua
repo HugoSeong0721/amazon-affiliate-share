@@ -53,8 +53,9 @@ local coinLabel = make("TextLabel", {
 }, gui)
 round(coinLabel, 14)
 
--- 조작 힌트 (화면 아래)
+-- 조작 힌트 (화면 아래). 튜토리얼이 도는 동안에는 튜토리얼이 이걸 숨긴다.
 local hint = make("TextLabel", {
+	Name = "Hint",
 	Size = UDim2.new(0, 460, 0, 30),
 	Position = UDim2.new(0.5, -230, 1, -42),
 	BackgroundTransparency = 1,
@@ -281,8 +282,9 @@ end)
 ---------------------------------------------------------------
 -- 패널 열기 버튼 (화면 왼쪽)
 ---------------------------------------------------------------
-local function makeSideButton(text, offsetY, panelToOpen, panelToClose)
+local function makeSideButton(name, text, offsetY, panelToOpen, panelToClose)
 	local button = make("TextButton", {
+		Name = name,
 		Size = UDim2.fromOffset(140, 48),
 		Position = UDim2.new(0, 14, 0.5, offsetY),
 		BackgroundColor3 = COLOR_BUTTON,
@@ -299,8 +301,8 @@ local function makeSideButton(text, offsetY, panelToOpen, panelToClose)
 	return button
 end
 
-makeSideButton("🛒 상점", -56, shopPanel, invPanel)
-makeSideButton("🐱 내 고양이", 4, invPanel, shopPanel)
+makeSideButton("ShopButton", "🛒 상점", -56, shopPanel, invPanel)
+makeSideButton("InventoryButton", "🐱 내 고양이", 4, invPanel, shopPanel)
 
 -- UI 준비 완료 → 서버에 첫 데이터 요청
 requestDataRemote:FireServer()

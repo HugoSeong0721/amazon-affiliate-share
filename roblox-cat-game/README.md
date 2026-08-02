@@ -5,10 +5,11 @@
 
 ## 게임 내용
 
+- 처음 들어오면 **4단계 튜토리얼**이 뭘 해야 하는지 하나씩 알려줍니다
 - 시작하면 **치즈냥이** 한 마리와 코인 50개를 받습니다
 - 고양이가 플레이어 옆에 둥둥 떠서 따라다닙니다 (최대 3마리)
 - 고양이 근처에서 **E 키**(모바일은 화면 버튼)로 밥을 줄 수 있습니다
-  - 밥을 주면 코인 +2, 고양이 경험치 +10
+  - 밥을 주면 코인 +4, 고양이 경험치 +10
   - 레벨이 오르면 고양이가 점점 **커집니다** (최대 2.5배)
 - 데리고 다니는 고양이 레벨 합만큼 10초마다 코인이 자동으로 들어옵니다
 - **상점**에서 새 고양이 입양: 까망냥이(100) · 하양냥이(250) · 삼색냥이(600) · 황금냥이(2000)
@@ -17,15 +18,15 @@
 
 ## 📥 바로 다운로드
 
-**[CatGame-v2.rbxl 다운로드](https://github.com/HugoSeong0721/amazon-affiliate-share/raw/claude/roblox-cat-game-nwoz9h/roblox-cat-game/build/CatGame-v2.rbxl)**
+**[CatGame-v3.rbxl 다운로드](https://github.com/HugoSeong0721/amazon-affiliate-share/raw/claude/roblox-cat-game-nwoz9h/roblox-cat-game/build/CatGame-v3.rbxl)**
 
 ```
-https://github.com/HugoSeong0721/amazon-affiliate-share/raw/claude/roblox-cat-game-nwoz9h/roblox-cat-game/build/CatGame-v2.rbxl
+https://github.com/HugoSeong0721/amazon-affiliate-share/raw/claude/roblox-cat-game-nwoz9h/roblox-cat-game/build/CatGame-v3.rbxl
 ```
 
 클릭하면 바로 받아지고, 더블클릭하면 Roblox Studio가 열립니다. 로그인·계정 불필요.
 
-> XML 버전(`build/CatGame-v2.rbxlx`)도 같은 내용입니다. 브라우저에서 링크로 열면
+> XML 버전(`build/CatGame-v3.rbxlx`)도 같은 내용입니다. 브라우저에서 링크로 열면
 > 다운로드 대신 텍스트가 펼쳐지므로, **공유용 링크는 `.rbxl` 쪽을 쓰세요.**
 
 ## Roblox Studio에 넣는 방법
@@ -33,10 +34,10 @@ https://github.com/HugoSeong0721/amazon-affiliate-share/raw/claude/roblox-cat-ga
 ### 방법 1 — place 파일 바로 열기 (가장 쉬움)
 
 1. [Roblox Studio](https://create.roblox.com/) 설치 후 실행
-2. 위 링크로 `CatGame-v2.rbxl`을 받아서 더블클릭 (또는 Studio에서 *File > Open from File*)
+2. 위 링크로 `CatGame-v3.rbxl`을 받아서 더블클릭 (또는 Studio에서 *File > Open from File*)
 3. **▶ Play** 버튼으로 바로 테스트
 
-### 방법 2 — 스크립트 3개 복사-붙여넣기
+### 방법 2 — 스크립트 6개 복사-붙여넣기
 
 Studio에서 새 **Baseplate** 템플릿을 만들고, Explorer 창에서:
 
@@ -46,6 +47,7 @@ Studio에서 새 **Baseplate** 템플릿을 만들고, Explorer 창에서:
 | `src/ServerScriptService/CatGameServer.server.lua` | ServerScriptService | **Script** | `CatGameServer` |
 | `src/ServerScriptService/CharacterSetup.server.lua` | ServerScriptService | **Script** | `CharacterSetup` |
 | `src/StarterPlayerScripts/CatGameClient.client.lua` | StarterPlayer > StarterPlayerScripts | **LocalScript** | `CatGameClient` |
+| `src/StarterPlayerScripts/CatTutorial.client.lua` | StarterPlayer > StarterPlayerScripts | **LocalScript** | `CatTutorial` |
 | `src/StarterCharacterScripts/Animate.client.lua` | StarterPlayer > StarterCharacterScripts | **LocalScript** | `Animate` |
 
 각 위치에서 `+` 버튼으로 해당 종류의 스크립트를 만들고, 파일 내용을 통째로 붙여넣으면 끝입니다.
@@ -69,6 +71,23 @@ bash tools/build.sh            # build/ 에 .rbxlx 와 .rbxl 둘 다 생성
 스크립트를 고쳐서 새로 배포할 때는 `tools/build_rbxlx.py` 맨 위의 `VERSION`을
 올려주세요. GitHub raw 링크는 같은 경로의 파일을 몇 분간 캐싱하기 때문에,
 파일명을 바꿔야 받는 사람이 확실히 새 버전을 받습니다.
+
+## 튜토리얼
+
+처음 들어오면 안내창이 뜨고, 4단계로 손을 잡아줍니다. 각 단계는 설명을 읽는 게
+아니라 **실제로 해내야** 넘어갑니다.
+
+1. **움직여 보기** — 고양이가 따라온다는 걸 알게 됩니다 (14 studs 이동하면 통과)
+2. **밥 주기** — 고양이 위에 `여기예요! ▼` 화살표가 뜹니다 (밥 한 번 주면 통과)
+3. **레벨 올리기** — 고양이가 커지는 걸 보게 됩니다 (Lv.2 도달하면 통과)
+4. **새 고양이 입양** — 상점 버튼이 반짝입니다 (한 마리 사면 통과)
+
+언제든 `건너뛰기`로 끌 수 있고, 한 번 끝내면 다시 뜨지 않습니다
+(`TutorialDone`으로 저장 — DataStore가 꺼져 있으면 접속할 때마다 다시 뜹니다).
+
+> 튜토리얼 마지막 단계까지 2분 안에 도달하도록 `CatConfig.lua`의 밥 쿨타임을
+> 1.5초, 밥 한 번당 코인을 4로 잡았습니다. 더 천천히 크는 게임을 원하면
+> 이 두 숫자만 낮추면 됩니다.
 
 ## 캐릭터도 파츠로 직접 만듭니다
 
@@ -117,15 +136,16 @@ Studio 테스트에서 저장까지 확인하려면:
 ```
 roblox-cat-game/
 ├── build/
-│   ├── CatGame-v2.rbxl           ← 공유·다운로드용 (바이너리, 링크 클릭 시 바로 받아짐)
-│   ├── CatGame-v2.rbxlx          ← 같은 내용의 XML 버전 (git diff가 읽힘)
-│   └── CatGame-v1.*              ← 이전 버전 (기존 링크가 깨지지 않게 남겨둠)
+│   ├── CatGame-v3.rbxl           ← 공유·다운로드용 (바이너리, 링크 클릭 시 바로 받아짐)
+│   ├── CatGame-v3.rbxlx          ← 같은 내용의 XML 버전 (git diff가 읽힘)
+│   └── CatGame-v1.*, v2.*        ← 이전 버전 (기존 링크가 깨지지 않게 남겨둠)
 ├── default.project.json          ← Rojo 프로젝트 설정
 ├── src/
 │   ├── ReplicatedStorage/CatConfig.lua              (밸런스·품종 설정)
 │   ├── ServerScriptService/CatGameServer.server.lua (서버 게임 로직)
 │   ├── ServerScriptService/CharacterSetup.server.lua (파츠로 만든 플레이어 캐릭터)
 │   ├── StarterPlayerScripts/CatGameClient.client.lua (UI)
+│   ├── StarterPlayerScripts/CatTutorial.client.lua   (첫 접속 4단계 튜토리얼)
 │   └── StarterCharacterScripts/Animate.client.lua    (에셋 없는 걷기 동작)
 └── tools/
     ├── build.sh                  ← .rbxlx + .rbxl 한 번에 빌드

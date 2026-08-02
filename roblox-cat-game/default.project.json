@@ -26,6 +26,9 @@
         "$className": "StarterPlayerScripts",
         "CatGameClient": {
           "$path": "src/StarterPlayerScripts/CatGameClient.client.lua"
+        },
+        "CatTutorial": {
+          "$path": "src/StarterPlayerScripts/CatTutorial.client.lua"
         }
       },
       "StarterCharacterScripts": {

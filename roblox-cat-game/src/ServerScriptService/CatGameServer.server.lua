@@ -26,6 +26,7 @@ end
 local buyCatRemote = makeRemote("BuyCat") -- 클라 → 서버: 품종 Id
 local toggleEquipRemote = makeRemote("ToggleEquip") -- 클라 → 서버: 고양이 번호
 local requestDataRemote = makeRemote("RequestData") -- 클라 → 서버: UI 준비 완료
+local completeTutorialRemote = makeRemote("CompleteTutorial") -- 클라 → 서버: 튜토리얼 끝
 local dataChangedRemote = makeRemote("DataChanged") -- 서버 → 클라: 데이터 스냅샷
 local notifyRemote = makeRemote("Notify") -- 서버 → 클라: 알림 메시지
 remotes.Parent = ReplicatedStorage
@@ -44,6 +45,7 @@ local profiles = {} -- [Player] = { Coins, Cats, lastFeed, models }
 local function newDefaultData()
 	return {
 		Coins = CatConfig.StartCoins,
+		TutorialDone = false,
 		Cats = {
 			{ Breed = "Cheese", Level = 1, Xp = 0, Equipped = true },
 		},
@@ -67,7 +69,11 @@ local function saveData(player)
 	if not (dataStore and profile) then
 		return
 	end
-	local payload = { Coins = profile.Coins, Cats = profile.Cats }
+	local payload = {
+		Coins = profile.Coins,
+		Cats = profile.Cats,
+		TutorialDone = profile.TutorialDone == true,
+	}
 	pcall(function()
 		dataStore:SetAsync("player_" .. player.UserId, payload)
 	end)
@@ -100,7 +106,11 @@ local function pushData(player)
 		stats["코인"].Value = profile.Coins
 		stats["고양이"].Value = #profile.Cats
 	end
-	dataChangedRemote:FireClient(player, { Coins = profile.Coins, Cats = profile.Cats })
+	dataChangedRemote:FireClient(player, {
+		Coins = profile.Coins,
+		Cats = profile.Cats,
+		TutorialDone = profile.TutorialDone == true,
+	})
 end
 
 ---------------------------------------------------------------
@@ -112,6 +122,8 @@ local function buildCatModel(player, catIndex, cat)
 
 	local model = Instance.new("Model")
 	model.Name = breed.Name .. " (" .. player.Name .. ")"
+	-- 튜토리얼이 "내 고양이"를 찾아 화살표를 띄울 때 쓴다
+	model:SetAttribute("CatOwnerUserId", player.UserId)
 
 	-- 모든 파츠는 Anchored + 충돌 없음 → 물리 대신 매 프레임 PivotTo로 이동
 	local function addPart(name, size, color, offset, tiltX)
@@ -303,6 +315,13 @@ toggleEquipRemote.OnServerEvent:Connect(function(player, catIndex)
 end)
 
 requestDataRemote.OnServerEvent:Connect(pushData)
+
+completeTutorialRemote.OnServerEvent:Connect(function(player)
+	local profile = profiles[player]
+	if profile then
+		profile.TutorialDone = true
+	end
+end)
 
 ---------------------------------------------------------------
 -- 고양이가 주인을 따라다니며 둥둥 떠다니는 연출

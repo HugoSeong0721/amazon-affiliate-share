@@ -5,9 +5,11 @@
 local CatConfig = {}
 
 CatConfig.MaxEquipped = 3 -- 동시에 데리고 다닐 수 있는 고양이 수
-CatConfig.FeedCooldown = 3 -- 밥 주기 쿨타임(초)
+CatConfig.FeedCooldown = 1.5 -- 밥 주기 쿨타임(초)
 CatConfig.FeedXp = 10 -- 밥 한 번당 경험치
-CatConfig.FeedCoins = 2 -- 밥 줄 때마다 받는 코인
+CatConfig.FeedCoins = 4 -- 밥 줄 때마다 받는 코인
+-- 쿨타임과 코인은 "처음 2분 안에 새 고양이를 한 마리 사본다"를 기준으로 맞췄다.
+-- 더 천천히 크는 게임으로 만들고 싶으면 쿨타임을 올리고 코인을 낮추면 된다.
 CatConfig.StartCoins = 50 -- 새 플레이어 시작 코인
 CatConfig.PassiveIncomeInterval = 10 -- 자동 코인 지급 주기(초)
 -- 자동 코인 = 데리고 다니는 고양이들의 레벨 합계 (주기마다)
