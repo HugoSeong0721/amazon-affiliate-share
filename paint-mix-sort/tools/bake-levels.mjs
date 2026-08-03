@@ -6,17 +6,19 @@
 import { writeFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
-import { generateLevel, MIX_RULES } from '../../sort-engine/index.js';
+import { generateLevel, SHAKE_RULES } from '../../sort-engine/index.js';
 import { LEVELS, CAPACITY } from '../levels.js';
 
 const outPath = join(dirname(fileURLToPath(import.meta.url)), '..', 'levels-data.js');
 
 const baked = LEVELS.map((def, i) => {
   const t0 = performance.now();
-  const lv = generateLevel({ ...def, capacity: CAPACITY, rules: MIX_RULES, solverNodes: 600000 });
+  const lv = generateLevel({ ...def, capacity: CAPACITY, rules: SHAKE_RULES, solverNodes: 600000 });
+  const shakes = lv.solution.filter((m) => m.type === 'shake').length;
   console.log(
-    `레벨 ${String(i + 1).padStart(2)}: 병 ${lv.bottles.length}개, 목표 [${lv.targets.join(',')}], ` +
-      `참고해 ${lv.solutionLength}수, ${(performance.now() - t0).toFixed(0)}ms`
+    `레벨 ${String(i + 1).padStart(2)}: 병 ${String(lv.bottles.length).padStart(2)}개, ` +
+      `목표 [${lv.targets.join(',')}], 참고해 ${String(lv.solutionLength).padStart(2)}수 ` +
+      `(붓기 ${lv.solutionLength - shakes} · 흔들기 ${shakes}), ${(performance.now() - t0).toFixed(0)}ms`
   );
   return {
     targets: lv.targets,

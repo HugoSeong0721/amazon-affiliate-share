@@ -1,5 +1,5 @@
-// 캔버스 렌더러 — 병, 물감, 붓기/혼합 애니메이션, 파티클.
-// 게임 로직은 전혀 모르고, 상태와 PourResult만 받아 그린다.
+// 캔버스 렌더러 — 병, 물감, 붓기/흔들기 애니메이션, 파티클.
+// 게임 로직은 전혀 모르고, 상태와 수(move) 결과만 받아 그린다.
 
 import { isUniform, topRun } from '../sort-engine/index.js';
 
@@ -28,13 +28,9 @@ function hexToRgb(hex) {
 function lerpColor(hexA, hexB, t) {
   const a = hexToRgb(hexA);
   const b = hexToRgb(hexB);
-  const r = Math.round(a[0] + (b[0] - a[0]) * t);
-  const g = Math.round(a[1] + (b[1] - a[1]) * t);
-  const bl = Math.round(a[2] + (b[2] - a[2]) * t);
-  return `rgb(${r},${g},${bl})`;
-}
-function lighten(hex, t) {
-  return lerpColor(hex, '#ffffff', t);
+  return `rgb(${Math.round(a[0] + (b[0] - a[0]) * t)},${Math.round(
+    a[1] + (b[1] - a[1]) * t
+  )},${Math.round(a[2] + (b[2] - a[2]) * t)})`;
 }
 const clamp01 = (t) => Math.max(0, Math.min(1, t));
 const easeOutCubic = (t) => 1 - Math.pow(1 - t, 3);
@@ -114,10 +110,6 @@ export class Renderer {
     this.guide = null;
   }
 
-  shakeBottle(i) {
-    this.shake = { i, t0: performance.now() };
-  }
-
   _layout() {
     if (!this.state || this.cssW < 10) {
       this.rects = [];
@@ -170,27 +162,46 @@ export class Renderer {
     return null;
   }
 
-  // 붓기 애니메이션 시작. onMix는 혼합 플래시 시작 시, onDone은 완전히 끝난 뒤 호출.
-  animatePour({ prevState, result, onMix, onDone }) {
+  shakeBottle(i) {
+    this.shake = { i, t0: performance.now() };
+  }
+
+  // 붓기 애니메이션. 색은 변하지 않고 덩어리가 옮겨갈 뿐이다.
+  animatePour({ prevState, result, onDone }) {
     const srcRect = this.rects[result.from];
     const dstRect = this.rects[result.to];
     if (!srcRect || !dstRect) {
       onDone && onDone();
       return;
     }
-    const dir = srcRect.x <= dstRect.x ? 1 : -1;
     this.anim = {
+      kind: 'pour',
       prev: prevState,
       res: result,
       t0: performance.now(),
       MOVE: 230,
       POUR: 240 + 100 * result.amount,
-      FLASH: result.mixed ? 300 : 0,
       RETURN: 210,
-      dir,
-      mixFired: false,
+      dir: srcRect.x <= dstRect.x ? 1 : -1,
       doneFired: false,
-      onMix,
+      onDone,
+    };
+  }
+
+  // 흔들기 애니메이션. 병이 부르르 떨리며 층들이 한 색으로 녹아든다.
+  animateShake({ prevState, result, onDone }) {
+    if (!this.rects[result.at]) {
+      onDone && onDone();
+      return;
+    }
+    this.anim = {
+      kind: 'shake',
+      prev: prevState,
+      res: result,
+      t0: performance.now(),
+      SHAKE: 520,
+      SETTLE: 180,
+      doneFired: false,
       onDone,
     };
   }
@@ -252,45 +263,49 @@ export class Renderer {
     ctx.clearRect(0, 0, this.cssW, this.cssH);
 
     const A = this.anim;
-    let animData = null;
-    if (A) animData = this._computeAnim(now, A);
+    const pourAnim = A && A.kind === 'pour' ? this._computePour(now, A) : null;
+    const shakeAnim = A && A.kind === 'shake' ? this._computeShake(now, A) : null;
 
-    // 일반 병 (애니메이션 중인 원본 병은 건너뛰고 나중에 위에 그림)
     for (let i = 0; i < this.state.bottles.length; i++) {
-      if (animData && i === A.res.from) continue;
+      // 붓는 중인 원본 병은 기울여서 나중에 위에 그린다
+      if (pourAnim && i === A.res.from) continue;
+
       let rect = { ...this.rects[i] };
       if (this.shake && this.shake.i === i) {
         const el = now - this.shake.t0;
         if (el < 300) rect.x += Math.sin(el / 16) * 5 * (1 - el / 300);
         else this.shake = null;
       }
+
       let model;
-      if (animData && i === A.res.to) {
-        model = animData.dstModel;
+      if (pourAnim && i === A.res.to) {
+        model = pourAnim.dstModel;
+      } else if (shakeAnim && i === A.res.at) {
+        model = shakeAnim.model;
+        rect.x += shakeAnim.jitterX;
+        rect.y += shakeAnim.jitterY;
       } else {
         const b = this.state.bottles[i];
         model = { colors: b.map((c) => COLOR_HEX[c]), fraction: 1, flash: 0 };
       }
-      const selected = this.selected === i && !animData;
+
+      const selected = this.selected === i && !A;
       if (selected) rect.y -= LIFT;
       const complete =
         this.state.bottles[i].length === this.capacity && isUniform(this.state.bottles[i]);
-      // 안내 중에는 지금 눌러야 할 병 외에는 물러나 보이게 한다
       const dim = this.guide !== null && i !== this.guide && !selected;
       if (dim) ctx.save(), (ctx.globalAlpha = 0.4);
       this._drawBottle(rect, model, { selected, complete, shadow: true });
       if (dim) ctx.restore();
     }
 
-    // 애니메이션 중인 원본 병 + 물줄기
-    if (animData) {
-      if (animData.stream) this._drawStream(animData.stream);
-      const { mouth, rot, srcModel } = animData;
+    if (pourAnim) {
+      if (pourAnim.stream) this._drawStream(pourAnim.stream);
       const r0 = this.rects[A.res.from];
       ctx.save();
-      ctx.translate(mouth.x, mouth.y);
-      ctx.rotate(rot);
-      this._drawBottle({ x: -r0.w / 2, y: 0, w: r0.w, h: r0.h }, srcModel, {
+      ctx.translate(pourAnim.mouth.x, pourAnim.mouth.y);
+      ctx.rotate(pourAnim.rot);
+      this._drawBottle({ x: -r0.w / 2, y: 0, w: r0.w, h: r0.h }, pourAnim.srcModel, {
         selected: false,
         complete: false,
         shadow: false,
@@ -298,54 +313,19 @@ export class Renderer {
       ctx.restore();
     }
 
-    if (!animData) this._drawGuide(now);
+    if (!A) this._drawGuide(now);
     this._drawParticles(now);
   }
 
-  // 튜토리얼: 눌러야 할 병 위에 맥동하는 링 + 손가락 커서
-  _drawGuide(now) {
-    if (this.guide === null) return;
-    const r = this.rects[this.guide];
-    if (!r) return;
-    const ctx = this.ctx;
-    const cx = r.x + r.w / 2;
-    const cy = r.y + r.h * 0.5;
-    const beat = (Math.sin(now / 330) + 1) / 2; // 0..1
-
-    ctx.save();
-    ctx.strokeStyle = `rgba(255,255,255,${0.45 - 0.32 * beat})`;
-    ctx.lineWidth = 2.4;
-    ctx.beginPath();
-    ctx.arc(cx, cy, 19 + beat * 15, 0, Math.PI * 2);
-    ctx.stroke();
-    ctx.restore();
-
-    // 검지 든 손. 검지 → 엄지 → 주먹 순서로 그려 주먹이 밑동을 덮게 한다.
-    ctx.save();
-    ctx.translate(cx + 2, cy - 6 + beat * 9);
-    ctx.rotate(0.28); // 오른쪽 아래에서 올라온 손처럼 살짝 기울인다
-    ctx.scale(1.3, 1.3);
-    ctx.lineJoin = 'round';
-    ctx.lineWidth = 3;
-    ctx.strokeStyle = 'rgba(26,22,52,0.92)';
-    ctx.fillStyle = '#ffffff';
-    ctx.shadowColor = 'rgba(0,0,0,0.45)';
-    ctx.shadowBlur = 12;
-    ctx.shadowOffsetY = 4;
-
-    rr(ctx, -5.5, 0, 11, 33, 5.5); // 검지
-    ctx.fill();
-    ctx.stroke();
-    rr(ctx, -23, 30, 15, 12, 6); // 엄지
-    ctx.fill();
-    ctx.stroke();
-    rr(ctx, -16, 26, 33, 29, 12); // 주먹
-    ctx.fill();
-    ctx.stroke();
-    ctx.restore();
+  _finish(A) {
+    this.anim = null;
+    if (!A.doneFired) {
+      A.doneFired = true;
+      A.onDone && A.onDone();
+    }
   }
 
-  _computeAnim(now, A) {
+  _computePour(now, A) {
     const res = A.res;
     const prevSrc = A.prev.bottles[res.from];
     const prevDst = A.prev.bottles[res.to];
@@ -362,91 +342,93 @@ export class Renderer {
     };
 
     const el = now - A.t0;
-    const { MOVE, POUR, FLASH, RETURN } = A;
-    const total = MOVE + POUR + FLASH + RETURN;
-
-    // 목적지 병의 (혼합 전) 색 배열: 원래 내용 + 부은 색
+    const { MOVE, POUR, RETURN } = A;
     const dstPreColors = prevDst.map((c) => COLOR_HEX[c]);
-    const dstPostColors = postDst.map((c) => COLOR_HEX[c]);
-
-    let mouth, rot;
-    let srcModel, dstModel;
-    let stream = null;
-
     const srcColorsFull = prevSrc.map((c) => COLOR_HEX[c]);
 
     if (el < MOVE) {
       const t = easeInOut(clamp01(el / MOVE));
-      mouth = {
-        x: startMouth.x + (pourMouth.x - startMouth.x) * t,
-        y: startMouth.y + (pourMouth.y - startMouth.y) * t,
+      return {
+        mouth: {
+          x: startMouth.x + (pourMouth.x - startMouth.x) * t,
+          y: startMouth.y + (pourMouth.y - startMouth.y) * t,
+        },
+        rot: TILT * A.dir * t,
+        srcModel: { colors: srcColorsFull, fraction: 1, flash: 0 },
+        dstModel: { colors: dstPreColors, fraction: 1, flash: 0 },
+        stream: null,
       };
-      rot = TILT * A.dir * t;
-      srcModel = { colors: srcColorsFull, fraction: 1, flash: 0 };
-      dstModel = { colors: dstPreColors, fraction: 1, flash: 0 };
-    } else if (el < MOVE + POUR) {
+    }
+
+    if (el < MOVE + POUR) {
       const t = easeInOut(clamp01((el - MOVE) / POUR));
       const moved = res.amount * t;
-      mouth = pourMouth;
-      rot = TILT * A.dir;
-
       const remain = prevSrc.length - moved;
-      const full = Math.floor(remain);
-      srcModel = {
-        colors: srcColorsFull.slice(0, Math.ceil(remain)),
-        fraction: remain - full > 0 ? remain - full : 1,
-        flash: 0,
-      };
-      const dstCount = prevDst.length + moved;
       const dstColors = dstPreColors.slice();
       for (let k = 0; k < Math.ceil(moved); k++) dstColors.push(pouredHex);
-      dstModel = {
-        colors: dstColors,
-        fraction: moved % 1 > 0 ? moved % 1 : 1,
-        flash: 0,
+      return {
+        mouth: pourMouth,
+        rot: TILT * A.dir,
+        srcModel: {
+          colors: srcColorsFull.slice(0, Math.ceil(remain)),
+          fraction: remain % 1 > 0 ? remain % 1 : 1,
+          flash: 0,
+        },
+        dstModel: { colors: dstColors, fraction: moved % 1 > 0 ? moved % 1 : 1, flash: 0 },
+        stream: this._streamGeom(pourMouth, dstRect, prevDst.length + moved, pouredHex, A.dir),
       };
-      stream = this._streamGeom(mouth, dstRect, dstCount, pouredHex, A.dir);
-    } else if (el < MOVE + POUR + FLASH) {
-      const f = clamp01((el - MOVE - POUR) / FLASH);
-      if (!A.mixFired) {
-        A.mixFired = true;
-        A.onMix && A.onMix();
-        const surfY = this._surfaceY(dstRect, postDst.length);
-        this._burst(dstRect.x + dstRect.w / 2, surfY, COLOR_HEX[res.color], 18);
-      }
-      mouth = pourMouth;
-      rot = TILT * A.dir;
-      srcModel = { colors: postSrc.map((c) => COLOR_HEX[c]), fraction: 1, flash: 0 };
-
-      // 닿은 구간이 혼합색으로 물드는 연출
-      const affected = res.mixedRunBefore + res.amount;
-      const preMixColors = dstPreColors.slice();
-      for (let k = 0; k < res.amount; k++) preMixColors.push(pouredHex);
-      const colors = preMixColors.map((hex, idx) => {
-        if (idx >= preMixColors.length - affected) {
-          return lerpColor(hex, COLOR_HEX[res.color], easeOutCubic(f));
-        }
-        return hex;
-      });
-      dstModel = { colors, fraction: 1, flash: Math.sin(f * Math.PI) * 0.5 };
-    } else if (el < total) {
-      const t = easeInOut(clamp01((el - MOVE - POUR - FLASH) / RETURN));
-      mouth = {
-        x: pourMouth.x + (startMouth.x - pourMouth.x) * t,
-        y: pourMouth.y + (startMouth.y - pourMouth.y) * t,
-      };
-      rot = TILT * A.dir * (1 - t);
-      srcModel = { colors: postSrc.map((c) => COLOR_HEX[c]), fraction: 1, flash: 0 };
-      dstModel = { colors: dstPostColors, fraction: 1, flash: 0 };
-    } else {
-      this.anim = null;
-      if (!A.doneFired) {
-        A.doneFired = true;
-        A.onDone && A.onDone();
-      }
-      return null;
     }
-    return { mouth, rot, srcModel, dstModel, stream };
+
+    if (el < MOVE + POUR + RETURN) {
+      const t = easeInOut(clamp01((el - MOVE - POUR) / RETURN));
+      return {
+        mouth: {
+          x: pourMouth.x + (startMouth.x - pourMouth.x) * t,
+          y: pourMouth.y + (startMouth.y - pourMouth.y) * t,
+        },
+        rot: TILT * A.dir * (1 - t),
+        srcModel: { colors: postSrc.map((c) => COLOR_HEX[c]), fraction: 1, flash: 0 },
+        dstModel: { colors: postDst.map((c) => COLOR_HEX[c]), fraction: 1, flash: 0 },
+        stream: null,
+      };
+    }
+
+    this._finish(A);
+    return null;
+  }
+
+  _computeShake(now, A) {
+    const el = now - A.t0;
+    const { SHAKE, SETTLE } = A;
+    const beforeHex = A.res.from.map((c) => COLOR_HEX[c]);
+    const afterHex = COLOR_HEX[A.res.color];
+
+    if (el < SHAKE) {
+      const t = clamp01(el / SHAKE);
+      // 흔들림은 강하게 시작해 잦아들고, 색은 그동안 서서히 녹아든다
+      const power = (1 - t) * 11;
+      const blend = easeInOut(clamp01((t - 0.22) / 0.7));
+      return {
+        jitterX: Math.sin(el / 21) * power,
+        jitterY: Math.cos(el / 15) * power * 0.5,
+        model: {
+          colors: beforeHex.map((hex) => lerpColor(hex, afterHex, blend)),
+          fraction: 1,
+          flash: Math.sin(t * Math.PI) * 0.22,
+        },
+      };
+    }
+
+    if (el < SHAKE + SETTLE) {
+      return {
+        jitterX: 0,
+        jitterY: 0,
+        model: { colors: beforeHex.map(() => afterHex), fraction: 1, flash: 0 },
+      };
+    }
+
+    this._finish(A);
+    return null;
   }
 
   _surfaceY(rect, unitCount) {
@@ -509,12 +491,10 @@ export class Renderer {
       ctx.restore();
     }
 
-    // 유리 몸통
     rr(ctx, x, y, w, h, r);
     ctx.fillStyle = 'rgba(255,255,255,0.055)';
     ctx.fill();
 
-    // 물감 (몸통 모양으로 클리핑)
     ctx.save();
     rr(ctx, x + 1, y + 1, w - 2, h - 2, r - 1);
     ctx.clip();
@@ -537,13 +517,11 @@ export class Renderer {
       ctx.fillStyle = `rgba(255,255,255,${model.flash})`;
       ctx.fillRect(x, y, w, h);
     }
-    // 광택
     ctx.fillStyle = 'rgba(255,255,255,0.07)';
     rr(ctx, x + w * 0.13, y + 7, w * 0.16, h - 14, w * 0.08);
     ctx.fill();
     ctx.restore();
 
-    // 유리 외곽선 + 입구
     rr(ctx, x, y, w, h, r);
     ctx.strokeStyle = selected ? 'rgba(190,170,255,0.75)' : 'rgba(255,255,255,0.28)';
     ctx.lineWidth = selected ? 2.2 : 1.6;
@@ -574,6 +552,49 @@ export class Renderer {
     }
   }
 
+  // 튜토리얼: 눌러야 할 병 위에 맥동하는 링 + 손가락 커서
+  _drawGuide(now) {
+    if (this.guide === null) return;
+    const r = this.rects[this.guide];
+    if (!r) return;
+    const ctx = this.ctx;
+    const cx = r.x + r.w / 2;
+    const cy = r.y + r.h * 0.5;
+    const beat = (Math.sin(now / 330) + 1) / 2;
+
+    ctx.save();
+    ctx.strokeStyle = `rgba(255,255,255,${0.45 - 0.32 * beat})`;
+    ctx.lineWidth = 2.4;
+    ctx.beginPath();
+    ctx.arc(cx, cy, 19 + beat * 15, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.restore();
+
+    // 검지 든 손. 검지 → 엄지 → 주먹 순서로 그려 주먹이 밑동을 덮게 한다.
+    ctx.save();
+    ctx.translate(cx + 2, cy - 6 + beat * 9);
+    ctx.rotate(0.28); // 오른쪽 아래에서 올라온 손처럼 살짝 기울인다
+    ctx.scale(1.3, 1.3);
+    ctx.lineJoin = 'round';
+    ctx.lineWidth = 3;
+    ctx.strokeStyle = 'rgba(26,22,52,0.92)';
+    ctx.fillStyle = '#ffffff';
+    ctx.shadowColor = 'rgba(0,0,0,0.45)';
+    ctx.shadowBlur = 12;
+    ctx.shadowOffsetY = 4;
+
+    rr(ctx, -5.5, 0, 11, 33, 5.5); // 검지
+    ctx.fill();
+    ctx.stroke();
+    rr(ctx, -23, 30, 15, 12, 6); // 엄지
+    ctx.fill();
+    ctx.stroke();
+    rr(ctx, -16, 26, 33, 29, 12); // 주먹
+    ctx.fill();
+    ctx.stroke();
+    ctx.restore();
+  }
+
   _drawParticles(now) {
     if (!this.particles.length) return;
     const ctx = this.ctx;
@@ -601,8 +622,8 @@ export class Renderer {
         ctx.fill();
       }
       ctx.restore();
+      alive.push(p);
     }
-    for (const p of this.particles) if (p.age < p.ttl) alive.push(p);
     this.particles = alive;
   }
 }

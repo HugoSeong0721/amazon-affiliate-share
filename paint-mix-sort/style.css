@@ -87,6 +87,52 @@ body {
 .hud-btn:active { transform: scale(0.92); }
 .hud-btn:disabled { opacity: 0.35; }
 
+/* 흔들기 버튼 — 고른 병을 섞을 수 있을 때만 나타난다 */
+#btnShake {
+  align-self: center;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  margin: 2px 0 6px;
+  padding: 13px 22px;
+  border: 0;
+  border-radius: 16px;
+  background: linear-gradient(180deg, #9c7dff, #6a48f0);
+  color: #fff;
+  font-family: inherit;
+  font-size: 15px;
+  font-weight: 800;
+  cursor: pointer;
+  box-shadow: 0 6px 18px rgba(106, 72, 240, 0.45);
+  animation: shakeIn 0.22s cubic-bezier(0.2, 1.5, 0.4, 1);
+}
+#btnShake:active { transform: scale(0.95); }
+
+/* 결과 색 미리보기 */
+#btnShake .swatch {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--c, #fff);
+  box-shadow: inset 0 -4px rgba(0, 0, 0, 0.22), inset 0 2px rgba(255, 255, 255, 0.3),
+    0 0 0 2px rgba(255, 255, 255, 0.35);
+}
+
+/* 튜토리얼에서 이 버튼을 눌러야 할 때 */
+#btnShake.pulse { animation: shakeNudge 0.9s ease-in-out infinite; }
+
+@keyframes shakeIn {
+  from { transform: scale(0.8); opacity: 0; }
+  to { transform: scale(1); opacity: 1; }
+}
+@keyframes shakeNudge {
+  0%, 100% { transform: scale(1); box-shadow: 0 6px 18px rgba(106, 72, 240, 0.45); }
+  50% { transform: scale(1.07); box-shadow: 0 8px 26px rgba(156, 125, 255, 0.75); }
+}
+@media (prefers-reduced-motion: reduce) {
+  #btnShake, #btnShake.pulse { animation: none; }
+}
+
 /* 하단 목표 선반 — 빈 병 실루엣이 "만들어야 할 병", 채워지면 완성 */
 #goalShelf {
   display: flex;
@@ -178,7 +224,8 @@ body {
   color: var(--muted);
   font-size: 12px;
 }
-.formula { display: inline-flex; align-items: center; gap: 4px; font-weight: 700; }
+.formula { display: inline-flex; align-items: center; gap: 2px; font-weight: 700; }
+.formula em { font-style: normal; margin: 0 3px; font-size: 11px; }
 .dot {
   width: 13px;
   height: 13px;

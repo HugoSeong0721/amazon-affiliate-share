@@ -14,6 +14,7 @@ const dom = {
   btnRestart: $('btnRestart'),
   btnMute: $('btnMute'),
   btnNext: $('btnNext'),
+  btnShake: $('btnShake'),
   levelSelect: $('levelSelect'),
   levelGrid: $('levelGrid'),
   goalSlots: $('goalSlots'),
@@ -29,7 +30,8 @@ const renderer = new Renderer(dom.board);
 const sound = new Sound();
 const game = new Game({ renderer, sound, dom });
 
-// 혼합 공식 범례: R+Y=O, Y+B=G, R+B=P
+// 혼합 공식 범례. "반반씩 채워서 흔들어야 나온다"를 2칸씩 보여준다.
+// 이모지는 기기마다 렌더링이 제각각이라 화살표만 쓴다.
 function buildLegend() {
   const dot = (c) => `<span class="dot" style="--c:${COLOR_HEX[c]}"></span>`;
   const pairs = [
@@ -38,7 +40,10 @@ function buildLegend() {
     ['R', 'B'],
   ];
   dom.legend.innerHTML = pairs
-    .map(([a, b]) => `<span class="formula">${dot(a)}+${dot(b)}=${dot(mixOf(a, b))}</span>`)
+    .map(
+      ([a, b]) =>
+        `<span class="formula">${dot(a)}${dot(a)}${dot(b)}${dot(b)}<em>→</em>${dot(mixOf(a, b))}</span>`
+    )
     .join('');
 }
 
@@ -63,6 +68,7 @@ dom.btnMute.addEventListener('click', () => {
   updateMuteIcon();
 });
 
+dom.btnShake.addEventListener('click', () => game.doShake());
 $('btnLevels').addEventListener('click', () => game.toggleLevels());
 $('btnCloseLevels').addEventListener('click', () => game.closeLevels());
 $('btnLevelsFromWin').addEventListener('click', () => game.openLevels());

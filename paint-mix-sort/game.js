@@ -3,23 +3,26 @@
 import {
   canPour,
   pour,
+  canShake,
+  shake,
+  shakePreview,
   isWin,
   isComplete,
   isLocked,
   solve,
-  MIX_RULES,
+  SHAKE_RULES,
 } from '../sort-engine/index.js';
 import { LEVEL_DATA, CAPACITY } from './levels-data.js';
-import { COLOR_HEX } from './render.js';
+import { COLOR_HEX, COLOR_NAME } from './render.js';
 
 const STORAGE_LEVEL = 'pms.level';
 const STORAGE_CLEARED = 'pms.cleared'; // 레벨당 '0'/'1' 한 글자
 
-// 손가락이 첫 판을 끝까지 안내하는 레벨 (설명 문구 대신 직접 짚어준다)
-const GUIDED_LEVELS = new Set([0]);
+// 손가락이 직접 짚어주는 레벨. 1은 흔들기를, 2는 붓기를 가르친다.
+const GUIDED_LEVELS = new Set([0, 1]);
 
 const HINTS = {
-  6: '🔴 빨강도 목표예요. 전부 섞어버리면 못 만듭니다.',
+  5: '🔴 빨강도 목표예요. 빨강 4칸을 그대로 남겨야 합니다.',
 };
 
 export class Game {
@@ -35,12 +38,12 @@ export class Game {
     this.won = false;
   }
 
-  saveCleared() {
-    localStorage.setItem(STORAGE_CLEARED, this.cleared.map((c) => (c ? '1' : '0')).join(''));
-  }
-
   get level() {
     return LEVEL_DATA[this.levelIndex];
+  }
+
+  saveCleared() {
+    localStorage.setItem(STORAGE_CLEARED, this.cleared.map((c) => (c ? '1' : '0')).join(''));
   }
 
   loadLevel(i) {
@@ -57,6 +60,9 @@ export class Game {
     this._goalFlags = null;
     clearTimeout(this._deadT);
     clearTimeout(this._bannerT);
+    // 승리 오버레이는 지연 후 뜨므로, 그 사이 레벨을 옮기면 취소해야 한다.
+    // (안 그러면 새 레벨 위에 이전 레벨의 클리어 화면이 튀어나온다)
+    clearTimeout(this._winT);
 
     this.renderer.clearEffects();
     this.renderer.setState(this.state);
@@ -66,6 +72,7 @@ export class Game {
     this.hideBanner();
     this.updateHud();
     this.updateGoals();
+    this.updateShakeButton();
     this.updateGuide();
 
     const hint = HINTS[this.levelIndex];
@@ -80,9 +87,11 @@ export class Game {
   deselect() {
     this.selected = null;
     this.renderer.setSelected(null);
+    this.updateShakeButton();
   }
 
-  // 안내 레벨에서 지금 눌러야 할 수. 입력을 이 수로만 제한한다.
+  // --- 튜토리얼 안내 ---
+  // 안내 레벨에서 지금 둬야 할 수. 입력을 이 수로만 제한한다.
   nextGuideMove() {
     if (!this.guided || this.won || this.busy) return null;
     return this.level.solution[this.history.length] || null;
@@ -90,12 +99,25 @@ export class Game {
 
   updateGuide() {
     const g = this.nextGuideMove();
-    this.renderer.setGuide(g ? (this.selected === null ? g.from : g.to) : null);
+    if (!g) {
+      this.renderer.setGuide(null);
+      this.dom.btnShake.classList.remove('pulse');
+      return;
+    }
+    if (g.type === 'shake') {
+      // 병을 먼저 고르게 하고, 고른 뒤에는 흔들기 버튼을 강조한다
+      const picked = this.selected === g.at;
+      this.renderer.setGuide(picked ? null : g.at);
+      this.dom.btnShake.classList.toggle('pulse', picked);
+    } else {
+      this.renderer.setGuide(this.selected === null ? g.from : g.to);
+      this.dom.btnShake.classList.remove('pulse');
+    }
   }
 
   // 선택 시도. 비었거나 완성돼 잠긴 병이면 거절한다.
   trySelect(i) {
-    if (!this.state.bottles[i].length || isLocked(this.state, i, MIX_RULES)) {
+    if (!this.state.bottles[i].length || isLocked(this.state, i, SHAKE_RULES)) {
       this.renderer.shakeBottle(i);
       this.sound.error();
       return false;
@@ -103,6 +125,7 @@ export class Game {
     this.selected = i;
     this.renderer.setSelected(i);
     this.sound.select();
+    this.updateShakeButton();
     this.updateGuide();
     return true;
   }
@@ -114,7 +137,7 @@ export class Game {
     // 안내 중에는 짚어준 병만 반응한다
     const g = this.nextGuideMove();
     if (g) {
-      const want = this.selected === null ? g.from : g.to;
+      const want = g.type === 'shake' ? g.at : this.selected === null ? g.from : g.to;
       if (i !== want) {
         this.renderer.shakeBottle(i);
         return;
@@ -132,18 +155,17 @@ export class Game {
       return;
     }
 
-    if (canPour(this.state, this.selected, i, MIX_RULES)) {
+    if (canPour(this.state, this.selected, i, SHAKE_RULES)) {
       this.doPour(this.selected, i);
     } else {
-      // 부을 수 없는 곳이면 선택을 옮겨준다 (연타 조작감).
-      // 옮길 수 없는 병이면 기존 선택을 유지한다.
+      // 부을 수 없는 곳이면 선택을 옮겨준다. 옮길 수 없으면 기존 선택을 유지한다.
       this.trySelect(i);
     }
   }
 
   doPour(from, to) {
     const prev = this.state;
-    const res = pour(prev, from, to, MIX_RULES);
+    const res = pour(prev, from, to, SHAKE_RULES);
     if (!res) return;
 
     this.history.push(prev);
@@ -153,29 +175,67 @@ export class Game {
     this.hideBanner();
     this.sound.pour(res.amount);
     this.updateHud();
-    this.renderer.setGuide(null); // 붓는 동안에는 손가락을 치운다
+    this.renderer.setGuide(null);
+    this.dom.btnShake.classList.remove('pulse');
 
     const completedNow = isComplete(this.state, to) && !isComplete(prev, to);
 
     this.renderer.animatePour({
       prevState: prev,
       result: res,
-      onMix: () => this.sound.mix(),
-      onDone: () => {
-        this.busy = false;
-        this.renderer.setState(this.state);
-        this.updateGoals();
-        if (completedNow) {
-          this.renderer.burstAtBottle(to, COLOR_HEX[res.color]);
-          this.sound.complete();
-        }
-        if (isWin(this.state, this.targets)) this.win();
-        else {
-          this.updateGuide();
-          this.scheduleDeadCheck();
-        }
-      },
+      onDone: () => this.afterMove(completedNow ? { at: to, color: res.color } : null),
     });
+  }
+
+  doShake() {
+    if (this.busy || this.won || this.selected === null) return;
+    const at = this.selected;
+    const prev = this.state;
+    const res = shake(prev, at, SHAKE_RULES);
+    if (!res) {
+      this.renderer.shakeBottle(at);
+      this.sound.error();
+      return;
+    }
+
+    const g = this.nextGuideMove();
+    if (g && !(g.type === 'shake' && g.at === at)) {
+      this.renderer.shakeBottle(at);
+      return;
+    }
+
+    this.history.push(prev);
+    this.state = res.state;
+    this.deselect();
+    this.busy = true;
+    this.hideBanner();
+    this.sound.mix();
+    this.updateHud();
+    this.renderer.setGuide(null);
+    this.dom.btnShake.classList.remove('pulse');
+
+    this.renderer.animateShake({
+      prevState: prev,
+      result: res,
+      onDone: () => this.afterMove({ at, color: res.color }),
+    });
+  }
+
+  // 한 수가 끝난 뒤 공통 처리
+  afterMove(completed) {
+    this.busy = false;
+    this.renderer.setState(this.state);
+    this.updateGoals();
+    this.updateShakeButton();
+    if (completed) {
+      this.renderer.burstAtBottle(completed.at, COLOR_HEX[completed.color]);
+      this.sound.complete();
+    }
+    if (isWin(this.state, this.targets)) this.win();
+    else {
+      this.updateGuide();
+      this.scheduleDeadCheck();
+    }
   }
 
   undo() {
@@ -186,6 +246,7 @@ export class Game {
     this.hideBanner();
     this.updateHud();
     this.updateGoals();
+    this.updateShakeButton();
     this.updateGuide();
     this.sound.select();
   }
@@ -205,7 +266,7 @@ export class Game {
     clearTimeout(this._deadT);
     this._deadT = setTimeout(() => {
       if (this.won || this.busy) return;
-      const r = solve(this.state, this.targets, MIX_RULES, { maxNodes: 25000 });
+      const r = solve(this.state, this.targets, SHAKE_RULES, { maxNodes: 25000 });
       if (!r.solved && r.exhausted) {
         this.showBanner('🚫 더 이상 풀 수 없어요 — 되돌리기(↩︎)로 살려보세요!', true);
       }
@@ -217,6 +278,7 @@ export class Game {
     this.sound.win();
     this.renderer.setGuide(null);
     this.renderer.celebrate();
+    this.dom.btnShake.classList.add('hidden');
     this.cleared[this.levelIndex] = true;
     this.saveCleared();
     if (this.levelIndex + 1 < LEVEL_DATA.length) {
@@ -226,13 +288,29 @@ export class Game {
     this.dom.overlayTitle.textContent = last ? '🎉 전 레벨 클리어!' : `레벨 ${this.levelIndex + 1} 클리어!`;
     this.dom.overlayInfo.textContent = `${this.history.length}수 · 참고 답안 ${this.level.solutionLength}수`;
     this.dom.btnNext.textContent = last ? '처음부터 다시 ↻' : '다음 레벨 ▶';
-    setTimeout(() => this.dom.overlay.classList.remove('hidden'), 850);
+    this._winT = setTimeout(() => this.dom.overlay.classList.remove('hidden'), 850);
   }
 
   updateHud() {
     this.dom.levelLabel.textContent = `레벨 ${this.levelIndex + 1}`;
     this.dom.moveLabel.textContent = `${this.history.length}수 · 총 ${LEVEL_DATA.length}레벨`;
     this.dom.btnUndo.disabled = !this.history.length;
+  }
+
+  // 고른 병을 흔들 수 있으면 버튼을 띄우고, 나올 색을 미리 보여준다.
+  updateShakeButton() {
+    const btn = this.dom.btnShake;
+    const at = this.selected;
+    const color = at === null || this.won ? null : shakePreview(this.state, at, SHAKE_RULES);
+    if (!color) {
+      btn.classList.add('hidden');
+      btn.classList.remove('pulse');
+      return;
+    }
+    btn.classList.remove('hidden');
+    btn.style.setProperty('--c', COLOR_HEX[color]);
+    btn.innerHTML = `흔들어 섞기 <span class="swatch"></span>`;
+    btn.setAttribute('aria-label', `흔들어 ${COLOR_NAME[color]} 만들기`);
   }
 
   // 하단 목표 선반: 빈 병 실루엣이 "만들어야 할 병", 완성되면 색이 찬다.
@@ -255,7 +333,6 @@ export class Game {
       const el = document.createElement('span');
       el.className = 'goal' + (done ? ' done' : '');
       el.style.setProperty('--c', COLOR_HEX[this.targets[idx]]);
-      // 이번에 새로 완성된 칸만 튀어오르게
       if (done && this._goalFlags && !this._goalFlags[idx]) el.classList.add('pop');
       slots.appendChild(el);
     });
@@ -329,18 +406,22 @@ export class Game {
     if (this.history.length === 0) {
       moves = this.level.solution;
     } else {
-      const r = solve(this.state, this.targets, MIX_RULES, { maxNodes: 600000 });
+      const r = solve(this.state, this.targets, SHAKE_RULES, { maxNodes: 600000 });
       if (!r.solved) return false;
       moves = r.moves;
     }
     for (const mv of moves) {
-      const res = pour(this.state, mv.from, mv.to, MIX_RULES);
+      const res =
+        mv.type === 'shake'
+          ? shake(this.state, mv.at, SHAKE_RULES)
+          : pour(this.state, mv.from, mv.to, SHAKE_RULES);
       if (!res) return false;
       this.history.push(this.state);
       this.state = res.state;
     }
     this.renderer.setState(this.state);
     this.renderer.setGuide(null);
+    this.deselect();
     this.updateHud();
     this.updateGoals();
     if (isWin(this.state, this.targets)) {

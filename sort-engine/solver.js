@@ -2,8 +2,8 @@
 // solved=false && exhausted=true 이면 탐색 공간을 전부 확인한 것 → 확실히 풀 수 없는 상태.
 // solved=false && exhausted=false 는 노드 예산 초과 → 판단 불가.
 
-import { isWin, stateKey } from './state.js';
-import { legalMoves, pour, CLASSIC_RULES } from './moves.js';
+import { isWin, isUniform, stateKey } from './state.js';
+import { legalMoves, applyMove, CLASSIC_RULES } from './moves.js';
 
 class MinHeap {
   constructor() { this.a = []; }
@@ -42,23 +42,24 @@ class MinHeap {
   }
 }
 
-// 휴리스틱: 병 안의 색 경계(조각) 수 + 아직 완성되지 않은 목표 수
+// 휴리스틱: 아직 못 만든 목표 수 + 물감이 흩어진 정도.
+// 같은 색이 여러 병에 나뉘어 있을수록 모으는 데 수가 든다.
 function heuristic(state, targets) {
-  let runs = 0;
-  const doneColors = [];
+  const done = [];
+  const spread = new Map();
   for (const b of state.bottles) {
     if (!b.length) continue;
-    let r = 1;
-    for (let i = 1; i < b.length; i++) if (b[i] !== b[i - 1]) r++;
-    runs += r - 1;
-    if (b.length === state.capacity && r === 1) doneColors.push(b[0]);
+    if (b.length === state.capacity && isUniform(b)) done.push(b[0]);
+    for (const c of new Set(b)) spread.set(c, (spread.get(c) || 0) + 1);
   }
   const remaining = targets.slice();
-  for (const c of doneColors) {
+  for (const c of done) {
     const idx = remaining.indexOf(c);
     if (idx >= 0) remaining.splice(idx, 1);
   }
-  return runs + remaining.length * 2;
+  let scatter = 0;
+  for (const count of spread.values()) scatter += count - 1;
+  return remaining.length * 2 + scatter;
 }
 
 export function solve(state, targets, rules = CLASSIC_RULES, opts = {}) {
@@ -79,7 +80,7 @@ export function solve(state, targets, rules = CLASSIC_RULES, opts = {}) {
     nodes++;
     if (cur.moves.length >= maxDepth) continue;
     for (const mv of legalMoves(cur.state, rules)) {
-      const res = pour(cur.state, mv.from, mv.to, rules);
+      const res = applyMove(cur.state, mv, rules);
       if (!res) continue;
       const key = stateKey(res.state);
       if (visited.has(key)) continue;

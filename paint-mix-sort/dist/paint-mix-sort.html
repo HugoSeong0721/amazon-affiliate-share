@@ -96,6 +96,52 @@ body {
 .hud-btn:active { transform: scale(0.92); }
 .hud-btn:disabled { opacity: 0.35; }
 
+/* 흔들기 버튼 — 고른 병을 섞을 수 있을 때만 나타난다 */
+#btnShake {
+  align-self: center;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  margin: 2px 0 6px;
+  padding: 13px 22px;
+  border: 0;
+  border-radius: 16px;
+  background: linear-gradient(180deg, #9c7dff, #6a48f0);
+  color: #fff;
+  font-family: inherit;
+  font-size: 15px;
+  font-weight: 800;
+  cursor: pointer;
+  box-shadow: 0 6px 18px rgba(106, 72, 240, 0.45);
+  animation: shakeIn 0.22s cubic-bezier(0.2, 1.5, 0.4, 1);
+}
+#btnShake:active { transform: scale(0.95); }
+
+/* 결과 색 미리보기 */
+#btnShake .swatch {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--c, #fff);
+  box-shadow: inset 0 -4px rgba(0, 0, 0, 0.22), inset 0 2px rgba(255, 255, 255, 0.3),
+    0 0 0 2px rgba(255, 255, 255, 0.35);
+}
+
+/* 튜토리얼에서 이 버튼을 눌러야 할 때 */
+#btnShake.pulse { animation: shakeNudge 0.9s ease-in-out infinite; }
+
+@keyframes shakeIn {
+  from { transform: scale(0.8); opacity: 0; }
+  to { transform: scale(1); opacity: 1; }
+}
+@keyframes shakeNudge {
+  0%, 100% { transform: scale(1); box-shadow: 0 6px 18px rgba(106, 72, 240, 0.45); }
+  50% { transform: scale(1.07); box-shadow: 0 8px 26px rgba(156, 125, 255, 0.75); }
+}
+@media (prefers-reduced-motion: reduce) {
+  #btnShake, #btnShake.pulse { animation: none; }
+}
+
 /* 하단 목표 선반 — 빈 병 실루엣이 "만들어야 할 병", 채워지면 완성 */
 #goalShelf {
   display: flex;
@@ -187,7 +233,8 @@ body {
   color: var(--muted);
   font-size: 12px;
 }
-.formula { display: inline-flex; align-items: center; gap: 4px; font-weight: 700; }
+.formula { display: inline-flex; align-items: center; gap: 2px; font-weight: 700; }
+.formula em { font-style: normal; margin: 0 3px; font-size: 11px; }
 .dot {
   width: 13px;
   height: 13px;
@@ -396,6 +443,8 @@ body {
 
     <canvas id="board"></canvas>
 
+    <button id="btnShake" class="hidden" type="button">흔들어 섞기 <span class="swatch"></span></button>
+
     <div id="goalShelf">
       <span id="goalCaption">만들 색</span>
       <div id="goalSlots"></div>
@@ -421,6 +470,7 @@ body {
           <button id="btnCloseLevels" class="hud-btn" title="닫기" aria-label="닫기">✕</button>
         </div>
         <p class="ls-note">아래 점이 그 레벨에서 만들어야 할 색입니다.</p>
+
         <div id="levelGrid"></div>
       </div>
     </div>
@@ -471,6 +521,23 @@ function componentsOf(color) {
     if (result === color) return pair.split('|');
   }
   return null;
+}
+
+// 물감 한 통을 흔들었을 때 나오는 색.
+// - 전부 같은 색이면 그 색 (흔들 필요 없음)
+// - 서로 다른 두 1차색이 정확히 반반이면 2차색
+// - 그 외(비율이 안 맞거나, 3색 이상이거나, 2차색이 섞여 있으면)는 null = 섞을 수 없음
+// 순서는 상관없다. 중요한 건 비율뿐이다.
+function blendOf(units) {
+  if (!units.length) return null;
+  const counts = new Map();
+  for (const u of units) counts.set(u, (counts.get(u) || 0) + 1);
+  if (counts.size === 1) return units[0];
+  if (counts.size !== 2) return null;
+  const [[a, ca], [b, cb]] = [...counts];
+  if (ca !== cb) return null;
+  if (!isPrimary(a) || !isPrimary(b)) return null;
+  return mixOf(a, b);
 }
 
 // ===== sort-engine/state.js =====
@@ -526,14 +593,32 @@ function isWin(state, targets) {
 }
 
 // ===== sort-engine/moves.js =====
-// 붓기 규칙.
-// rules.allowMix = false → 클래식 워터소트 (같은 색 위에만 부을 수 있음)
-// rules.allowMix = true  → 1차색끼리는 서로 부을 수 있고, 닿은 구간이 2차색으로 섞인다.
+// 수(move) 규칙.
+//
+// 이 엔진은 두 가지 행동을 안다:
+//   { type: 'pour',  from, to }  — 맨 위 같은 색 덩어리를 다른 병으로 옮긴다. 절대 섞이지 않는다.
+//   { type: 'shake', at }        — 병을 흔들어 안의 물감을 비율대로 한 색으로 만든다.
+//
+// 붓기가 섞지 않는 게 핵심이다. 병 안에 다른 색이 층층이 쌓여 있어도 그냥 쌓여 있을 뿐이고,
+// 흔들어야 비로소 섞인다. 그래서 "이미 닿아 있는데 왜 안 섞이지?"라는 모순이 없다.
+//
+// rules.freePour = true  → 아무 색 위에나 부을 수 있다 (섞이지 않으니 막을 이유가 없다)
+// rules.freePour = false → 같은 색 위 또는 빈 병에만 (클래식 워터소트)
+// rules.shake            → 흔들기 사용 가능 여부
 
 
 
-const CLASSIC_RULES = { allowMix: false };
-const MIX_RULES = { allowMix: true };
+const CLASSIC_RULES = { freePour: false, shake: false };
+const SHAKE_RULES = { freePour: true, shake: true };
+
+// 완성돼서 더 이상 손댈 수 없는 병.
+// 흔들어 만든 2차색 병은 목표 그 자체라 잠근다 (실수로 부어서 스스로 망칠 수 없게).
+// 1차색으로 가득 찬 병은 잠그지 않는다 — 거기서 정확한 양을 덜어내야 하는 경우가 많다.
+function isLocked(state, i, rules = CLASSIC_RULES) {
+  const b = state.bottles[i];
+  if (!b || b.length !== state.capacity || !isUniform(b)) return false;
+  return rules.shake ? !isPrimary(b[0]) : true;
+}
 
 function canPour(state, from, to, rules = CLASSIC_RULES) {
   if (from === to) return false;
@@ -542,68 +627,80 @@ function canPour(state, from, to, rules = CLASSIC_RULES) {
   if (!src || !dst) return false;
   if (src.length === 0) return false;
   if (dst.length >= state.capacity) return false;
+  if (isLocked(state, from, rules)) return false;
+  if (rules.freePour) return true;
   if (dst.length === 0) return true;
-  const a = src[src.length - 1];
-  const b = dst[dst.length - 1];
-  if (a === b) return true;
-  return rules.allowMix ? mixOf(a, b) !== null : false;
+  return src[src.length - 1] === dst[dst.length - 1];
 }
 
-// 붓기 실행. 맨 위 같은 색 구간 전체가 (공간이 허락하는 만큼) 이동한다.
-// 다른 색 위에 부으면(혼합) 부은 양 + 닿은 구간 전체가 혼합색으로 변한다.
-// 반환: { state, from, to, amount, color, mixed, mixedRunBefore } 또는 불가 시 null
+// 붓기 실행. 맨 위 같은 색 구간이 (공간이 허락하는 만큼) 그대로 옮겨간다.
+// 색은 절대 변하지 않는다. 정확한 양을 옮기고 싶으면 목적지의 남은 공간으로 조절해야 한다 —
+// 이 "공간으로 양을 재는" 감각이 퍼즐의 핵심이다.
+// 반환: { state, from, to, amount, color } 또는 불가 시 null
 function pour(state, from, to, rules = CLASSIC_RULES) {
   if (!canPour(state, from, to, rules)) return null;
   const next = cloneState(state);
   const src = next.bottles[from];
   const dst = next.bottles[to];
   const run = topRun(src);
-  const space = next.capacity - dst.length;
-  const amount = Math.min(run.count, space);
-
-  const before = dst.length ? dst[dst.length - 1] : null;
-  let color = run.color;
-  let mixed = false;
-  let mixedRunBefore = 0;
-
-  if (before !== null && before !== run.color) {
-    color = mixOf(run.color, before);
-    mixed = true;
-    mixedRunBefore = topRun(dst).count;
-    for (let i = dst.length - mixedRunBefore; i < dst.length; i++) dst[i] = color;
-  }
+  const amount = Math.min(run.count, next.capacity - dst.length);
   src.length -= amount;
-  for (let i = 0; i < amount; i++) dst.push(color);
-
-  return { state: next, from, to, amount, color, mixed, mixedRunBefore };
+  for (let i = 0; i < amount; i++) dst.push(run.color);
+  return { state: next, from, to, amount, color: run.color };
 }
 
-// 완성돼서 더 이상 손댈 수 없는 병 (가득 + 단색).
-// 단, 혼합 모드의 1차색 완성병은 깨서 섞어야 풀리는 배치가 있어 잠그지 않는다.
-// UI와 솔버가 같은 규칙을 쓰도록 여기 한 곳에서만 판단한다.
-function isLocked(state, i, rules = CLASSIC_RULES) {
+// 흔들 수 있는가. 가득 찬 병이면서, 서로 다른 두 1차색이 정확히 반반일 때만.
+// 이미 단색인 병은 흔들어봐야 그대로라 제외한다.
+function canShake(state, i, rules = CLASSIC_RULES) {
+  if (!rules.shake) return false;
   const b = state.bottles[i];
   if (!b || b.length !== state.capacity) return false;
-  for (let k = 1; k < b.length; k++) if (b[k] !== b[0]) return false;
-  return !(rules.allowMix && isPrimary(b[0]));
+  if (isUniform(b)) return false;
+  return blendOf(b) !== null;
 }
 
-// 탐색용 합법 수 나열. 무의미한 수는 가지치기한다:
-// - 완성돼 잠긴 병에서는 나갈 수 없다.
-// - 단색 병 → 빈 병 이동은 상태가 그대로라 제외.
+// 흔들었을 때 나올 색 (미리보기용). 못 흔들면 null.
+function shakePreview(state, i, rules = CLASSIC_RULES) {
+  return canShake(state, i, rules) ? blendOf(state.bottles[i]) : null;
+}
+
+// 흔들기 실행. 반환: { state, at, color, from } 또는 불가 시 null
+function shake(state, i, rules = CLASSIC_RULES) {
+  if (!canShake(state, i, rules)) return null;
+  const next = cloneState(state);
+  const before = next.bottles[i].slice();
+  const color = blendOf(before);
+  next.bottles[i] = new Array(before.length).fill(color);
+  return { state: next, at: i, color, from: before };
+}
+
+function applyMove(state, move, rules = CLASSIC_RULES) {
+  return move.type === 'shake'
+    ? shake(state, move.at, rules)
+    : pour(state, move.from, move.to, rules);
+}
+
+// 탐색용 합법 수 나열. 무의미한 수는 쳐낸다:
+// - 잠긴 병에서는 나갈 수 없다
+// - 단색 병 → 빈 병 이동은 상태가 사실상 그대로라 제외
+// - 흔들기는 항상 유의미하다 (되돌릴 수 없는 확정 행동)
 function legalMoves(state, rules = CLASSIC_RULES) {
   const moves = [];
   const n = state.bottles.length;
+
+  for (let i = 0; i < n; i++) {
+    if (canShake(state, i, rules)) moves.push({ type: 'shake', at: i });
+  }
+
   for (let from = 0; from < n; from++) {
     const src = state.bottles[from];
     if (!src.length) continue;
     if (isLocked(state, from, rules)) continue;
-    let uniform = true;
-    for (let i = 1; i < src.length; i++) if (src[i] !== src[0]) { uniform = false; break; }
+    const uniform = isUniform(src);
     for (let to = 0; to < n; to++) {
       if (to === from) continue;
       if (uniform && state.bottles[to].length === 0) continue;
-      if (canPour(state, from, to, rules)) moves.push({ from, to });
+      if (canPour(state, from, to, rules)) moves.push({ type: 'pour', from, to });
     }
   }
   return moves;
@@ -653,23 +750,24 @@ class MinHeap {
   }
 }
 
-// 휴리스틱: 병 안의 색 경계(조각) 수 + 아직 완성되지 않은 목표 수
+// 휴리스틱: 아직 못 만든 목표 수 + 물감이 흩어진 정도.
+// 같은 색이 여러 병에 나뉘어 있을수록 모으는 데 수가 든다.
 function heuristic(state, targets) {
-  let runs = 0;
-  const doneColors = [];
+  const done = [];
+  const spread = new Map();
   for (const b of state.bottles) {
     if (!b.length) continue;
-    let r = 1;
-    for (let i = 1; i < b.length; i++) if (b[i] !== b[i - 1]) r++;
-    runs += r - 1;
-    if (b.length === state.capacity && r === 1) doneColors.push(b[0]);
+    if (b.length === state.capacity && isUniform(b)) done.push(b[0]);
+    for (const c of new Set(b)) spread.set(c, (spread.get(c) || 0) + 1);
   }
   const remaining = targets.slice();
-  for (const c of doneColors) {
+  for (const c of done) {
     const idx = remaining.indexOf(c);
     if (idx >= 0) remaining.splice(idx, 1);
   }
-  return runs + remaining.length * 2;
+  let scatter = 0;
+  for (const count of spread.values()) scatter += count - 1;
+  return remaining.length * 2 + scatter;
 }
 
 function solve(state, targets, rules = CLASSIC_RULES, opts = {}) {
@@ -690,7 +788,7 @@ function solve(state, targets, rules = CLASSIC_RULES, opts = {}) {
     nodes++;
     if (cur.moves.length >= maxDepth) continue;
     for (const mv of legalMoves(cur.state, rules)) {
-      const res = pour(cur.state, mv.from, mv.to, rules);
+      const res = applyMove(cur.state, mv, rules);
       if (!res) continue;
       const key = stateKey(res.state);
       if (visited.has(key)) continue;
@@ -718,60 +816,83 @@ const LEVEL_DATA = [
   "bottles": [
    [
     "R",
-    "Y",
+    "R",
     "Y",
     "Y"
    ],
-   [],
    []
   ],
   "solution": [
    {
-    "from": 0,
-    "to": 1
+    "type": "shake",
+    "at": 0
+   }
+  ],
+  "solutionLength": 1,
+  "seed": 201
+ },
+ {
+  "targets": [
+   "O"
+  ],
+  "bottles": [
+   [],
+   [
+    "Y",
+    "Y"
+   ],
+   [
+    "R",
+    "R"
+   ]
+  ],
+  "solution": [
+   {
+    "type": "pour",
+    "from": 1,
+    "to": 2
    },
    {
-    "from": 0,
-    "to": 1
+    "type": "shake",
+    "at": 2
    }
   ],
   "solutionLength": 2,
-  "seed": 101
+  "seed": 202
  },
  {
   "targets": [
    "G"
   ],
   "bottles": [
+   [],
    [
     "B",
-    "B",
+    "Y"
+   ],
+   [
     "Y",
     "B"
-   ],
-   [],
-   []
+   ]
   ],
   "solution": [
    {
-    "from": 0,
-    "to": 1
-   },
-   {
-    "from": 0,
-    "to": 2
-   },
-   {
-    "from": 0,
-    "to": 1
-   },
-   {
+    "type": "pour",
     "from": 1,
     "to": 2
+   },
+   {
+    "type": "pour",
+    "from": 1,
+    "to": 2
+   },
+   {
+    "type": "shake",
+    "at": 2
    }
   ],
-  "solutionLength": 4,
-  "seed": 102
+  "solutionLength": 3,
+  "seed": 203
  },
  {
   "targets": [
@@ -779,61 +900,53 @@ const LEVEL_DATA = [
    "P"
   ],
   "bottles": [
+   [],
    [
     "B",
     "R",
-    "B",
-    "Y"
+    "R",
+    "R"
    ],
-   [],
-   [],
    [
-    "Y",
-    "Y",
     "R",
+    "Y",
+    "Y",
     "B"
-   ]
+   ],
+   []
   ],
   "solution": [
    {
+    "type": "pour",
+    "from": 1,
+    "to": 0
+   },
+   {
+    "type": "pour",
+    "from": 2,
+    "to": 1
+   },
+   {
+    "type": "pour",
+    "from": 0,
+    "to": 2
+   },
+   {
+    "type": "shake",
+    "at": 2
+   },
+   {
+    "type": "pour",
     "from": 0,
     "to": 1
    },
    {
-    "from": 3,
-    "to": 0
-   },
-   {
-    "from": 0,
-    "to": 2
-   },
-   {
-    "from": 0,
-    "to": 3
-   },
-   {
-    "from": 0,
-    "to": 2
-   },
-   {
-    "from": 3,
-    "to": 2
-   },
-   {
-    "from": 3,
-    "to": 0
-   },
-   {
-    "from": 1,
-    "to": 3
-   },
-   {
-    "from": 0,
-    "to": 3
+    "type": "shake",
+    "at": 1
    }
   ],
-  "solutionLength": 9,
-  "seed": 103
+  "solutionLength": 6,
+  "seed": 204
  },
  {
   "targets": [
@@ -841,244 +954,163 @@ const LEVEL_DATA = [
    "O"
   ],
   "bottles": [
-   [],
    [
-    "B",
-    "B",
-    "B",
-    "R"
+    "R",
+    "B"
    ],
-   [],
    [
-    "Y",
-    "R",
-    "R",
-    "Y"
-   ]
-  ],
-  "solution": [
-   {
-    "from": 1,
-    "to": 0
-   },
-   {
-    "from": 3,
-    "to": 1
-   },
-   {
-    "from": 3,
-    "to": 0
-   },
-   {
-    "from": 0,
-    "to": 3
-   }
-  ],
-  "solutionLength": 4,
-  "seed": 104
- },
- {
-  "targets": [
-   "O",
-   "G",
-   "P"
-  ],
-  "bottles": [
-   [
-    "Y",
-    "R",
+    "B",
     "R",
     "Y"
    ],
    [
-    "B",
     "Y",
-    "B",
-    "B"
+    "Y",
+    "Y"
    ],
-   [
-    "Y",
-    "Y",
-    "Y",
-    "B"
-   ],
-   [],
    []
   ],
   "solution": [
    {
+    "type": "pour",
+    "from": 1,
+    "to": 2
+   },
+   {
+    "type": "pour",
     "from": 0,
     "to": 3
    },
    {
-    "from": 2,
-    "to": 4
-   },
-   {
-    "from": 0,
-    "to": 2
-   },
-   {
-    "from": 1,
-    "to": 4
-   },
-   {
-    "from": 0,
-    "to": 4
-   },
-   {
+    "type": "pour",
     "from": 1,
     "to": 0
    },
    {
-    "from": 0,
+    "type": "pour",
+    "from": 1,
     "to": 3
    },
    {
-    "from": 1,
+    "type": "pour",
+    "from": 2,
     "to": 3
+   },
+   {
+    "type": "shake",
+    "at": 3
+   },
+   {
+    "type": "pour",
+    "from": 0,
+    "to": 2
+   },
+   {
+    "type": "shake",
+    "at": 2
    }
   ],
   "solutionLength": 8,
-  "seed": 105
- },
- {
-  "targets": [
-   "O",
-   "O",
-   "G"
-  ],
-  "bottles": [
-   [],
-   [],
-   [
-    "Y",
-    "B",
-    "R",
-    "Y"
-   ],
-   [
-    "Y",
-    "R",
-    "Y",
-    "Y"
-   ],
-   [
-    "Y",
-    "R",
-    "Y",
-    "Y"
-   ]
-  ],
-  "solution": [
-   {
-    "from": 2,
-    "to": 0
-   },
-   {
-    "from": 2,
-    "to": 0
-   },
-   {
-    "from": 2,
-    "to": 1
-   },
-   {
-    "from": 3,
-    "to": 2
-   },
-   {
-    "from": 3,
-    "to": 2
-   },
-   {
-    "from": 4,
-    "to": 3
-   },
-   {
-    "from": 1,
-    "to": 3
-   },
-   {
-    "from": 4,
-    "to": 1
-   },
-   {
-    "from": 1,
-    "to": 4
-   },
-   {
-    "from": 0,
-    "to": 4
-   }
-  ],
-  "solutionLength": 10,
-  "seed": 106
+  "seed": 205
  },
  {
   "targets": [
    "R",
-   "O",
-   "G"
+   "O"
   ],
   "bottles": [
+   [],
    [
+    "R",
+    "R",
     "Y",
-    "R",
-    "R",
     "R"
    ],
-   [],
-   [],
    [
-    "Y",
+    "R",
     "R",
     "R",
     "Y"
-   ],
-   [
-    "R",
-    "B",
-    "R",
-    "B"
    ]
   ],
   "solution": [
    {
+    "type": "pour",
+    "from": 2,
+    "to": 0
+   },
+   {
+    "type": "pour",
+    "from": 1,
+    "to": 2
+   },
+   {
+    "type": "pour",
     "from": 0,
     "to": 1
    },
    {
-    "from": 3,
-    "to": 1
-   },
+    "type": "shake",
+    "at": 1
+   }
+  ],
+  "solutionLength": 4,
+  "seed": 206
+ },
+ {
+  "targets": [
+   "O",
+   "O"
+  ],
+  "bottles": [
+   [
+    "Y",
+    "Y",
+    "Y"
+   ],
+   [],
+   [
+    "R",
+    "R",
+    "R"
+   ],
+   [
+    "Y",
+    "R"
+   ]
+  ],
+  "solution": [
    {
-    "from": 4,
+    "type": "pour",
+    "from": 0,
     "to": 2
    },
    {
-    "from": 4,
-    "to": 3
-   },
-   {
-    "from": 4,
-    "to": 0
-   },
-   {
-    "from": 3,
-    "to": 4
-   },
-   {
+    "type": "pour",
     "from": 2,
     "to": 3
    },
    {
-    "from": 0,
+    "type": "pour",
+    "from": 2,
     "to": 3
+   },
+   {
+    "type": "shake",
+    "at": 3
+   },
+   {
+    "type": "pour",
+    "from": 0,
+    "to": 2
+   },
+   {
+    "type": "shake",
+    "at": 2
    }
   ],
-  "solutionLength": 8,
-  "seed": 107
+  "solutionLength": 6,
+  "seed": 207
  },
  {
   "targets": [
@@ -1088,442 +1120,585 @@ const LEVEL_DATA = [
   ],
   "bottles": [
    [
-    "R",
+    "Y",
     "B",
     "R",
-    "B"
+    "R"
    ],
+   [
+    "Y",
+    "B",
+    "B",
+    "Y"
+   ],
+   [],
    [],
    [
     "Y",
-    "Y",
-    "B",
+    "R",
+    "R",
     "B"
+   ]
+  ],
+  "solution": [
+   {
+    "type": "shake",
+    "at": 1
+   },
+   {
+    "type": "pour",
+    "from": 0,
+    "to": 2
+   },
+   {
+    "type": "pour",
+    "from": 4,
+    "to": 0
+   },
+   {
+    "type": "pour",
+    "from": 0,
+    "to": 3
+   },
+   {
+    "type": "pour",
+    "from": 0,
+    "to": 4
+   },
+   {
+    "type": "shake",
+    "at": 4
+   },
+   {
+    "type": "pour",
+    "from": 2,
+    "to": 3
+   },
+   {
+    "type": "shake",
+    "at": 3
+   }
+  ],
+  "solutionLength": 8,
+  "seed": 208
+ },
+ {
+  "targets": [
+   "O",
+   "O",
+   "G"
+  ],
+  "bottles": [
+   [
+    "Y",
+    "R",
+    "Y"
+   ],
+   [
+    "B",
+    "R",
+    "Y"
    ],
    [
     "R",
     "B",
+    "R"
+   ],
+   [
     "Y",
+    "Y",
+    "Y"
+   ],
+   []
+  ],
+  "solution": [
+   {
+    "type": "pour",
+    "from": 1,
+    "to": 0
+   },
+   {
+    "type": "pour",
+    "from": 1,
+    "to": 2
+   },
+   {
+    "type": "pour",
+    "from": 0,
+    "to": 3
+   },
+   {
+    "type": "pour",
+    "from": 2,
+    "to": 0
+   },
+   {
+    "type": "shake",
+    "at": 0
+   },
+   {
+    "type": "pour",
+    "from": 2,
+    "to": 4
+   },
+   {
+    "type": "pour",
+    "from": 2,
+    "to": 1
+   },
+   {
+    "type": "pour",
+    "from": 2,
+    "to": 4
+   },
+   {
+    "type": "pour",
+    "from": 3,
+    "to": 4
+   },
+   {
+    "type": "shake",
+    "at": 4
+   },
+   {
+    "type": "pour",
+    "from": 1,
+    "to": 3
+   },
+   {
+    "type": "shake",
+    "at": 3
+   }
+  ],
+  "solutionLength": 12,
+  "seed": 209
+ },
+ {
+  "targets": [
+   "Y",
+   "G",
+   "P"
+  ],
+  "bottles": [
+   [],
+   [
+    "R",
+    "Y",
+    "B"
+   ],
+   [
+    "Y",
+    "Y",
+    "R"
+   ],
+   [
+    "B",
+    "Y",
+    "B"
+   ],
+   [
+    "Y",
+    "B",
     "Y"
    ]
   ],
   "solution": [
    {
-    "from": 0,
-    "to": 1
-   },
-   {
-    "from": 2,
-    "to": 1
-   },
-   {
-    "from": 3,
-    "to": 2
-   },
-   {
-    "from": 3,
-    "to": 1
-   },
-   {
-    "from": 0,
-    "to": 3
-   },
-   {
+    "type": "pour",
     "from": 1,
     "to": 3
    },
    {
-    "from": 0,
+    "type": "pour",
+    "from": 1,
+    "to": 4
+   },
+   {
+    "type": "pour",
+    "from": 2,
     "to": 1
    },
    {
-    "from": 2,
+    "type": "pour",
+    "from": 4,
+    "to": 2
+   },
+   {
+    "type": "pour",
+    "from": 3,
+    "to": 4
+   },
+   {
+    "type": "pour",
+    "from": 3,
     "to": 0
    },
    {
-    "from": 1,
-    "to": 2
+    "type": "pour",
+    "from": 4,
+    "to": 3
+   },
+   {
+    "type": "pour",
+    "from": 0,
+    "to": 4
+   },
+   {
+    "type": "pour",
+    "from": 3,
+    "to": 1
+   },
+   {
+    "type": "shake",
+    "at": 1
+   },
+   {
+    "type": "pour",
+    "from": 3,
+    "to": 4
+   },
+   {
+    "type": "shake",
+    "at": 4
    }
   ],
-  "solutionLength": 9,
-  "seed": 108
+  "solutionLength": 12,
+  "seed": 210
  },
  {
   "targets": [
-   "P",
-   "P",
    "G",
+   "P",
+   "O",
    "O"
   ],
   "bottles": [
    [
     "Y",
-    "B",
     "Y",
-    "R"
+    "Y"
    ],
    [
-    "B",
-    "Y",
-    "B",
-    "R"
-   ],
-   [
-    "B",
     "Y",
     "R",
-    "B"
+    "R"
    ],
    [
-    "B",
     "Y",
-    "B",
+    "R",
     "B"
    ],
    [],
-   []
-  ],
-  "solution": [
-   {
-    "from": 0,
-    "to": 4
-   },
-   {
-    "from": 1,
-    "to": 4
-   },
-   {
-    "from": 3,
-    "to": 5
-   },
-   {
-    "from": 0,
-    "to": 1
-   },
-   {
-    "from": 0,
-    "to": 3
-   },
-   {
-    "from": 2,
-    "to": 5
-   },
-   {
-    "from": 2,
-    "to": 5
-   },
-   {
-    "from": 0,
-    "to": 2
-   },
-   {
-    "from": 1,
-    "to": 0
-   },
-   {
-    "from": 3,
-    "to": 0
-   },
-   {
-    "from": 1,
-    "to": 2
-   },
-   {
-    "from": 1,
-    "to": 3
-   },
-   {
-    "from": 2,
-    "to": 1
-   },
-   {
-    "from": 4,
-    "to": 1
-   },
-   {
-    "from": 2,
-    "to": 3
-   },
-   {
-    "from": 3,
-    "to": 4
-   }
-  ],
-  "solutionLength": 16,
-  "seed": 109
- },
- {
-  "targets": [
-   "Y",
-   "P",
-   "O",
-   "G"
-  ],
-  "bottles": [
    [],
    [
-    "B",
-    "B",
-    "R",
-    "R"
-   ],
-   [
-    "R",
     "R",
     "Y",
     "B"
    ],
    [
-    "Y",
     "R",
-    "R",
-    "Y"
-   ],
-   [
     "B",
-    "Y",
-    "Y",
-    "Y"
+    "R",
+    "B"
    ]
   ],
   "solution": [
    {
+    "type": "shake",
+    "at": 6
+   },
+   {
+    "type": "pour",
+    "from": 2,
+    "to": 5
+   },
+   {
+    "type": "pour",
     "from": 1,
-    "to": 0
+    "to": 2
    },
    {
-    "from": 2,
-    "to": 1
-   },
-   {
-    "from": 2,
-    "to": 1
-   },
-   {
+    "type": "pour",
     "from": 0,
-    "to": 2
+    "to": 1
    },
    {
-    "from": 3,
+    "type": "pour",
+    "from": 2,
     "to": 0
    },
    {
-    "from": 4,
-    "to": 0
-   },
-   {
-    "from": 2,
-    "to": 4
-   },
-   {
-    "from": 3,
+    "type": "pour",
+    "from": 5,
     "to": 2
    },
    {
-    "from": 2,
-    "to": 3
+    "type": "pour",
+    "from": 5,
+    "to": 2
+   },
+   {
+    "type": "shake",
+    "at": 2
+   },
+   {
+    "type": "pour",
+    "from": 1,
+    "to": 5
+   },
+   {
+    "type": "pour",
+    "from": 5,
+    "to": 0
+   },
+   {
+    "type": "pour",
+    "from": 0,
+    "to": 1
+   },
+   {
+    "type": "pour",
+    "from": 0,
+    "to": 5
+   },
+   {
+    "type": "shake",
+    "at": 5
+   },
+   {
+    "type": "pour",
+    "from": 0,
+    "to": 1
+   },
+   {
+    "type": "shake",
+    "at": 1
    }
   ],
-  "solutionLength": 9,
-  "seed": 110
- },
- {
-  "targets": [
-   "O",
-   "O",
-   "G",
-   "G"
-  ],
-  "bottles": [
-   [
-    "B",
-    "R",
-    "Y",
-    "Y"
-   ],
-   [
-    "R",
-    "R",
-    "Y",
-    "R"
-   ],
-   [
-    "Y",
-    "Y",
-    "R",
-    "B"
-   ],
-   [
-    "Y",
-    "Y",
-    "B",
-    "R"
-   ],
-   []
-  ],
-  "solution": [
-   {
-    "from": 0,
-    "to": 4
-   },
-   {
-    "from": 3,
-    "to": 0
-   },
-   {
-    "from": 2,
-    "to": 3
-   },
-   {
-    "from": 3,
-    "to": 4
-   },
-   {
-    "from": 1,
-    "to": 0
-   },
-   {
-    "from": 1,
-    "to": 3
-   },
-   {
-    "from": 2,
-    "to": 1
-   },
-   {
-    "from": 2,
-    "to": 1
-   },
-   {
-    "from": 0,
-    "to": 2
-   },
-   {
-    "from": 0,
-    "to": 3
-   }
-  ],
-  "solutionLength": 10,
-  "seed": 111
+  "solutionLength": 15,
+  "seed": 211
  },
  {
   "targets": [
    "R",
    "B",
    "O",
-   "G",
-   "P"
+   "G"
   ],
   "bottles": [
    [
+    "B",
     "R",
+    "B"
+   ],
+   [
+    "Y",
     "R",
+    "Y"
+   ],
+   [],
+   [
+    "B",
+    "R",
+    "Y"
+   ],
+   [
+    "B",
     "B",
     "R"
    ],
    [],
    [
-    "R",
-    "B",
-    "R",
-    "B"
-   ],
-   [
-    "B",
-    "R",
-    "B",
-    "B"
-   ],
-   [
-    "R",
     "B",
     "Y",
-    "B"
+    "R",
+    "R"
+   ]
+  ],
+  "solution": [
+   {
+    "type": "pour",
+    "from": 3,
+    "to": 1
+   },
+   {
+    "type": "pour",
+    "from": 6,
+    "to": 3
+   },
+   {
+    "type": "pour",
+    "from": 4,
+    "to": 0
+   },
+   {
+    "type": "pour",
+    "from": 4,
+    "to": 6
+   },
+   {
+    "type": "pour",
+    "from": 3,
+    "to": 2
+   },
+   {
+    "type": "pour",
+    "from": 0,
+    "to": 2
+   },
+   {
+    "type": "pour",
+    "from": 0,
+    "to": 3
+   },
+   {
+    "type": "pour",
+    "from": 6,
+    "to": 3
+   },
+   {
+    "type": "pour",
+    "from": 0,
+    "to": 4
+   },
+   {
+    "type": "pour",
+    "from": 0,
+    "to": 6
+   },
+   {
+    "type": "pour",
+    "from": 1,
+    "to": 6
+   },
+   {
+    "type": "shake",
+    "at": 6
+   },
+   {
+    "type": "pour",
+    "from": 4,
+    "to": 1
+   },
+   {
+    "type": "shake",
+    "at": 1
+   }
+  ],
+  "solutionLength": 14,
+  "seed": 212
+ },
+ {
+  "targets": [
+   "G",
+   "P",
+   "O",
+   "O"
+  ],
+  "bottles": [
+   [
+    "Y",
+    "B",
+    "R"
    ],
    [
     "R",
-    "Y",
     "B",
     "Y"
+   ],
+   [
+    "Y",
+    "R",
+    "R"
+   ],
+   [
+    "R",
+    "B",
+    "R",
+    "Y"
+   ],
+   [
+    "Y",
+    "Y",
+    "B"
    ],
    []
   ],
   "solution": [
    {
+    "type": "pour",
     "from": 0,
     "to": 1
    },
    {
+    "type": "pour",
     "from": 0,
+    "to": 4
+   },
+   {
+    "type": "shake",
+    "at": 4
+   },
+   {
+    "type": "pour",
+    "from": 0,
+    "to": 2
+   },
+   {
+    "type": "shake",
+    "at": 2
+   },
+   {
+    "type": "pour",
+    "from": 3,
+    "to": 0
+   },
+   {
+    "type": "pour",
+    "from": 1,
+    "to": 3
+   },
+   {
+    "type": "pour",
+    "from": 1,
+    "to": 0
+   },
+   {
+    "type": "pour",
+    "from": 1,
+    "to": 0
+   },
+   {
+    "type": "pour",
+    "from": 3,
     "to": 1
    },
    {
-    "from": 5,
-    "to": 6
-   },
-   {
-    "from": 2,
-    "to": 5
-   },
-   {
-    "from": 2,
-    "to": 0
-   },
-   {
-    "from": 5,
-    "to": 2
-   },
-   {
-    "from": 2,
-    "to": 6
-   },
-   {
-    "from": 0,
-    "to": 2
-   },
-   {
-    "from": 3,
-    "to": 0
-   },
-   {
-    "from": 4,
-    "to": 0
-   },
-   {
-    "from": 3,
-    "to": 5
-   },
-   {
+    "type": "pour",
     "from": 0,
     "to": 3
    },
    {
-    "from": 5,
-    "to": 0
-   },
-   {
-    "from": 4,
-    "to": 5
-   },
-   {
-    "from": 0,
-    "to": 5
-   },
-   {
-    "from": 4,
-    "to": 0
-   },
-   {
-    "from": 0,
-    "to": 4
-   },
-   {
+    "type": "pour",
     "from": 1,
-    "to": 4
+    "to": 3
+   },
+   {
+    "type": "shake",
+    "at": 3
+   },
+   {
+    "type": "pour",
+    "from": 0,
+    "to": 1
+   },
+   {
+    "type": "shake",
+    "at": 1
    }
   ],
-  "solutionLength": 18,
-  "seed": 112
+  "solutionLength": 15,
+  "seed": 214
  },
  {
   "targets": [
@@ -1537,117 +1712,25 @@ const LEVEL_DATA = [
    [
     "B",
     "R",
-    "B",
-    "R"
-   ],
-   [
-    "B",
-    "B",
-    "Y",
-    "B"
-   ],
-   [
-    "R",
-    "R",
-    "R",
-    "B"
-   ],
-   [
-    "R",
-    "Y",
-    "B",
     "Y"
    ],
    [
-    "Y",
-    "Y",
-    "Y",
-    "R"
-   ],
-   []
-  ],
-  "solution": [
-   {
-    "from": 0,
-    "to": 5
-   },
-   {
-    "from": 0,
-    "to": 5
-   },
-   {
-    "from": 1,
-    "to": 0
-   },
-   {
-    "from": 0,
-    "to": 5
-   },
-   {
-    "from": 3,
-    "to": 0
-   },
-   {
-    "from": 1,
-    "to": 3
-   },
-   {
-    "from": 3,
-    "to": 0
-   },
-   {
-    "from": 2,
-    "to": 1
-   },
-   {
-    "from": 3,
-    "to": 1
-   },
-   {
-    "from": 4,
-    "to": 3
-   },
-   {
-    "from": 4,
-    "to": 2
-   },
-   {
-    "from": 3,
-    "to": 4
-   }
-  ],
-  "solutionLength": 12,
-  "seed": 113
- },
- {
-  "targets": [
-   "Y",
-   "R",
-   "G",
-   "P",
-   "O"
-  ],
-  "bottles": [
-   [
-    "Y",
     "Y",
     "R",
     "Y"
    ],
    [
-    "B",
-    "R",
     "Y",
+    "R",
     "B"
    ],
    [
-    "Y",
-    "R",
-    "Y",
-    "R"
+    "B",
+    "B",
+    "Y"
    ],
    [
-    "R",
+    "B",
     "Y",
     "R",
     "R"
@@ -1655,75 +1738,115 @@ const LEVEL_DATA = [
    [],
    [
     "B",
-    "R",
-    "B",
+    "Y",
+    "Y",
     "R"
    ]
   ],
   "solution": [
    {
+    "type": "pour",
     "from": 0,
-    "to": 4
-   },
-   {
-    "from": 2,
-    "to": 4
-   },
-   {
-    "from": 0,
-    "to": 2
-   },
-   {
-    "from": 2,
-    "to": 4
-   },
-   {
-    "from": 3,
-    "to": 2
-   },
-   {
-    "from": 3,
-    "to": 0
-   },
-   {
-    "from": 5,
-    "to": 3
-   },
-   {
-    "from": 2,
-    "to": 3
-   },
-   {
-    "from": 1,
-    "to": 5
-   },
-   {
-    "from": 1,
-    "to": 0
-   },
-   {
-    "from": 1,
-    "to": 2
-   },
-   {
-    "from": 5,
     "to": 1
    },
    {
-    "from": 5,
+    "type": "pour",
+    "from": 0,
     "to": 2
    },
    {
+    "type": "pour",
+    "from": 0,
+    "to": 3
+   },
+   {
+    "type": "pour",
+    "from": 4,
+    "to": 0
+   },
+   {
+    "type": "pour",
+    "from": 6,
+    "to": 0
+   },
+   {
+    "type": "pour",
+    "from": 4,
+    "to": 6
+   },
+   {
+    "type": "pour",
     "from": 2,
-    "to": 5
+    "to": 0
    },
    {
-    "from": 1,
+    "type": "pour",
+    "from": 2,
+    "to": 4
+   },
+   {
+    "type": "pour",
+    "from": 2,
+    "to": 4
+   },
+   {
+    "type": "pour",
+    "from": 6,
     "to": 2
+   },
+   {
+    "type": "pour",
+    "from": 0,
+    "to": 4
+   },
+   {
+    "type": "shake",
+    "at": 4
+   },
+   {
+    "type": "pour",
+    "from": 3,
+    "to": 6
+   },
+   {
+    "type": "pour",
+    "from": 1,
+    "to": 3
+   },
+   {
+    "type": "shake",
+    "at": 3
+   },
+   {
+    "type": "pour",
+    "from": 0,
+    "to": 1
+   },
+   {
+    "type": "shake",
+    "at": 1
+   },
+   {
+    "type": "pour",
+    "from": 2,
+    "to": 0
+   },
+   {
+    "type": "shake",
+    "at": 0
+   },
+   {
+    "type": "pour",
+    "from": 2,
+    "to": 6
+   },
+   {
+    "type": "shake",
+    "at": 6
    }
   ],
-  "solutionLength": 15,
-  "seed": 114
+  "solutionLength": 21,
+  "seed": 213
  },
  {
   "targets": [
@@ -1737,120 +1860,158 @@ const LEVEL_DATA = [
   "bottles": [
    [
     "Y",
-    "R",
     "B",
-    "Y"
-   ],
-   [
-    "B",
-    "B",
-    "Y",
     "B"
    ],
    [
-    "Y",
-    "B",
-    "B",
-    "Y"
-   ],
-   [
-    "Y",
-    "B",
-    "B",
-    "Y"
-   ],
-   [
-    "Y",
-    "B",
     "R",
-    "R"
+    "B",
+    "Y"
+   ],
+   [
+    "R",
+    "R",
+    "Y"
    ],
    [],
    [
+    "Y",
+    "R",
     "B",
+    "Y"
+   ],
+   [
     "B",
     "R",
     "Y"
+   ],
+   [
+    "R",
+    "Y",
+    "B",
+    "B"
+   ],
+   [
+    "R",
+    "R",
+    "Y",
+    "B"
    ]
   ],
   "solution": [
    {
-    "from": 0,
-    "to": 5
-   },
-   {
-    "from": 2,
-    "to": 5
-   },
-   {
-    "from": 2,
-    "to": 5
-   },
-   {
-    "from": 3,
-    "to": 2
-   },
-   {
+    "type": "pour",
     "from": 1,
     "to": 0
    },
    {
-    "from": 6,
-    "to": 2
+    "type": "shake",
+    "at": 0
    },
    {
-    "from": 6,
-    "to": 2
-   },
-   {
-    "from": 0,
-    "to": 6
-   },
-   {
-    "from": 6,
-    "to": 3
-   },
-   {
-    "from": 0,
-    "to": 6
-   },
-   {
-    "from": 0,
-    "to": 1
-   },
-   {
-    "from": 3,
-    "to": 0
-   },
-   {
-    "from": 4,
-    "to": 0
-   },
-   {
+    "type": "pour",
     "from": 1,
-    "to": 3
+    "to": 5
    },
    {
+    "type": "pour",
+    "from": 1,
+    "to": 2
+   },
+   {
+    "type": "pour",
+    "from": 6,
+    "to": 1
+   },
+   {
+    "type": "pour",
+    "from": 7,
+    "to": 1
+   },
+   {
+    "type": "pour",
+    "from": 6,
+    "to": 7
+   },
+   {
+    "type": "shake",
+    "at": 7
+   },
+   {
+    "type": "pour",
+    "from": 2,
+    "to": 6
+   },
+   {
+    "type": "pour",
     "from": 4,
-    "to": 3
+    "to": 2
    },
    {
+    "type": "shake",
+    "at": 2
+   },
+   {
+    "type": "pour",
     "from": 4,
     "to": 1
    },
    {
+    "type": "pour",
+    "from": 4,
+    "to": 6
+   },
+   {
+    "type": "pour",
+    "from": 5,
+    "to": 6
+   },
+   {
+    "type": "pour",
+    "from": 5,
+    "to": 4
+   },
+   {
+    "type": "pour",
+    "from": 6,
+    "to": 5
+   },
+   {
+    "type": "pour",
+    "from": 6,
+    "to": 5
+   },
+   {
+    "type": "shake",
+    "at": 5
+   },
+   {
+    "type": "pour",
     "from": 1,
     "to": 4
+   },
+   {
+    "type": "shake",
+    "at": 4
+   },
+   {
+    "type": "pour",
+    "from": 1,
+    "to": 6
+   },
+   {
+    "type": "shake",
+    "at": 6
    }
   ],
-  "solutionLength": 17,
-  "seed": 115
+  "solutionLength": 22,
+  "seed": 215
  }
 ];
 
 // ===== paint-mix-sort/render.js =====
-// 캔버스 렌더러 — 병, 물감, 붓기/혼합 애니메이션, 파티클.
-// 게임 로직은 전혀 모르고, 상태와 PourResult만 받아 그린다.
+// 캔버스 렌더러 — 병, 물감, 붓기/흔들기 애니메이션, 파티클.
+// 게임 로직은 전혀 모르고, 상태와 수(move) 결과만 받아 그린다.
 
 
 const COLOR_HEX = {
@@ -1878,13 +2039,9 @@ function hexToRgb(hex) {
 function lerpColor(hexA, hexB, t) {
   const a = hexToRgb(hexA);
   const b = hexToRgb(hexB);
-  const r = Math.round(a[0] + (b[0] - a[0]) * t);
-  const g = Math.round(a[1] + (b[1] - a[1]) * t);
-  const bl = Math.round(a[2] + (b[2] - a[2]) * t);
-  return `rgb(${r},${g},${bl})`;
-}
-function lighten(hex, t) {
-  return lerpColor(hex, '#ffffff', t);
+  return `rgb(${Math.round(a[0] + (b[0] - a[0]) * t)},${Math.round(
+    a[1] + (b[1] - a[1]) * t
+  )},${Math.round(a[2] + (b[2] - a[2]) * t)})`;
 }
 const clamp01 = (t) => Math.max(0, Math.min(1, t));
 const easeOutCubic = (t) => 1 - Math.pow(1 - t, 3);
@@ -1964,10 +2121,6 @@ class Renderer {
     this.guide = null;
   }
 
-  shakeBottle(i) {
-    this.shake = { i, t0: performance.now() };
-  }
-
   _layout() {
     if (!this.state || this.cssW < 10) {
       this.rects = [];
@@ -2020,27 +2173,46 @@ class Renderer {
     return null;
   }
 
-  // 붓기 애니메이션 시작. onMix는 혼합 플래시 시작 시, onDone은 완전히 끝난 뒤 호출.
-  animatePour({ prevState, result, onMix, onDone }) {
+  shakeBottle(i) {
+    this.shake = { i, t0: performance.now() };
+  }
+
+  // 붓기 애니메이션. 색은 변하지 않고 덩어리가 옮겨갈 뿐이다.
+  animatePour({ prevState, result, onDone }) {
     const srcRect = this.rects[result.from];
     const dstRect = this.rects[result.to];
     if (!srcRect || !dstRect) {
       onDone && onDone();
       return;
     }
-    const dir = srcRect.x <= dstRect.x ? 1 : -1;
     this.anim = {
+      kind: 'pour',
       prev: prevState,
       res: result,
       t0: performance.now(),
       MOVE: 230,
       POUR: 240 + 100 * result.amount,
-      FLASH: result.mixed ? 300 : 0,
       RETURN: 210,
-      dir,
-      mixFired: false,
+      dir: srcRect.x <= dstRect.x ? 1 : -1,
       doneFired: false,
-      onMix,
+      onDone,
+    };
+  }
+
+  // 흔들기 애니메이션. 병이 부르르 떨리며 층들이 한 색으로 녹아든다.
+  animateShake({ prevState, result, onDone }) {
+    if (!this.rects[result.at]) {
+      onDone && onDone();
+      return;
+    }
+    this.anim = {
+      kind: 'shake',
+      prev: prevState,
+      res: result,
+      t0: performance.now(),
+      SHAKE: 520,
+      SETTLE: 180,
+      doneFired: false,
       onDone,
     };
   }
@@ -2102,45 +2274,49 @@ class Renderer {
     ctx.clearRect(0, 0, this.cssW, this.cssH);
 
     const A = this.anim;
-    let animData = null;
-    if (A) animData = this._computeAnim(now, A);
+    const pourAnim = A && A.kind === 'pour' ? this._computePour(now, A) : null;
+    const shakeAnim = A && A.kind === 'shake' ? this._computeShake(now, A) : null;
 
-    // 일반 병 (애니메이션 중인 원본 병은 건너뛰고 나중에 위에 그림)
     for (let i = 0; i < this.state.bottles.length; i++) {
-      if (animData && i === A.res.from) continue;
+      // 붓는 중인 원본 병은 기울여서 나중에 위에 그린다
+      if (pourAnim && i === A.res.from) continue;
+
       let rect = { ...this.rects[i] };
       if (this.shake && this.shake.i === i) {
         const el = now - this.shake.t0;
         if (el < 300) rect.x += Math.sin(el / 16) * 5 * (1 - el / 300);
         else this.shake = null;
       }
+
       let model;
-      if (animData && i === A.res.to) {
-        model = animData.dstModel;
+      if (pourAnim && i === A.res.to) {
+        model = pourAnim.dstModel;
+      } else if (shakeAnim && i === A.res.at) {
+        model = shakeAnim.model;
+        rect.x += shakeAnim.jitterX;
+        rect.y += shakeAnim.jitterY;
       } else {
         const b = this.state.bottles[i];
         model = { colors: b.map((c) => COLOR_HEX[c]), fraction: 1, flash: 0 };
       }
-      const selected = this.selected === i && !animData;
+
+      const selected = this.selected === i && !A;
       if (selected) rect.y -= LIFT;
       const complete =
         this.state.bottles[i].length === this.capacity && isUniform(this.state.bottles[i]);
-      // 안내 중에는 지금 눌러야 할 병 외에는 물러나 보이게 한다
       const dim = this.guide !== null && i !== this.guide && !selected;
       if (dim) ctx.save(), (ctx.globalAlpha = 0.4);
       this._drawBottle(rect, model, { selected, complete, shadow: true });
       if (dim) ctx.restore();
     }
 
-    // 애니메이션 중인 원본 병 + 물줄기
-    if (animData) {
-      if (animData.stream) this._drawStream(animData.stream);
-      const { mouth, rot, srcModel } = animData;
+    if (pourAnim) {
+      if (pourAnim.stream) this._drawStream(pourAnim.stream);
       const r0 = this.rects[A.res.from];
       ctx.save();
-      ctx.translate(mouth.x, mouth.y);
-      ctx.rotate(rot);
-      this._drawBottle({ x: -r0.w / 2, y: 0, w: r0.w, h: r0.h }, srcModel, {
+      ctx.translate(pourAnim.mouth.x, pourAnim.mouth.y);
+      ctx.rotate(pourAnim.rot);
+      this._drawBottle({ x: -r0.w / 2, y: 0, w: r0.w, h: r0.h }, pourAnim.srcModel, {
         selected: false,
         complete: false,
         shadow: false,
@@ -2148,54 +2324,19 @@ class Renderer {
       ctx.restore();
     }
 
-    if (!animData) this._drawGuide(now);
+    if (!A) this._drawGuide(now);
     this._drawParticles(now);
   }
 
-  // 튜토리얼: 눌러야 할 병 위에 맥동하는 링 + 손가락 커서
-  _drawGuide(now) {
-    if (this.guide === null) return;
-    const r = this.rects[this.guide];
-    if (!r) return;
-    const ctx = this.ctx;
-    const cx = r.x + r.w / 2;
-    const cy = r.y + r.h * 0.5;
-    const beat = (Math.sin(now / 330) + 1) / 2; // 0..1
-
-    ctx.save();
-    ctx.strokeStyle = `rgba(255,255,255,${0.45 - 0.32 * beat})`;
-    ctx.lineWidth = 2.4;
-    ctx.beginPath();
-    ctx.arc(cx, cy, 19 + beat * 15, 0, Math.PI * 2);
-    ctx.stroke();
-    ctx.restore();
-
-    // 검지 든 손. 검지 → 엄지 → 주먹 순서로 그려 주먹이 밑동을 덮게 한다.
-    ctx.save();
-    ctx.translate(cx + 2, cy - 6 + beat * 9);
-    ctx.rotate(0.28); // 오른쪽 아래에서 올라온 손처럼 살짝 기울인다
-    ctx.scale(1.3, 1.3);
-    ctx.lineJoin = 'round';
-    ctx.lineWidth = 3;
-    ctx.strokeStyle = 'rgba(26,22,52,0.92)';
-    ctx.fillStyle = '#ffffff';
-    ctx.shadowColor = 'rgba(0,0,0,0.45)';
-    ctx.shadowBlur = 12;
-    ctx.shadowOffsetY = 4;
-
-    rr(ctx, -5.5, 0, 11, 33, 5.5); // 검지
-    ctx.fill();
-    ctx.stroke();
-    rr(ctx, -23, 30, 15, 12, 6); // 엄지
-    ctx.fill();
-    ctx.stroke();
-    rr(ctx, -16, 26, 33, 29, 12); // 주먹
-    ctx.fill();
-    ctx.stroke();
-    ctx.restore();
+  _finish(A) {
+    this.anim = null;
+    if (!A.doneFired) {
+      A.doneFired = true;
+      A.onDone && A.onDone();
+    }
   }
 
-  _computeAnim(now, A) {
+  _computePour(now, A) {
     const res = A.res;
     const prevSrc = A.prev.bottles[res.from];
     const prevDst = A.prev.bottles[res.to];
@@ -2212,91 +2353,93 @@ class Renderer {
     };
 
     const el = now - A.t0;
-    const { MOVE, POUR, FLASH, RETURN } = A;
-    const total = MOVE + POUR + FLASH + RETURN;
-
-    // 목적지 병의 (혼합 전) 색 배열: 원래 내용 + 부은 색
+    const { MOVE, POUR, RETURN } = A;
     const dstPreColors = prevDst.map((c) => COLOR_HEX[c]);
-    const dstPostColors = postDst.map((c) => COLOR_HEX[c]);
-
-    let mouth, rot;
-    let srcModel, dstModel;
-    let stream = null;
-
     const srcColorsFull = prevSrc.map((c) => COLOR_HEX[c]);
 
     if (el < MOVE) {
       const t = easeInOut(clamp01(el / MOVE));
-      mouth = {
-        x: startMouth.x + (pourMouth.x - startMouth.x) * t,
-        y: startMouth.y + (pourMouth.y - startMouth.y) * t,
+      return {
+        mouth: {
+          x: startMouth.x + (pourMouth.x - startMouth.x) * t,
+          y: startMouth.y + (pourMouth.y - startMouth.y) * t,
+        },
+        rot: TILT * A.dir * t,
+        srcModel: { colors: srcColorsFull, fraction: 1, flash: 0 },
+        dstModel: { colors: dstPreColors, fraction: 1, flash: 0 },
+        stream: null,
       };
-      rot = TILT * A.dir * t;
-      srcModel = { colors: srcColorsFull, fraction: 1, flash: 0 };
-      dstModel = { colors: dstPreColors, fraction: 1, flash: 0 };
-    } else if (el < MOVE + POUR) {
+    }
+
+    if (el < MOVE + POUR) {
       const t = easeInOut(clamp01((el - MOVE) / POUR));
       const moved = res.amount * t;
-      mouth = pourMouth;
-      rot = TILT * A.dir;
-
       const remain = prevSrc.length - moved;
-      const full = Math.floor(remain);
-      srcModel = {
-        colors: srcColorsFull.slice(0, Math.ceil(remain)),
-        fraction: remain - full > 0 ? remain - full : 1,
-        flash: 0,
-      };
-      const dstCount = prevDst.length + moved;
       const dstColors = dstPreColors.slice();
       for (let k = 0; k < Math.ceil(moved); k++) dstColors.push(pouredHex);
-      dstModel = {
-        colors: dstColors,
-        fraction: moved % 1 > 0 ? moved % 1 : 1,
-        flash: 0,
+      return {
+        mouth: pourMouth,
+        rot: TILT * A.dir,
+        srcModel: {
+          colors: srcColorsFull.slice(0, Math.ceil(remain)),
+          fraction: remain % 1 > 0 ? remain % 1 : 1,
+          flash: 0,
+        },
+        dstModel: { colors: dstColors, fraction: moved % 1 > 0 ? moved % 1 : 1, flash: 0 },
+        stream: this._streamGeom(pourMouth, dstRect, prevDst.length + moved, pouredHex, A.dir),
       };
-      stream = this._streamGeom(mouth, dstRect, dstCount, pouredHex, A.dir);
-    } else if (el < MOVE + POUR + FLASH) {
-      const f = clamp01((el - MOVE - POUR) / FLASH);
-      if (!A.mixFired) {
-        A.mixFired = true;
-        A.onMix && A.onMix();
-        const surfY = this._surfaceY(dstRect, postDst.length);
-        this._burst(dstRect.x + dstRect.w / 2, surfY, COLOR_HEX[res.color], 18);
-      }
-      mouth = pourMouth;
-      rot = TILT * A.dir;
-      srcModel = { colors: postSrc.map((c) => COLOR_HEX[c]), fraction: 1, flash: 0 };
-
-      // 닿은 구간이 혼합색으로 물드는 연출
-      const affected = res.mixedRunBefore + res.amount;
-      const preMixColors = dstPreColors.slice();
-      for (let k = 0; k < res.amount; k++) preMixColors.push(pouredHex);
-      const colors = preMixColors.map((hex, idx) => {
-        if (idx >= preMixColors.length - affected) {
-          return lerpColor(hex, COLOR_HEX[res.color], easeOutCubic(f));
-        }
-        return hex;
-      });
-      dstModel = { colors, fraction: 1, flash: Math.sin(f * Math.PI) * 0.5 };
-    } else if (el < total) {
-      const t = easeInOut(clamp01((el - MOVE - POUR - FLASH) / RETURN));
-      mouth = {
-        x: pourMouth.x + (startMouth.x - pourMouth.x) * t,
-        y: pourMouth.y + (startMouth.y - pourMouth.y) * t,
-      };
-      rot = TILT * A.dir * (1 - t);
-      srcModel = { colors: postSrc.map((c) => COLOR_HEX[c]), fraction: 1, flash: 0 };
-      dstModel = { colors: dstPostColors, fraction: 1, flash: 0 };
-    } else {
-      this.anim = null;
-      if (!A.doneFired) {
-        A.doneFired = true;
-        A.onDone && A.onDone();
-      }
-      return null;
     }
-    return { mouth, rot, srcModel, dstModel, stream };
+
+    if (el < MOVE + POUR + RETURN) {
+      const t = easeInOut(clamp01((el - MOVE - POUR) / RETURN));
+      return {
+        mouth: {
+          x: pourMouth.x + (startMouth.x - pourMouth.x) * t,
+          y: pourMouth.y + (startMouth.y - pourMouth.y) * t,
+        },
+        rot: TILT * A.dir * (1 - t),
+        srcModel: { colors: postSrc.map((c) => COLOR_HEX[c]), fraction: 1, flash: 0 },
+        dstModel: { colors: postDst.map((c) => COLOR_HEX[c]), fraction: 1, flash: 0 },
+        stream: null,
+      };
+    }
+
+    this._finish(A);
+    return null;
+  }
+
+  _computeShake(now, A) {
+    const el = now - A.t0;
+    const { SHAKE, SETTLE } = A;
+    const beforeHex = A.res.from.map((c) => COLOR_HEX[c]);
+    const afterHex = COLOR_HEX[A.res.color];
+
+    if (el < SHAKE) {
+      const t = clamp01(el / SHAKE);
+      // 흔들림은 강하게 시작해 잦아들고, 색은 그동안 서서히 녹아든다
+      const power = (1 - t) * 11;
+      const blend = easeInOut(clamp01((t - 0.22) / 0.7));
+      return {
+        jitterX: Math.sin(el / 21) * power,
+        jitterY: Math.cos(el / 15) * power * 0.5,
+        model: {
+          colors: beforeHex.map((hex) => lerpColor(hex, afterHex, blend)),
+          fraction: 1,
+          flash: Math.sin(t * Math.PI) * 0.22,
+        },
+      };
+    }
+
+    if (el < SHAKE + SETTLE) {
+      return {
+        jitterX: 0,
+        jitterY: 0,
+        model: { colors: beforeHex.map(() => afterHex), fraction: 1, flash: 0 },
+      };
+    }
+
+    this._finish(A);
+    return null;
   }
 
   _surfaceY(rect, unitCount) {
@@ -2359,12 +2502,10 @@ class Renderer {
       ctx.restore();
     }
 
-    // 유리 몸통
     rr(ctx, x, y, w, h, r);
     ctx.fillStyle = 'rgba(255,255,255,0.055)';
     ctx.fill();
 
-    // 물감 (몸통 모양으로 클리핑)
     ctx.save();
     rr(ctx, x + 1, y + 1, w - 2, h - 2, r - 1);
     ctx.clip();
@@ -2387,13 +2528,11 @@ class Renderer {
       ctx.fillStyle = `rgba(255,255,255,${model.flash})`;
       ctx.fillRect(x, y, w, h);
     }
-    // 광택
     ctx.fillStyle = 'rgba(255,255,255,0.07)';
     rr(ctx, x + w * 0.13, y + 7, w * 0.16, h - 14, w * 0.08);
     ctx.fill();
     ctx.restore();
 
-    // 유리 외곽선 + 입구
     rr(ctx, x, y, w, h, r);
     ctx.strokeStyle = selected ? 'rgba(190,170,255,0.75)' : 'rgba(255,255,255,0.28)';
     ctx.lineWidth = selected ? 2.2 : 1.6;
@@ -2424,6 +2563,49 @@ class Renderer {
     }
   }
 
+  // 튜토리얼: 눌러야 할 병 위에 맥동하는 링 + 손가락 커서
+  _drawGuide(now) {
+    if (this.guide === null) return;
+    const r = this.rects[this.guide];
+    if (!r) return;
+    const ctx = this.ctx;
+    const cx = r.x + r.w / 2;
+    const cy = r.y + r.h * 0.5;
+    const beat = (Math.sin(now / 330) + 1) / 2;
+
+    ctx.save();
+    ctx.strokeStyle = `rgba(255,255,255,${0.45 - 0.32 * beat})`;
+    ctx.lineWidth = 2.4;
+    ctx.beginPath();
+    ctx.arc(cx, cy, 19 + beat * 15, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.restore();
+
+    // 검지 든 손. 검지 → 엄지 → 주먹 순서로 그려 주먹이 밑동을 덮게 한다.
+    ctx.save();
+    ctx.translate(cx + 2, cy - 6 + beat * 9);
+    ctx.rotate(0.28); // 오른쪽 아래에서 올라온 손처럼 살짝 기울인다
+    ctx.scale(1.3, 1.3);
+    ctx.lineJoin = 'round';
+    ctx.lineWidth = 3;
+    ctx.strokeStyle = 'rgba(26,22,52,0.92)';
+    ctx.fillStyle = '#ffffff';
+    ctx.shadowColor = 'rgba(0,0,0,0.45)';
+    ctx.shadowBlur = 12;
+    ctx.shadowOffsetY = 4;
+
+    rr(ctx, -5.5, 0, 11, 33, 5.5); // 검지
+    ctx.fill();
+    ctx.stroke();
+    rr(ctx, -23, 30, 15, 12, 6); // 엄지
+    ctx.fill();
+    ctx.stroke();
+    rr(ctx, -16, 26, 33, 29, 12); // 주먹
+    ctx.fill();
+    ctx.stroke();
+    ctx.restore();
+  }
+
   _drawParticles(now) {
     if (!this.particles.length) return;
     const ctx = this.ctx;
@@ -2451,8 +2633,8 @@ class Renderer {
         ctx.fill();
       }
       ctx.restore();
+      alive.push(p);
     }
-    for (const p of this.particles) if (p.age < p.ttl) alive.push(p);
     this.particles = alive;
   }
 }
@@ -2571,11 +2753,11 @@ class Sound {
 const STORAGE_LEVEL = 'pms.level';
 const STORAGE_CLEARED = 'pms.cleared'; // 레벨당 '0'/'1' 한 글자
 
-// 손가락이 첫 판을 끝까지 안내하는 레벨 (설명 문구 대신 직접 짚어준다)
-const GUIDED_LEVELS = new Set([0]);
+// 손가락이 직접 짚어주는 레벨. 1은 흔들기를, 2는 붓기를 가르친다.
+const GUIDED_LEVELS = new Set([0, 1]);
 
 const HINTS = {
-  6: '🔴 빨강도 목표예요. 전부 섞어버리면 못 만듭니다.',
+  5: '🔴 빨강도 목표예요. 빨강 4칸을 그대로 남겨야 합니다.',
 };
 
 class Game {
@@ -2591,12 +2773,12 @@ class Game {
     this.won = false;
   }
 
-  saveCleared() {
-    safeStorage.setItem(STORAGE_CLEARED, this.cleared.map((c) => (c ? '1' : '0')).join(''));
-  }
-
   get level() {
     return LEVEL_DATA[this.levelIndex];
+  }
+
+  saveCleared() {
+    safeStorage.setItem(STORAGE_CLEARED, this.cleared.map((c) => (c ? '1' : '0')).join(''));
   }
 
   loadLevel(i) {
@@ -2613,6 +2795,9 @@ class Game {
     this._goalFlags = null;
     clearTimeout(this._deadT);
     clearTimeout(this._bannerT);
+    // 승리 오버레이는 지연 후 뜨므로, 그 사이 레벨을 옮기면 취소해야 한다.
+    // (안 그러면 새 레벨 위에 이전 레벨의 클리어 화면이 튀어나온다)
+    clearTimeout(this._winT);
 
     this.renderer.clearEffects();
     this.renderer.setState(this.state);
@@ -2622,6 +2807,7 @@ class Game {
     this.hideBanner();
     this.updateHud();
     this.updateGoals();
+    this.updateShakeButton();
     this.updateGuide();
 
     const hint = HINTS[this.levelIndex];
@@ -2636,9 +2822,11 @@ class Game {
   deselect() {
     this.selected = null;
     this.renderer.setSelected(null);
+    this.updateShakeButton();
   }
 
-  // 안내 레벨에서 지금 눌러야 할 수. 입력을 이 수로만 제한한다.
+  // --- 튜토리얼 안내 ---
+  // 안내 레벨에서 지금 둬야 할 수. 입력을 이 수로만 제한한다.
   nextGuideMove() {
     if (!this.guided || this.won || this.busy) return null;
     return this.level.solution[this.history.length] || null;
@@ -2646,12 +2834,25 @@ class Game {
 
   updateGuide() {
     const g = this.nextGuideMove();
-    this.renderer.setGuide(g ? (this.selected === null ? g.from : g.to) : null);
+    if (!g) {
+      this.renderer.setGuide(null);
+      this.dom.btnShake.classList.remove('pulse');
+      return;
+    }
+    if (g.type === 'shake') {
+      // 병을 먼저 고르게 하고, 고른 뒤에는 흔들기 버튼을 강조한다
+      const picked = this.selected === g.at;
+      this.renderer.setGuide(picked ? null : g.at);
+      this.dom.btnShake.classList.toggle('pulse', picked);
+    } else {
+      this.renderer.setGuide(this.selected === null ? g.from : g.to);
+      this.dom.btnShake.classList.remove('pulse');
+    }
   }
 
   // 선택 시도. 비었거나 완성돼 잠긴 병이면 거절한다.
   trySelect(i) {
-    if (!this.state.bottles[i].length || isLocked(this.state, i, MIX_RULES)) {
+    if (!this.state.bottles[i].length || isLocked(this.state, i, SHAKE_RULES)) {
       this.renderer.shakeBottle(i);
       this.sound.error();
       return false;
@@ -2659,6 +2860,7 @@ class Game {
     this.selected = i;
     this.renderer.setSelected(i);
     this.sound.select();
+    this.updateShakeButton();
     this.updateGuide();
     return true;
   }
@@ -2670,7 +2872,7 @@ class Game {
     // 안내 중에는 짚어준 병만 반응한다
     const g = this.nextGuideMove();
     if (g) {
-      const want = this.selected === null ? g.from : g.to;
+      const want = g.type === 'shake' ? g.at : this.selected === null ? g.from : g.to;
       if (i !== want) {
         this.renderer.shakeBottle(i);
         return;
@@ -2688,18 +2890,17 @@ class Game {
       return;
     }
 
-    if (canPour(this.state, this.selected, i, MIX_RULES)) {
+    if (canPour(this.state, this.selected, i, SHAKE_RULES)) {
       this.doPour(this.selected, i);
     } else {
-      // 부을 수 없는 곳이면 선택을 옮겨준다 (연타 조작감).
-      // 옮길 수 없는 병이면 기존 선택을 유지한다.
+      // 부을 수 없는 곳이면 선택을 옮겨준다. 옮길 수 없으면 기존 선택을 유지한다.
       this.trySelect(i);
     }
   }
 
   doPour(from, to) {
     const prev = this.state;
-    const res = pour(prev, from, to, MIX_RULES);
+    const res = pour(prev, from, to, SHAKE_RULES);
     if (!res) return;
 
     this.history.push(prev);
@@ -2709,29 +2910,67 @@ class Game {
     this.hideBanner();
     this.sound.pour(res.amount);
     this.updateHud();
-    this.renderer.setGuide(null); // 붓는 동안에는 손가락을 치운다
+    this.renderer.setGuide(null);
+    this.dom.btnShake.classList.remove('pulse');
 
     const completedNow = isComplete(this.state, to) && !isComplete(prev, to);
 
     this.renderer.animatePour({
       prevState: prev,
       result: res,
-      onMix: () => this.sound.mix(),
-      onDone: () => {
-        this.busy = false;
-        this.renderer.setState(this.state);
-        this.updateGoals();
-        if (completedNow) {
-          this.renderer.burstAtBottle(to, COLOR_HEX[res.color]);
-          this.sound.complete();
-        }
-        if (isWin(this.state, this.targets)) this.win();
-        else {
-          this.updateGuide();
-          this.scheduleDeadCheck();
-        }
-      },
+      onDone: () => this.afterMove(completedNow ? { at: to, color: res.color } : null),
     });
+  }
+
+  doShake() {
+    if (this.busy || this.won || this.selected === null) return;
+    const at = this.selected;
+    const prev = this.state;
+    const res = shake(prev, at, SHAKE_RULES);
+    if (!res) {
+      this.renderer.shakeBottle(at);
+      this.sound.error();
+      return;
+    }
+
+    const g = this.nextGuideMove();
+    if (g && !(g.type === 'shake' && g.at === at)) {
+      this.renderer.shakeBottle(at);
+      return;
+    }
+
+    this.history.push(prev);
+    this.state = res.state;
+    this.deselect();
+    this.busy = true;
+    this.hideBanner();
+    this.sound.mix();
+    this.updateHud();
+    this.renderer.setGuide(null);
+    this.dom.btnShake.classList.remove('pulse');
+
+    this.renderer.animateShake({
+      prevState: prev,
+      result: res,
+      onDone: () => this.afterMove({ at, color: res.color }),
+    });
+  }
+
+  // 한 수가 끝난 뒤 공통 처리
+  afterMove(completed) {
+    this.busy = false;
+    this.renderer.setState(this.state);
+    this.updateGoals();
+    this.updateShakeButton();
+    if (completed) {
+      this.renderer.burstAtBottle(completed.at, COLOR_HEX[completed.color]);
+      this.sound.complete();
+    }
+    if (isWin(this.state, this.targets)) this.win();
+    else {
+      this.updateGuide();
+      this.scheduleDeadCheck();
+    }
   }
 
   undo() {
@@ -2742,6 +2981,7 @@ class Game {
     this.hideBanner();
     this.updateHud();
     this.updateGoals();
+    this.updateShakeButton();
     this.updateGuide();
     this.sound.select();
   }
@@ -2761,7 +3001,7 @@ class Game {
     clearTimeout(this._deadT);
     this._deadT = setTimeout(() => {
       if (this.won || this.busy) return;
-      const r = solve(this.state, this.targets, MIX_RULES, { maxNodes: 25000 });
+      const r = solve(this.state, this.targets, SHAKE_RULES, { maxNodes: 25000 });
       if (!r.solved && r.exhausted) {
         this.showBanner('🚫 더 이상 풀 수 없어요 — 되돌리기(↩︎)로 살려보세요!', true);
       }
@@ -2773,6 +3013,7 @@ class Game {
     this.sound.win();
     this.renderer.setGuide(null);
     this.renderer.celebrate();
+    this.dom.btnShake.classList.add('hidden');
     this.cleared[this.levelIndex] = true;
     this.saveCleared();
     if (this.levelIndex + 1 < LEVEL_DATA.length) {
@@ -2782,13 +3023,29 @@ class Game {
     this.dom.overlayTitle.textContent = last ? '🎉 전 레벨 클리어!' : `레벨 ${this.levelIndex + 1} 클리어!`;
     this.dom.overlayInfo.textContent = `${this.history.length}수 · 참고 답안 ${this.level.solutionLength}수`;
     this.dom.btnNext.textContent = last ? '처음부터 다시 ↻' : '다음 레벨 ▶';
-    setTimeout(() => this.dom.overlay.classList.remove('hidden'), 850);
+    this._winT = setTimeout(() => this.dom.overlay.classList.remove('hidden'), 850);
   }
 
   updateHud() {
     this.dom.levelLabel.textContent = `레벨 ${this.levelIndex + 1}`;
     this.dom.moveLabel.textContent = `${this.history.length}수 · 총 ${LEVEL_DATA.length}레벨`;
     this.dom.btnUndo.disabled = !this.history.length;
+  }
+
+  // 고른 병을 흔들 수 있으면 버튼을 띄우고, 나올 색을 미리 보여준다.
+  updateShakeButton() {
+    const btn = this.dom.btnShake;
+    const at = this.selected;
+    const color = at === null || this.won ? null : shakePreview(this.state, at, SHAKE_RULES);
+    if (!color) {
+      btn.classList.add('hidden');
+      btn.classList.remove('pulse');
+      return;
+    }
+    btn.classList.remove('hidden');
+    btn.style.setProperty('--c', COLOR_HEX[color]);
+    btn.innerHTML = `흔들어 섞기 <span class="swatch"></span>`;
+    btn.setAttribute('aria-label', `흔들어 ${COLOR_NAME[color]} 만들기`);
   }
 
   // 하단 목표 선반: 빈 병 실루엣이 "만들어야 할 병", 완성되면 색이 찬다.
@@ -2811,7 +3068,6 @@ class Game {
       const el = document.createElement('span');
       el.className = 'goal' + (done ? ' done' : '');
       el.style.setProperty('--c', COLOR_HEX[this.targets[idx]]);
-      // 이번에 새로 완성된 칸만 튀어오르게
       if (done && this._goalFlags && !this._goalFlags[idx]) el.classList.add('pop');
       slots.appendChild(el);
     });
@@ -2885,18 +3141,22 @@ class Game {
     if (this.history.length === 0) {
       moves = this.level.solution;
     } else {
-      const r = solve(this.state, this.targets, MIX_RULES, { maxNodes: 600000 });
+      const r = solve(this.state, this.targets, SHAKE_RULES, { maxNodes: 600000 });
       if (!r.solved) return false;
       moves = r.moves;
     }
     for (const mv of moves) {
-      const res = pour(this.state, mv.from, mv.to, MIX_RULES);
+      const res =
+        mv.type === 'shake'
+          ? shake(this.state, mv.at, SHAKE_RULES)
+          : pour(this.state, mv.from, mv.to, SHAKE_RULES);
       if (!res) return false;
       this.history.push(this.state);
       this.state = res.state;
     }
     this.renderer.setState(this.state);
     this.renderer.setGuide(null);
+    this.deselect();
     this.updateHud();
     this.updateGoals();
     if (isWin(this.state, this.targets)) {
@@ -2924,6 +3184,7 @@ const dom = {
   btnRestart: $('btnRestart'),
   btnMute: $('btnMute'),
   btnNext: $('btnNext'),
+  btnShake: $('btnShake'),
   levelSelect: $('levelSelect'),
   levelGrid: $('levelGrid'),
   goalSlots: $('goalSlots'),
@@ -2939,7 +3200,8 @@ const renderer = new Renderer(dom.board);
 const sound = new Sound();
 const game = new Game({ renderer, sound, dom });
 
-// 혼합 공식 범례: R+Y=O, Y+B=G, R+B=P
+// 혼합 공식 범례. "반반씩 채워서 흔들어야 나온다"를 2칸씩 보여준다.
+// 이모지는 기기마다 렌더링이 제각각이라 화살표만 쓴다.
 function buildLegend() {
   const dot = (c) => `<span class="dot" style="--c:${COLOR_HEX[c]}"></span>`;
   const pairs = [
@@ -2948,7 +3210,10 @@ function buildLegend() {
     ['R', 'B'],
   ];
   dom.legend.innerHTML = pairs
-    .map(([a, b]) => `<span class="formula">${dot(a)}+${dot(b)}=${dot(mixOf(a, b))}</span>`)
+    .map(
+      ([a, b]) =>
+        `<span class="formula">${dot(a)}${dot(a)}${dot(b)}${dot(b)}<em>→</em>${dot(mixOf(a, b))}</span>`
+    )
     .join('');
 }
 
@@ -2973,6 +3238,7 @@ dom.btnMute.addEventListener('click', () => {
   updateMuteIcon();
 });
 
+dom.btnShake.addEventListener('click', () => game.doShake());
 $('btnLevels').addEventListener('click', () => game.toggleLevels());
 $('btnCloseLevels').addEventListener('click', () => game.closeLevels());
 $('btnLevelsFromWin').addEventListener('click', () => game.openLevels());

@@ -12,60 +12,83 @@ export const LEVEL_DATA = [
   "bottles": [
    [
     "R",
-    "Y",
+    "R",
     "Y",
     "Y"
    ],
-   [],
    []
   ],
   "solution": [
    {
-    "from": 0,
-    "to": 1
+    "type": "shake",
+    "at": 0
+   }
+  ],
+  "solutionLength": 1,
+  "seed": 201
+ },
+ {
+  "targets": [
+   "O"
+  ],
+  "bottles": [
+   [],
+   [
+    "Y",
+    "Y"
+   ],
+   [
+    "R",
+    "R"
+   ]
+  ],
+  "solution": [
+   {
+    "type": "pour",
+    "from": 1,
+    "to": 2
    },
    {
-    "from": 0,
-    "to": 1
+    "type": "shake",
+    "at": 2
    }
   ],
   "solutionLength": 2,
-  "seed": 101
+  "seed": 202
  },
  {
   "targets": [
    "G"
   ],
   "bottles": [
+   [],
    [
     "B",
-    "B",
+    "Y"
+   ],
+   [
     "Y",
     "B"
-   ],
-   [],
-   []
+   ]
   ],
   "solution": [
    {
-    "from": 0,
-    "to": 1
-   },
-   {
-    "from": 0,
-    "to": 2
-   },
-   {
-    "from": 0,
-    "to": 1
-   },
-   {
+    "type": "pour",
     "from": 1,
     "to": 2
+   },
+   {
+    "type": "pour",
+    "from": 1,
+    "to": 2
+   },
+   {
+    "type": "shake",
+    "at": 2
    }
   ],
-  "solutionLength": 4,
-  "seed": 102
+  "solutionLength": 3,
+  "seed": 203
  },
  {
   "targets": [
@@ -73,61 +96,53 @@ export const LEVEL_DATA = [
    "P"
   ],
   "bottles": [
+   [],
    [
     "B",
     "R",
-    "B",
-    "Y"
+    "R",
+    "R"
    ],
-   [],
-   [],
    [
-    "Y",
-    "Y",
     "R",
+    "Y",
+    "Y",
     "B"
-   ]
+   ],
+   []
   ],
   "solution": [
    {
+    "type": "pour",
+    "from": 1,
+    "to": 0
+   },
+   {
+    "type": "pour",
+    "from": 2,
+    "to": 1
+   },
+   {
+    "type": "pour",
+    "from": 0,
+    "to": 2
+   },
+   {
+    "type": "shake",
+    "at": 2
+   },
+   {
+    "type": "pour",
     "from": 0,
     "to": 1
    },
    {
-    "from": 3,
-    "to": 0
-   },
-   {
-    "from": 0,
-    "to": 2
-   },
-   {
-    "from": 0,
-    "to": 3
-   },
-   {
-    "from": 0,
-    "to": 2
-   },
-   {
-    "from": 3,
-    "to": 2
-   },
-   {
-    "from": 3,
-    "to": 0
-   },
-   {
-    "from": 1,
-    "to": 3
-   },
-   {
-    "from": 0,
-    "to": 3
+    "type": "shake",
+    "at": 1
    }
   ],
-  "solutionLength": 9,
-  "seed": 103
+  "solutionLength": 6,
+  "seed": 204
  },
  {
   "targets": [
@@ -135,244 +150,163 @@ export const LEVEL_DATA = [
    "O"
   ],
   "bottles": [
-   [],
    [
-    "B",
-    "B",
-    "B",
-    "R"
+    "R",
+    "B"
    ],
-   [],
    [
-    "Y",
-    "R",
-    "R",
-    "Y"
-   ]
-  ],
-  "solution": [
-   {
-    "from": 1,
-    "to": 0
-   },
-   {
-    "from": 3,
-    "to": 1
-   },
-   {
-    "from": 3,
-    "to": 0
-   },
-   {
-    "from": 0,
-    "to": 3
-   }
-  ],
-  "solutionLength": 4,
-  "seed": 104
- },
- {
-  "targets": [
-   "O",
-   "G",
-   "P"
-  ],
-  "bottles": [
-   [
-    "Y",
-    "R",
+    "B",
     "R",
     "Y"
    ],
    [
-    "B",
     "Y",
-    "B",
-    "B"
+    "Y",
+    "Y"
    ],
-   [
-    "Y",
-    "Y",
-    "Y",
-    "B"
-   ],
-   [],
    []
   ],
   "solution": [
    {
+    "type": "pour",
+    "from": 1,
+    "to": 2
+   },
+   {
+    "type": "pour",
     "from": 0,
     "to": 3
    },
    {
-    "from": 2,
-    "to": 4
-   },
-   {
-    "from": 0,
-    "to": 2
-   },
-   {
-    "from": 1,
-    "to": 4
-   },
-   {
-    "from": 0,
-    "to": 4
-   },
-   {
+    "type": "pour",
     "from": 1,
     "to": 0
    },
    {
-    "from": 0,
+    "type": "pour",
+    "from": 1,
     "to": 3
    },
    {
-    "from": 1,
+    "type": "pour",
+    "from": 2,
     "to": 3
+   },
+   {
+    "type": "shake",
+    "at": 3
+   },
+   {
+    "type": "pour",
+    "from": 0,
+    "to": 2
+   },
+   {
+    "type": "shake",
+    "at": 2
    }
   ],
   "solutionLength": 8,
-  "seed": 105
- },
- {
-  "targets": [
-   "O",
-   "O",
-   "G"
-  ],
-  "bottles": [
-   [],
-   [],
-   [
-    "Y",
-    "B",
-    "R",
-    "Y"
-   ],
-   [
-    "Y",
-    "R",
-    "Y",
-    "Y"
-   ],
-   [
-    "Y",
-    "R",
-    "Y",
-    "Y"
-   ]
-  ],
-  "solution": [
-   {
-    "from": 2,
-    "to": 0
-   },
-   {
-    "from": 2,
-    "to": 0
-   },
-   {
-    "from": 2,
-    "to": 1
-   },
-   {
-    "from": 3,
-    "to": 2
-   },
-   {
-    "from": 3,
-    "to": 2
-   },
-   {
-    "from": 4,
-    "to": 3
-   },
-   {
-    "from": 1,
-    "to": 3
-   },
-   {
-    "from": 4,
-    "to": 1
-   },
-   {
-    "from": 1,
-    "to": 4
-   },
-   {
-    "from": 0,
-    "to": 4
-   }
-  ],
-  "solutionLength": 10,
-  "seed": 106
+  "seed": 205
  },
  {
   "targets": [
    "R",
-   "O",
-   "G"
+   "O"
   ],
   "bottles": [
+   [],
    [
+    "R",
+    "R",
     "Y",
-    "R",
-    "R",
     "R"
    ],
-   [],
-   [],
    [
-    "Y",
+    "R",
     "R",
     "R",
     "Y"
-   ],
-   [
-    "R",
-    "B",
-    "R",
-    "B"
    ]
   ],
   "solution": [
    {
+    "type": "pour",
+    "from": 2,
+    "to": 0
+   },
+   {
+    "type": "pour",
+    "from": 1,
+    "to": 2
+   },
+   {
+    "type": "pour",
     "from": 0,
     "to": 1
    },
    {
-    "from": 3,
-    "to": 1
-   },
+    "type": "shake",
+    "at": 1
+   }
+  ],
+  "solutionLength": 4,
+  "seed": 206
+ },
+ {
+  "targets": [
+   "O",
+   "O"
+  ],
+  "bottles": [
+   [
+    "Y",
+    "Y",
+    "Y"
+   ],
+   [],
+   [
+    "R",
+    "R",
+    "R"
+   ],
+   [
+    "Y",
+    "R"
+   ]
+  ],
+  "solution": [
    {
-    "from": 4,
+    "type": "pour",
+    "from": 0,
     "to": 2
    },
    {
-    "from": 4,
-    "to": 3
-   },
-   {
-    "from": 4,
-    "to": 0
-   },
-   {
-    "from": 3,
-    "to": 4
-   },
-   {
+    "type": "pour",
     "from": 2,
     "to": 3
    },
    {
-    "from": 0,
+    "type": "pour",
+    "from": 2,
     "to": 3
+   },
+   {
+    "type": "shake",
+    "at": 3
+   },
+   {
+    "type": "pour",
+    "from": 0,
+    "to": 2
+   },
+   {
+    "type": "shake",
+    "at": 2
    }
   ],
-  "solutionLength": 8,
-  "seed": 107
+  "solutionLength": 6,
+  "seed": 207
  },
  {
   "targets": [
@@ -382,442 +316,585 @@ export const LEVEL_DATA = [
   ],
   "bottles": [
    [
-    "R",
+    "Y",
     "B",
     "R",
-    "B"
+    "R"
    ],
+   [
+    "Y",
+    "B",
+    "B",
+    "Y"
+   ],
+   [],
    [],
    [
     "Y",
-    "Y",
-    "B",
+    "R",
+    "R",
     "B"
+   ]
+  ],
+  "solution": [
+   {
+    "type": "shake",
+    "at": 1
+   },
+   {
+    "type": "pour",
+    "from": 0,
+    "to": 2
+   },
+   {
+    "type": "pour",
+    "from": 4,
+    "to": 0
+   },
+   {
+    "type": "pour",
+    "from": 0,
+    "to": 3
+   },
+   {
+    "type": "pour",
+    "from": 0,
+    "to": 4
+   },
+   {
+    "type": "shake",
+    "at": 4
+   },
+   {
+    "type": "pour",
+    "from": 2,
+    "to": 3
+   },
+   {
+    "type": "shake",
+    "at": 3
+   }
+  ],
+  "solutionLength": 8,
+  "seed": 208
+ },
+ {
+  "targets": [
+   "O",
+   "O",
+   "G"
+  ],
+  "bottles": [
+   [
+    "Y",
+    "R",
+    "Y"
+   ],
+   [
+    "B",
+    "R",
+    "Y"
    ],
    [
     "R",
     "B",
+    "R"
+   ],
+   [
     "Y",
+    "Y",
+    "Y"
+   ],
+   []
+  ],
+  "solution": [
+   {
+    "type": "pour",
+    "from": 1,
+    "to": 0
+   },
+   {
+    "type": "pour",
+    "from": 1,
+    "to": 2
+   },
+   {
+    "type": "pour",
+    "from": 0,
+    "to": 3
+   },
+   {
+    "type": "pour",
+    "from": 2,
+    "to": 0
+   },
+   {
+    "type": "shake",
+    "at": 0
+   },
+   {
+    "type": "pour",
+    "from": 2,
+    "to": 4
+   },
+   {
+    "type": "pour",
+    "from": 2,
+    "to": 1
+   },
+   {
+    "type": "pour",
+    "from": 2,
+    "to": 4
+   },
+   {
+    "type": "pour",
+    "from": 3,
+    "to": 4
+   },
+   {
+    "type": "shake",
+    "at": 4
+   },
+   {
+    "type": "pour",
+    "from": 1,
+    "to": 3
+   },
+   {
+    "type": "shake",
+    "at": 3
+   }
+  ],
+  "solutionLength": 12,
+  "seed": 209
+ },
+ {
+  "targets": [
+   "Y",
+   "G",
+   "P"
+  ],
+  "bottles": [
+   [],
+   [
+    "R",
+    "Y",
+    "B"
+   ],
+   [
+    "Y",
+    "Y",
+    "R"
+   ],
+   [
+    "B",
+    "Y",
+    "B"
+   ],
+   [
+    "Y",
+    "B",
     "Y"
    ]
   ],
   "solution": [
    {
-    "from": 0,
-    "to": 1
-   },
-   {
-    "from": 2,
-    "to": 1
-   },
-   {
-    "from": 3,
-    "to": 2
-   },
-   {
-    "from": 3,
-    "to": 1
-   },
-   {
-    "from": 0,
-    "to": 3
-   },
-   {
+    "type": "pour",
     "from": 1,
     "to": 3
    },
    {
-    "from": 0,
+    "type": "pour",
+    "from": 1,
+    "to": 4
+   },
+   {
+    "type": "pour",
+    "from": 2,
     "to": 1
    },
    {
-    "from": 2,
+    "type": "pour",
+    "from": 4,
+    "to": 2
+   },
+   {
+    "type": "pour",
+    "from": 3,
+    "to": 4
+   },
+   {
+    "type": "pour",
+    "from": 3,
     "to": 0
    },
    {
-    "from": 1,
-    "to": 2
+    "type": "pour",
+    "from": 4,
+    "to": 3
+   },
+   {
+    "type": "pour",
+    "from": 0,
+    "to": 4
+   },
+   {
+    "type": "pour",
+    "from": 3,
+    "to": 1
+   },
+   {
+    "type": "shake",
+    "at": 1
+   },
+   {
+    "type": "pour",
+    "from": 3,
+    "to": 4
+   },
+   {
+    "type": "shake",
+    "at": 4
    }
   ],
-  "solutionLength": 9,
-  "seed": 108
+  "solutionLength": 12,
+  "seed": 210
  },
  {
   "targets": [
-   "P",
-   "P",
    "G",
+   "P",
+   "O",
    "O"
   ],
   "bottles": [
    [
     "Y",
-    "B",
     "Y",
-    "R"
+    "Y"
    ],
    [
-    "B",
-    "Y",
-    "B",
-    "R"
-   ],
-   [
-    "B",
     "Y",
     "R",
-    "B"
+    "R"
    ],
    [
-    "B",
     "Y",
-    "B",
+    "R",
     "B"
    ],
    [],
-   []
-  ],
-  "solution": [
-   {
-    "from": 0,
-    "to": 4
-   },
-   {
-    "from": 1,
-    "to": 4
-   },
-   {
-    "from": 3,
-    "to": 5
-   },
-   {
-    "from": 0,
-    "to": 1
-   },
-   {
-    "from": 0,
-    "to": 3
-   },
-   {
-    "from": 2,
-    "to": 5
-   },
-   {
-    "from": 2,
-    "to": 5
-   },
-   {
-    "from": 0,
-    "to": 2
-   },
-   {
-    "from": 1,
-    "to": 0
-   },
-   {
-    "from": 3,
-    "to": 0
-   },
-   {
-    "from": 1,
-    "to": 2
-   },
-   {
-    "from": 1,
-    "to": 3
-   },
-   {
-    "from": 2,
-    "to": 1
-   },
-   {
-    "from": 4,
-    "to": 1
-   },
-   {
-    "from": 2,
-    "to": 3
-   },
-   {
-    "from": 3,
-    "to": 4
-   }
-  ],
-  "solutionLength": 16,
-  "seed": 109
- },
- {
-  "targets": [
-   "Y",
-   "P",
-   "O",
-   "G"
-  ],
-  "bottles": [
    [],
    [
-    "B",
-    "B",
-    "R",
-    "R"
-   ],
-   [
-    "R",
     "R",
     "Y",
     "B"
    ],
    [
-    "Y",
     "R",
-    "R",
-    "Y"
-   ],
-   [
     "B",
-    "Y",
-    "Y",
-    "Y"
+    "R",
+    "B"
    ]
   ],
   "solution": [
    {
+    "type": "shake",
+    "at": 6
+   },
+   {
+    "type": "pour",
+    "from": 2,
+    "to": 5
+   },
+   {
+    "type": "pour",
     "from": 1,
-    "to": 0
+    "to": 2
    },
    {
-    "from": 2,
-    "to": 1
-   },
-   {
-    "from": 2,
-    "to": 1
-   },
-   {
+    "type": "pour",
     "from": 0,
-    "to": 2
+    "to": 1
    },
    {
-    "from": 3,
+    "type": "pour",
+    "from": 2,
     "to": 0
    },
    {
-    "from": 4,
-    "to": 0
-   },
-   {
-    "from": 2,
-    "to": 4
-   },
-   {
-    "from": 3,
+    "type": "pour",
+    "from": 5,
     "to": 2
    },
    {
-    "from": 2,
-    "to": 3
+    "type": "pour",
+    "from": 5,
+    "to": 2
+   },
+   {
+    "type": "shake",
+    "at": 2
+   },
+   {
+    "type": "pour",
+    "from": 1,
+    "to": 5
+   },
+   {
+    "type": "pour",
+    "from": 5,
+    "to": 0
+   },
+   {
+    "type": "pour",
+    "from": 0,
+    "to": 1
+   },
+   {
+    "type": "pour",
+    "from": 0,
+    "to": 5
+   },
+   {
+    "type": "shake",
+    "at": 5
+   },
+   {
+    "type": "pour",
+    "from": 0,
+    "to": 1
+   },
+   {
+    "type": "shake",
+    "at": 1
    }
   ],
-  "solutionLength": 9,
-  "seed": 110
- },
- {
-  "targets": [
-   "O",
-   "O",
-   "G",
-   "G"
-  ],
-  "bottles": [
-   [
-    "B",
-    "R",
-    "Y",
-    "Y"
-   ],
-   [
-    "R",
-    "R",
-    "Y",
-    "R"
-   ],
-   [
-    "Y",
-    "Y",
-    "R",
-    "B"
-   ],
-   [
-    "Y",
-    "Y",
-    "B",
-    "R"
-   ],
-   []
-  ],
-  "solution": [
-   {
-    "from": 0,
-    "to": 4
-   },
-   {
-    "from": 3,
-    "to": 0
-   },
-   {
-    "from": 2,
-    "to": 3
-   },
-   {
-    "from": 3,
-    "to": 4
-   },
-   {
-    "from": 1,
-    "to": 0
-   },
-   {
-    "from": 1,
-    "to": 3
-   },
-   {
-    "from": 2,
-    "to": 1
-   },
-   {
-    "from": 2,
-    "to": 1
-   },
-   {
-    "from": 0,
-    "to": 2
-   },
-   {
-    "from": 0,
-    "to": 3
-   }
-  ],
-  "solutionLength": 10,
-  "seed": 111
+  "solutionLength": 15,
+  "seed": 211
  },
  {
   "targets": [
    "R",
    "B",
    "O",
-   "G",
-   "P"
+   "G"
   ],
   "bottles": [
    [
+    "B",
     "R",
+    "B"
+   ],
+   [
+    "Y",
     "R",
+    "Y"
+   ],
+   [],
+   [
+    "B",
+    "R",
+    "Y"
+   ],
+   [
+    "B",
     "B",
     "R"
    ],
    [],
    [
-    "R",
-    "B",
-    "R",
-    "B"
-   ],
-   [
-    "B",
-    "R",
-    "B",
-    "B"
-   ],
-   [
-    "R",
     "B",
     "Y",
-    "B"
+    "R",
+    "R"
+   ]
+  ],
+  "solution": [
+   {
+    "type": "pour",
+    "from": 3,
+    "to": 1
+   },
+   {
+    "type": "pour",
+    "from": 6,
+    "to": 3
+   },
+   {
+    "type": "pour",
+    "from": 4,
+    "to": 0
+   },
+   {
+    "type": "pour",
+    "from": 4,
+    "to": 6
+   },
+   {
+    "type": "pour",
+    "from": 3,
+    "to": 2
+   },
+   {
+    "type": "pour",
+    "from": 0,
+    "to": 2
+   },
+   {
+    "type": "pour",
+    "from": 0,
+    "to": 3
+   },
+   {
+    "type": "pour",
+    "from": 6,
+    "to": 3
+   },
+   {
+    "type": "pour",
+    "from": 0,
+    "to": 4
+   },
+   {
+    "type": "pour",
+    "from": 0,
+    "to": 6
+   },
+   {
+    "type": "pour",
+    "from": 1,
+    "to": 6
+   },
+   {
+    "type": "shake",
+    "at": 6
+   },
+   {
+    "type": "pour",
+    "from": 4,
+    "to": 1
+   },
+   {
+    "type": "shake",
+    "at": 1
+   }
+  ],
+  "solutionLength": 14,
+  "seed": 212
+ },
+ {
+  "targets": [
+   "G",
+   "P",
+   "O",
+   "O"
+  ],
+  "bottles": [
+   [
+    "Y",
+    "B",
+    "R"
    ],
    [
     "R",
-    "Y",
     "B",
     "Y"
+   ],
+   [
+    "Y",
+    "R",
+    "R"
+   ],
+   [
+    "R",
+    "B",
+    "R",
+    "Y"
+   ],
+   [
+    "Y",
+    "Y",
+    "B"
    ],
    []
   ],
   "solution": [
    {
+    "type": "pour",
     "from": 0,
     "to": 1
    },
    {
+    "type": "pour",
     "from": 0,
+    "to": 4
+   },
+   {
+    "type": "shake",
+    "at": 4
+   },
+   {
+    "type": "pour",
+    "from": 0,
+    "to": 2
+   },
+   {
+    "type": "shake",
+    "at": 2
+   },
+   {
+    "type": "pour",
+    "from": 3,
+    "to": 0
+   },
+   {
+    "type": "pour",
+    "from": 1,
+    "to": 3
+   },
+   {
+    "type": "pour",
+    "from": 1,
+    "to": 0
+   },
+   {
+    "type": "pour",
+    "from": 1,
+    "to": 0
+   },
+   {
+    "type": "pour",
+    "from": 3,
     "to": 1
    },
    {
-    "from": 5,
-    "to": 6
-   },
-   {
-    "from": 2,
-    "to": 5
-   },
-   {
-    "from": 2,
-    "to": 0
-   },
-   {
-    "from": 5,
-    "to": 2
-   },
-   {
-    "from": 2,
-    "to": 6
-   },
-   {
-    "from": 0,
-    "to": 2
-   },
-   {
-    "from": 3,
-    "to": 0
-   },
-   {
-    "from": 4,
-    "to": 0
-   },
-   {
-    "from": 3,
-    "to": 5
-   },
-   {
+    "type": "pour",
     "from": 0,
     "to": 3
    },
    {
-    "from": 5,
-    "to": 0
-   },
-   {
-    "from": 4,
-    "to": 5
-   },
-   {
-    "from": 0,
-    "to": 5
-   },
-   {
-    "from": 4,
-    "to": 0
-   },
-   {
-    "from": 0,
-    "to": 4
-   },
-   {
+    "type": "pour",
     "from": 1,
-    "to": 4
+    "to": 3
+   },
+   {
+    "type": "shake",
+    "at": 3
+   },
+   {
+    "type": "pour",
+    "from": 0,
+    "to": 1
+   },
+   {
+    "type": "shake",
+    "at": 1
    }
   ],
-  "solutionLength": 18,
-  "seed": 112
+  "solutionLength": 15,
+  "seed": 214
  },
  {
   "targets": [
@@ -831,117 +908,25 @@ export const LEVEL_DATA = [
    [
     "B",
     "R",
-    "B",
-    "R"
-   ],
-   [
-    "B",
-    "B",
-    "Y",
-    "B"
-   ],
-   [
-    "R",
-    "R",
-    "R",
-    "B"
-   ],
-   [
-    "R",
-    "Y",
-    "B",
     "Y"
    ],
    [
-    "Y",
-    "Y",
-    "Y",
-    "R"
-   ],
-   []
-  ],
-  "solution": [
-   {
-    "from": 0,
-    "to": 5
-   },
-   {
-    "from": 0,
-    "to": 5
-   },
-   {
-    "from": 1,
-    "to": 0
-   },
-   {
-    "from": 0,
-    "to": 5
-   },
-   {
-    "from": 3,
-    "to": 0
-   },
-   {
-    "from": 1,
-    "to": 3
-   },
-   {
-    "from": 3,
-    "to": 0
-   },
-   {
-    "from": 2,
-    "to": 1
-   },
-   {
-    "from": 3,
-    "to": 1
-   },
-   {
-    "from": 4,
-    "to": 3
-   },
-   {
-    "from": 4,
-    "to": 2
-   },
-   {
-    "from": 3,
-    "to": 4
-   }
-  ],
-  "solutionLength": 12,
-  "seed": 113
- },
- {
-  "targets": [
-   "Y",
-   "R",
-   "G",
-   "P",
-   "O"
-  ],
-  "bottles": [
-   [
-    "Y",
     "Y",
     "R",
     "Y"
    ],
    [
-    "B",
-    "R",
     "Y",
+    "R",
     "B"
    ],
    [
-    "Y",
-    "R",
-    "Y",
-    "R"
+    "B",
+    "B",
+    "Y"
    ],
    [
-    "R",
+    "B",
     "Y",
     "R",
     "R"
@@ -949,75 +934,115 @@ export const LEVEL_DATA = [
    [],
    [
     "B",
-    "R",
-    "B",
+    "Y",
+    "Y",
     "R"
    ]
   ],
   "solution": [
    {
+    "type": "pour",
     "from": 0,
-    "to": 4
-   },
-   {
-    "from": 2,
-    "to": 4
-   },
-   {
-    "from": 0,
-    "to": 2
-   },
-   {
-    "from": 2,
-    "to": 4
-   },
-   {
-    "from": 3,
-    "to": 2
-   },
-   {
-    "from": 3,
-    "to": 0
-   },
-   {
-    "from": 5,
-    "to": 3
-   },
-   {
-    "from": 2,
-    "to": 3
-   },
-   {
-    "from": 1,
-    "to": 5
-   },
-   {
-    "from": 1,
-    "to": 0
-   },
-   {
-    "from": 1,
-    "to": 2
-   },
-   {
-    "from": 5,
     "to": 1
    },
    {
-    "from": 5,
+    "type": "pour",
+    "from": 0,
     "to": 2
    },
    {
+    "type": "pour",
+    "from": 0,
+    "to": 3
+   },
+   {
+    "type": "pour",
+    "from": 4,
+    "to": 0
+   },
+   {
+    "type": "pour",
+    "from": 6,
+    "to": 0
+   },
+   {
+    "type": "pour",
+    "from": 4,
+    "to": 6
+   },
+   {
+    "type": "pour",
     "from": 2,
-    "to": 5
+    "to": 0
    },
    {
-    "from": 1,
+    "type": "pour",
+    "from": 2,
+    "to": 4
+   },
+   {
+    "type": "pour",
+    "from": 2,
+    "to": 4
+   },
+   {
+    "type": "pour",
+    "from": 6,
     "to": 2
+   },
+   {
+    "type": "pour",
+    "from": 0,
+    "to": 4
+   },
+   {
+    "type": "shake",
+    "at": 4
+   },
+   {
+    "type": "pour",
+    "from": 3,
+    "to": 6
+   },
+   {
+    "type": "pour",
+    "from": 1,
+    "to": 3
+   },
+   {
+    "type": "shake",
+    "at": 3
+   },
+   {
+    "type": "pour",
+    "from": 0,
+    "to": 1
+   },
+   {
+    "type": "shake",
+    "at": 1
+   },
+   {
+    "type": "pour",
+    "from": 2,
+    "to": 0
+   },
+   {
+    "type": "shake",
+    "at": 0
+   },
+   {
+    "type": "pour",
+    "from": 2,
+    "to": 6
+   },
+   {
+    "type": "shake",
+    "at": 6
    }
   ],
-  "solutionLength": 15,
-  "seed": 114
+  "solutionLength": 21,
+  "seed": 213
  },
  {
   "targets": [
@@ -1031,113 +1056,151 @@ export const LEVEL_DATA = [
   "bottles": [
    [
     "Y",
-    "R",
     "B",
-    "Y"
-   ],
-   [
-    "B",
-    "B",
-    "Y",
     "B"
    ],
    [
-    "Y",
-    "B",
-    "B",
-    "Y"
-   ],
-   [
-    "Y",
-    "B",
-    "B",
-    "Y"
-   ],
-   [
-    "Y",
-    "B",
     "R",
-    "R"
+    "B",
+    "Y"
+   ],
+   [
+    "R",
+    "R",
+    "Y"
    ],
    [],
    [
+    "Y",
+    "R",
     "B",
+    "Y"
+   ],
+   [
     "B",
     "R",
     "Y"
+   ],
+   [
+    "R",
+    "Y",
+    "B",
+    "B"
+   ],
+   [
+    "R",
+    "R",
+    "Y",
+    "B"
    ]
   ],
   "solution": [
    {
-    "from": 0,
-    "to": 5
-   },
-   {
-    "from": 2,
-    "to": 5
-   },
-   {
-    "from": 2,
-    "to": 5
-   },
-   {
-    "from": 3,
-    "to": 2
-   },
-   {
+    "type": "pour",
     "from": 1,
     "to": 0
    },
    {
-    "from": 6,
-    "to": 2
+    "type": "shake",
+    "at": 0
    },
    {
-    "from": 6,
-    "to": 2
-   },
-   {
-    "from": 0,
-    "to": 6
-   },
-   {
-    "from": 6,
-    "to": 3
-   },
-   {
-    "from": 0,
-    "to": 6
-   },
-   {
-    "from": 0,
-    "to": 1
-   },
-   {
-    "from": 3,
-    "to": 0
-   },
-   {
-    "from": 4,
-    "to": 0
-   },
-   {
+    "type": "pour",
     "from": 1,
-    "to": 3
+    "to": 5
    },
    {
+    "type": "pour",
+    "from": 1,
+    "to": 2
+   },
+   {
+    "type": "pour",
+    "from": 6,
+    "to": 1
+   },
+   {
+    "type": "pour",
+    "from": 7,
+    "to": 1
+   },
+   {
+    "type": "pour",
+    "from": 6,
+    "to": 7
+   },
+   {
+    "type": "shake",
+    "at": 7
+   },
+   {
+    "type": "pour",
+    "from": 2,
+    "to": 6
+   },
+   {
+    "type": "pour",
     "from": 4,
-    "to": 3
+    "to": 2
    },
    {
+    "type": "shake",
+    "at": 2
+   },
+   {
+    "type": "pour",
     "from": 4,
     "to": 1
    },
    {
+    "type": "pour",
+    "from": 4,
+    "to": 6
+   },
+   {
+    "type": "pour",
+    "from": 5,
+    "to": 6
+   },
+   {
+    "type": "pour",
+    "from": 5,
+    "to": 4
+   },
+   {
+    "type": "pour",
+    "from": 6,
+    "to": 5
+   },
+   {
+    "type": "pour",
+    "from": 6,
+    "to": 5
+   },
+   {
+    "type": "shake",
+    "at": 5
+   },
+   {
+    "type": "pour",
     "from": 1,
     "to": 4
+   },
+   {
+    "type": "shake",
+    "at": 4
+   },
+   {
+    "type": "pour",
+    "from": 1,
+    "to": 6
+   },
+   {
+    "type": "shake",
+    "at": 6
    }
   ],
-  "solutionLength": 17,
-  "seed": 115
+  "solutionLength": 22,
+  "seed": 215
  }
 ];

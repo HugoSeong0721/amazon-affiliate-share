@@ -27,3 +27,20 @@ export function componentsOf(color) {
   }
   return null;
 }
+
+// 물감 한 통을 흔들었을 때 나오는 색.
+// - 전부 같은 색이면 그 색 (흔들 필요 없음)
+// - 서로 다른 두 1차색이 정확히 반반이면 2차색
+// - 그 외(비율이 안 맞거나, 3색 이상이거나, 2차색이 섞여 있으면)는 null = 섞을 수 없음
+// 순서는 상관없다. 중요한 건 비율뿐이다.
+export function blendOf(units) {
+  if (!units.length) return null;
+  const counts = new Map();
+  for (const u of units) counts.set(u, (counts.get(u) || 0) + 1);
+  if (counts.size === 1) return units[0];
+  if (counts.size !== 2) return null;
+  const [[a, ca], [b, cb]] = [...counts];
+  if (ca !== cb) return null;
+  if (!isPrimary(a) || !isPrimary(b)) return null;
+  return mixOf(a, b);
+}
