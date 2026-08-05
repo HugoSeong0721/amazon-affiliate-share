@@ -185,14 +185,20 @@ body {
   background: rgba(6, 10, 22, 0.74);
   backdrop-filter: blur(6px);
   -webkit-backdrop-filter: blur(6px);
-  display: grid;
-  place-items: center;
+  /* grid + place-items 로는 카드의 max-height 가 안 먹어서 화면을 넘친다.
+     flex 컨테이너에서는 자식의 max-height 가 확실히 적용된다. */
+  display: flex;
+  align-items: center;
+  justify-content: center;
   padding: 18px;
+  overflow: hidden;
 }
 
 .ls-card {
   width: 100%;
   max-height: 100%;
+  min-height: 0;
+  overflow: hidden;
   display: flex;
   flex-direction: column;
   gap: 4px;
@@ -208,67 +214,189 @@ body {
 .ls-head h2 { font-size: 19px; letter-spacing: -0.2px; }
 .ls-note { color: var(--muted); font-size: 12px; margin-bottom: 10px; }
 
-#levelGrid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(64px, 1fr));
-  gap: 9px;
-  overflow-y: auto;
-  padding: 2px;
+/* 별 — 이모지는 기기마다 렌더링이 제각각이라 도형으로 그린다 */
+.stars { display: flex; gap: 7px; justify-content: center; margin-bottom: 10px; }
+
+.star {
+  width: 28px;
+  height: 28px;
+  background: rgba(255, 255, 255, 0.13);
+  clip-path: polygon(50% 0%, 61% 35%, 98% 35%, 68% 57%, 79% 91%, 50% 70%, 21% 91%, 32% 57%, 2% 35%, 39% 35%);
+}
+.star.on {
+  background: linear-gradient(180deg, #ffe27a, #ffb524);
+  animation: starPop 0.42s cubic-bezier(0.2, 1.6, 0.4, 1) backwards;
+}
+.star.on:nth-child(2) { animation-delay: 0.13s; }
+.star.on:nth-child(3) { animation-delay: 0.26s; }
+
+@keyframes starPop {
+  0% { transform: scale(0.2) rotate(-40deg); opacity: 0; }
+  100% { transform: scale(1) rotate(0); opacity: 1; }
 }
 
-.lv {
+.rescue-note {
+  color: #ffd98a;
+  font-size: 14px;
+  font-weight: 700;
+  margin: -8px 0 18px;
+}
+
+/* 여정 지도 */
+.j-total {
+  margin-left: auto;
+  margin-right: 4px;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+.j-total .star { width: 15px; height: 15px; }
+
+#journey {
   position: relative;
-  aspect-ratio: 1;
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: center;
-  gap: 6px;
-  border-radius: 15px;
-  border: 1px solid rgba(255, 255, 255, 0.09);
-  background: rgba(255, 255, 255, 0.045);
+  gap: 12px;
+  overflow-y: auto;
+  padding: 10px 0 14px;
+  /* 세로 플렉스 안에서 스크롤되려면 min-height: 0 이 있어야 한다.
+     없으면 내용 높이만큼 늘어나 카드가 화면을 넘치고 헤더가 밀려난다. */
+  flex: 1;
+  min-height: 0;
+}
+
+/* 길 — 노드 뒤로 흐르는 점선 */
+#journey::before {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 4px;
+  bottom: 4px;
+  width: 3px;
+  margin-left: -1.5px;
+  background: repeating-linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.17) 0 6px,
+    transparent 6px 14px
+  );
+}
+
+.jn {
+  position: relative;
+  /* 세로 플렉스 안에서 눌려 타원이 되지 않게 축소를 막는다 */
+  flex: 0 0 auto;
+  width: 54px;
+  height: 54px;
+  border-radius: 50%;
+  border: 2px solid rgba(255, 255, 255, 0.14);
+  background: #22304f;
   color: var(--text);
   font-family: inherit;
   font-size: 17px;
   font-weight: 800;
   font-variant-numeric: tabular-nums;
+  display: grid;
+  place-items: center;
   cursor: pointer;
-  transition: transform 0.08s, background-color 0.15s;
+  transition: transform 0.08s;
 }
-.lv:active { transform: scale(0.93); }
+.jn:active { transform: scale(0.92); }
 
-.lv .dots {
-  display: flex;
-  gap: 3px;
-  flex-wrap: wrap;
-  justify-content: center;
-  max-width: 52px;
-}
-.lv .dots i {
-  display: block;
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: var(--c);
-}
+/* 길을 따라 좌우로 흔들리게 */
+#journey > .jn:nth-of-type(4n + 1) { transform: translateX(-56px); }
+#journey > .jn:nth-of-type(4n + 3) { transform: translateX(56px); }
+#journey > .jn:nth-of-type(4n + 1):active { transform: translateX(-56px) scale(0.92); }
+#journey > .jn:nth-of-type(4n + 3):active { transform: translateX(56px) scale(0.92); }
 
-.lv.cleared {
-  background: rgba(79, 184, 255, 0.16);
-  border-color: rgba(79, 184, 255, 0.45);
-}
-.lv.cleared::after {
-  content: "✓";
+.jn .jstars {
   position: absolute;
-  top: 3px;
-  right: 7px;
-  font-size: 11px;
-  font-weight: 900;
-  color: #8fd6ff;
+  bottom: -9px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 2px;
+}
+.jn .jstars .star { width: 11px; height: 11px; }
+
+.jn.cleared {
+  background: linear-gradient(180deg, #2f76c9, #1f4f96);
+  border-color: rgba(140, 205, 255, 0.55);
+}
+.jn.current {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(79, 184, 255, 0.35), 0 0 18px rgba(79, 184, 255, 0.5);
 }
 
-.lv.current {
-  border-color: var(--accent);
-  box-shadow: 0 0 0 2px rgba(79, 184, 255, 0.4);
+/* 구출 지점 — 갇힌 친구 */
+.jf {
+  position: relative;
+  flex: 0 0 auto;
+  width: 66px;
+  height: 66px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: radial-gradient(circle at 32% 30%, rgba(255, 255, 255, 0.5), var(--c) 42%, rgba(0, 0, 0, 0.35));
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.4);
+  filter: saturate(0.15) brightness(0.5);
+  transition: filter 0.4s;
+}
+.jf.freed {
+  filter: none;
+  box-shadow: 0 0 22px -2px var(--c), 0 6px 20px rgba(0, 0, 0, 0.4);
+}
+
+/* 얼굴 — 갇혀 있을 땐 자고, 구출되면 웃는다 */
+.jf .eye {
+  position: absolute;
+  top: 26px;
+  width: 7px;
+  height: 8px;
+  border-radius: 50%;
+  background: rgba(28, 26, 48, 0.85);
+}
+.jf .eye.l { left: 20px; }
+.jf .eye.r { right: 20px; }
+.jf:not(.freed) .eye { height: 2px; border-radius: 2px; top: 30px; }
+
+.jf .mouth {
+  position: absolute;
+  top: 38px;
+  width: 20px;
+  height: 11px;
+  border: 2px solid rgba(28, 26, 48, 0.8);
+  border-top: 0;
+  border-radius: 0 0 20px 20px;
+}
+.jf:not(.freed) .mouth { width: 10px; height: 6px; }
+
+/* 마지막 친구는 왕관을 쓴다 */
+.jf .crown {
+  position: absolute;
+  top: -13px;
+  width: 30px;
+  height: 15px;
+  background: linear-gradient(180deg, #ffe27a, #ffb524);
+  clip-path: polygon(0 100%, 100% 100%, 100% 28%, 78% 58%, 50% 0, 22% 58%, 0 28%);
+}
+.jf:not(.freed) .crown { filter: grayscale(1) brightness(0.6); }
+
+/* 길(점선)이 글자를 관통하지 않게 배경을 깐다 */
+.jf-label {
+  position: relative;
+  flex: 0 0 auto;
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 700;
+  margin-top: -4px;
+  padding: 2px 9px;
+  border-radius: 8px;
+  background: var(--panel);
 }
 
 :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
@@ -285,7 +413,7 @@ body {
         <div id="moveLabel">0수</div>
       </div>
       <div class="hud-right">
-        <button id="btnLevels" class="hud-btn" title="레벨 목차" aria-label="레벨 목차">☰</button>
+        <button id="btnLevels" class="hud-btn" title="여정 지도" aria-label="여정 지도">☰</button>
         <button id="btnUndo" class="hud-btn" title="되돌리기" aria-label="되돌리기">↩︎</button>
         <button id="btnRestart" class="hud-btn" title="다시하기" aria-label="다시하기">⟳</button>
         <button id="btnMute" class="hud-btn" title="소리 켜기/끄기" aria-label="소리">🔊</button>
@@ -299,9 +427,13 @@ body {
     <div id="overlay" class="hidden">
       <div class="overlay-card">
         <h2 id="overlayTitle">레벨 클리어!</h2>
+        <div id="starRow" class="stars">
+          <span class="star"></span><span class="star"></span><span class="star"></span>
+        </div>
         <p id="overlayInfo"></p>
+        <p id="overlayRescue" class="rescue-note hidden"></p>
         <div class="overlay-actions">
-          <button id="btnLevelsFromWin" class="ghost-btn">목차</button>
+          <button id="btnLevelsFromWin" class="ghost-btn">여정</button>
           <button id="btnNext">다음 레벨 ▶</button>
         </div>
       </div>
@@ -310,11 +442,11 @@ body {
     <div id="levelSelect" class="hidden">
       <div class="ls-card">
         <div class="ls-head">
-          <h2>레벨 목차</h2>
+          <h2>여정</h2>
+          <div id="journeyTotal" class="j-total"></div>
           <button id="btnCloseLevels" class="hud-btn" title="닫기" aria-label="닫기">✕</button>
         </div>
-        <p class="ls-note">아래 점이 그 레벨에 나오는 색입니다.</p>
-        <div id="levelGrid"></div>
+        <div id="journey"></div>
       </div>
     </div>
   </div>
@@ -2917,6 +3049,7 @@ class Renderer {
     this.guide = null;
     this.impacts = []; // 착지·완성 충격 { tube, index, t0, dur, amp }
     this.rings = []; // 퍼지는 링 { x, y, t0, dur, hex, r0, r1 }
+    this.faces = new Map(); // 튜브 → 얼굴이 뜨기 시작한 시각
     this.screenShake = null;
     this.particles = [];
     this.rects = [];
@@ -2962,6 +3095,7 @@ class Renderer {
     this.guide = null;
     this.impacts = [];
     this.rings = [];
+    this.faces.clear();
     this.screenShake = null;
     this.particles = [];
   }
@@ -3078,7 +3212,8 @@ class Renderer {
     this.screenShake = { t0: performance.now(), mag, dur };
   }
 
-  // 튜브 하나가 완성됐을 때: 링 + 구슬이 아래에서 위로 톡톡 튀는 파동 + 살짝 화면 흔들림
+  // 튜브 하나가 완성됐을 때: 링 + 구슬이 아래에서 위로 톡톡 튀는 파동 + 살짝 화면 흔들림.
+  // 그리고 갇혀 있던 구슬 친구들이 눈을 뜬다 — 이게 정렬하는 이유다.
   completeTube(i, hex) {
     const rect = this.rects[i];
     if (!rect) return;
@@ -3089,6 +3224,7 @@ class Renderer {
     this.addRing(rect.x + rect.w / 2, rect.y + rect.h / 2, hex, { r0: 8, r1: rect.w * 1.5, dur: 460 });
     this.shakeScreen(3.5, 190);
     this.burstAtTube(i, hex, 20);
+    this.faces.set(i, now + 150); // 파동이 지나간 뒤 얼굴이 뜬다
   }
 
   burstAtTube(i, hex, n = 18) {
@@ -3376,11 +3512,19 @@ class Renderer {
     ctx.fillStyle = 'rgba(255,255,255,0.05)';
     ctx.fill();
 
-    // 구슬 — 충격을 받은 칸은 눌리고 밀린다
+    // 구슬 — 충격을 받은 칸은 눌리고 밀린다.
+    // 완성된 튜브의 구슬은 눈을 뜬다 (갇혀 있던 친구가 깨어난 것)
+    const faceAt = complete ? (this.faces.get(tubeIndex) ?? -Infinity) : null;
+    const faceIn = faceAt === null ? 0 : clamp01((now - faceAt) / 260);
     for (let k = 0; k < balls.length; k++) {
       const p = this._slotPos(rect, k);
       const { squash, dy } = this._impactAt(tubeIndex, k, now);
-      this._drawBall(p.x, p.y + dy, ballR, COLOR_HEX[balls[k]], { squash });
+      this._drawBall(p.x, p.y + dy, ballR, COLOR_HEX[balls[k]], {
+        squash,
+        face: faceIn > 0 ? faceIn : 0,
+        faceSeed: tubeIndex * 7 + k,
+        now,
+      });
     }
 
     // 유리 광택
@@ -3424,9 +3568,44 @@ class Renderer {
     }
   }
 
+  // 깨어난 구슬 친구의 얼굴. grow는 0~1 (뜨는 중), seed로 눈 깜빡임 타이밍을 흩는다.
+  _drawFace(r, grow, seed, now) {
+    const ctx = this.ctx;
+    const s = easeOutBack(clamp01(grow));
+    if (s <= 0) return;
+    // 3초쯤마다 한 번씩, 구슬마다 다른 시점에 깜빡인다
+    const cycle = (now / 1000 + seed * 0.83) % 3.2;
+    const blink = cycle < 0.13 ? 1 - Math.abs(cycle - 0.065) / 0.065 : 0;
+    const eyeR = r * 0.13 * s;
+    const eyeY = -r * 0.16;
+    const eyeX = r * 0.3;
+
+    ctx.save();
+    ctx.fillStyle = 'rgba(28,26,48,0.88)';
+    for (const sx of [-eyeX, eyeX]) {
+      ctx.beginPath();
+      if (blink > 0.4) {
+        // 감은 눈 — 짧은 선
+        ctx.ellipse(sx, eyeY, eyeR * 1.15, eyeR * 0.22, 0, 0, Math.PI * 2);
+      } else {
+        ctx.ellipse(sx, eyeY, eyeR, eyeR * 1.2, 0, 0, Math.PI * 2);
+      }
+      ctx.fill();
+    }
+    // 웃는 입
+    ctx.strokeStyle = 'rgba(28,26,48,0.8)';
+    ctx.lineWidth = Math.max(1.1, r * 0.075) * s;
+    ctx.lineCap = 'round';
+    ctx.beginPath();
+    ctx.arc(0, r * 0.1, r * 0.32 * s, 0.28 * Math.PI, 0.72 * Math.PI);
+    ctx.stroke();
+    ctx.restore();
+  }
+
   // 금속 느낌의 구슬. magnet=true면 자석에 붙은 듯 테두리가 빛난다.
   // squash < 1 이면 납작하게 눌리고, > 1 이면 위로 늘어난다.
-  _drawBall(cx, cy, r, hex, { magnet = false, squash = 1 }) {
+  // face > 0 이면 깨어난 얼굴을 그린다.
+  _drawBall(cx, cy, r, hex, { magnet = false, squash = 1, face = 0, faceSeed = 0, now = 0 }) {
     const ctx = this.ctx;
     ctx.save();
     ctx.translate(cx, cy);
@@ -3458,6 +3637,8 @@ class Renderer {
     ctx.beginPath();
     ctx.arc(0, 0, r - 0.5, 0, Math.PI * 2);
     ctx.stroke();
+
+    if (face > 0) this._drawFace(r, face, faceSeed, now);
     ctx.restore();
   }
 
@@ -3665,9 +3846,21 @@ class Sound {
 
 const STORAGE_LEVEL = 'mbs.level';
 const STORAGE_CLEARED = 'mbs.cleared'; // 레벨당 '0'/'1' 한 글자
+const STORAGE_STARS = 'mbs.stars'; // 레벨당 '0'~'3' 한 글자
 
 // 첫 판만 손가락으로 짚어준다. 두 번 누르면 옮겨진다는 것만 알면 끝이다.
 const GUIDED_LEVELS = new Set([0]);
+
+// 여정: 4레벨마다 갇힌 친구 하나를 구한다. 마지막 친구는 왕관을 쓴다.
+const CHAPTER = 4;
+const FRIEND_COLORS = ['C', 'G', 'K', 'Y'];
+
+// 별점 기준. 참고 답안(par) 안에 풀면 3개.
+function starsFor(moves, par) {
+  if (moves <= par) return 3;
+  if (moves <= Math.round(par * 1.4)) return 2;
+  return 1;
+}
 
 class Game {
   constructor({ renderer, sound, dom }) {
@@ -3678,6 +3871,11 @@ class Game {
     this.levelIndex = Number.isFinite(saved) ? Math.min(Math.max(saved, 0), LEVEL_DATA.length - 1) : 0;
     const marks = safeStorage.getItem(STORAGE_CLEARED) || '';
     this.cleared = LEVEL_DATA.map((_, i) => marks[i] === '1');
+    const starMarks = safeStorage.getItem(STORAGE_STARS) || '';
+    this.stars = LEVEL_DATA.map((_, i) => {
+      const n = parseInt(starMarks[i] || '0', 10);
+      return Number.isFinite(n) ? Math.min(Math.max(n, 0), 3) : 0;
+    });
     this.busy = false;
     this.won = false;
     this.selected = null;
@@ -3687,8 +3885,32 @@ class Game {
     return LEVEL_DATA[this.levelIndex];
   }
 
-  saveCleared() {
+  saveProgress() {
     safeStorage.setItem(STORAGE_CLEARED, this.cleared.map((c) => (c ? '1' : '0')).join(''));
+    safeStorage.setItem(STORAGE_STARS, this.stars.join(''));
+  }
+
+  get totalStars() {
+    return this.stars.reduce((a, b) => a + b, 0);
+  }
+
+  // 몇 번째 친구까지 구했는지. 챕터(4레벨)를 다 깨면 그 친구가 풀려난다.
+  friendFreed(chapterIndex) {
+    const last = (chapterIndex + 1) * CHAPTER - 1;
+    for (let i = chapterIndex * CHAPTER; i <= Math.min(last, LEVEL_DATA.length - 1); i++) {
+      if (!this.cleared[i]) return false;
+    }
+    return true;
+  }
+
+  get chapterCount() {
+    return Math.ceil(LEVEL_DATA.length / CHAPTER);
+  }
+
+  get rescuedCount() {
+    let n = 0;
+    for (let c = 0; c < this.chapterCount; c++) if (this.friendFreed(c)) n++;
+    return n;
   }
 
   loadLevel(i) {
@@ -3863,15 +4085,38 @@ class Game {
     this.sound.win();
     this.renderer.setGuide(null);
     this.renderer.celebrate();
+
+    const chapter = Math.floor(this.levelIndex / CHAPTER);
+    const wasFreed = this.friendFreed(chapter);
+    const earned = starsFor(this.history.length, this.level.solutionLength);
     this.cleared[this.levelIndex] = true;
-    this.saveCleared();
+    this.stars[this.levelIndex] = Math.max(this.stars[this.levelIndex], earned);
+    this.saveProgress();
+    const nowFreed = this.friendFreed(chapter);
+
     if (this.levelIndex + 1 < LEVEL_DATA.length) {
       safeStorage.setItem(STORAGE_LEVEL, String(this.levelIndex + 1));
     }
+
     const last = this.levelIndex >= LEVEL_DATA.length - 1;
-    this.dom.overlayTitle.textContent = last ? '🎉 전 레벨 클리어!' : `레벨 ${this.levelIndex + 1} 클리어!`;
+    this.dom.overlayTitle.textContent = last ? '🎉 모두 구했어요!' : `레벨 ${this.levelIndex + 1} 클리어!`;
     this.dom.overlayInfo.textContent = `${this.history.length}수 · 참고 답안 ${this.level.solutionLength}수`;
     this.dom.btnNext.textContent = last ? '처음부터 다시 ↻' : '다음 레벨 ▶';
+
+    // 별은 오버레이가 뜰 때 하나씩 튀어나오게 (클래스를 다시 붙여 애니메이션 재생)
+    [...this.dom.starRow.children].forEach((el, i) => {
+      el.classList.remove('on');
+      if (i < earned) void el.offsetWidth, el.classList.add('on');
+    });
+
+    // 챕터를 막 끝냈다면 친구 한 명이 풀려난다 — 이게 이 여정의 보상이다
+    if (nowFreed && !wasFreed) {
+      this.dom.overlayRescue.textContent = `친구를 구했어요! (${this.rescuedCount}/${this.chapterCount})`;
+      this.dom.overlayRescue.classList.remove('hidden');
+    } else {
+      this.dom.overlayRescue.classList.add('hidden');
+    }
+
     this._winT = setTimeout(() => this.dom.overlay.classList.remove('hidden'), 800);
   }
 
@@ -3882,11 +4127,14 @@ class Game {
     this.dom.btnUndo.disabled = !this.history.length;
   }
 
-  // --- 레벨 목차 ---
+  // --- 여정 지도 ---
   // 프로토타입이라 전부 열어둔다. 실제 출시 때는 클리어한 다음 레벨까지만 여는 게 맞다.
   openLevels() {
-    this.buildLevelGrid();
+    this.buildJourney();
     this.dom.levelSelect.classList.remove('hidden');
+    // 현재 레벨이 보이도록 스크롤
+    const cur = this.dom.journey.querySelector('.jn.current');
+    if (cur) cur.scrollIntoView({ block: 'center' });
   }
 
   closeLevels() {
@@ -3898,33 +4146,64 @@ class Game {
     else this.closeLevels();
   }
 
-  buildLevelGrid() {
-    const grid = this.dom.levelGrid;
-    grid.innerHTML = '';
+  // 길을 따라 늘어선 레벨들과, 4레벨마다 놓인 갇힌 친구.
+  // 목표가 지도에 그려져 있으니 "왜 하는지"를 글로 설명할 필요가 없다.
+  buildJourney() {
+    const road = this.dom.journey;
+    road.innerHTML = '';
+
+    this.dom.journeyTotal.innerHTML = `<span class="star on"></span>${this.totalStars} / ${
+      LEVEL_DATA.length * 3
+    }`;
+
     LEVEL_DATA.forEach((lv, i) => {
       const btn = document.createElement('button');
       btn.type = 'button';
       btn.className =
-        'lv' + (this.cleared[i] ? ' cleared' : '') + (i === this.levelIndex ? ' current' : '');
+        'jn' + (this.cleared[i] ? ' cleared' : '') + (i === this.levelIndex ? ' current' : '');
+      btn.textContent = String(i + 1);
       btn.setAttribute(
         'aria-label',
-        `레벨 ${i + 1}${this.cleared[i] ? ' (클리어함)' : ''} — 색 ${lv.targets.length}가지`
+        `레벨 ${i + 1} — 색 ${lv.targets.length}가지, 별 ${this.stars[i]}개`
       );
 
-      const num = document.createElement('span');
-      num.textContent = String(i + 1);
-
-      const dots = document.createElement('span');
-      dots.className = 'dots';
-      for (const t of lv.targets) {
-        const d = document.createElement('i');
-        d.style.setProperty('--c', COLOR_HEX[t]);
-        dots.appendChild(d);
+      if (this.stars[i] > 0) {
+        const row = document.createElement('span');
+        row.className = 'jstars';
+        for (let s = 0; s < 3; s++) {
+          const st = document.createElement('span');
+          st.className = 'star' + (s < this.stars[i] ? ' on' : '');
+          row.appendChild(st);
+        }
+        btn.appendChild(row);
       }
 
-      btn.append(num, dots);
       btn.addEventListener('click', () => this.loadLevel(i));
-      grid.appendChild(btn);
+      road.appendChild(btn);
+
+      // 챕터의 마지막 레벨 다음에 친구를 놓는다
+      const chapter = Math.floor(i / CHAPTER);
+      const isChapterEnd = (i + 1) % CHAPTER === 0 || i === LEVEL_DATA.length - 1;
+      if (!isChapterEnd) return;
+
+      const freed = this.friendFreed(chapter);
+      const isLast = chapter === this.chapterCount - 1;
+      const friend = document.createElement('div');
+      friend.className = 'jf' + (freed ? ' freed' : '');
+      friend.style.setProperty('--c', COLOR_HEX[FRIEND_COLORS[chapter % FRIEND_COLORS.length]]);
+      friend.setAttribute(
+        'aria-label',
+        `${isLast ? '마지막 친구' : `${chapter + 1}번째 친구`} — ${freed ? '구출 완료' : '아직 갇혀 있음'}`
+      );
+      friend.innerHTML =
+        (isLast ? '<span class="crown"></span>' : '') +
+        '<span class="eye l"></span><span class="eye r"></span><span class="mouth"></span>';
+      road.appendChild(friend);
+
+      const label = document.createElement('div');
+      label.className = 'jf-label';
+      label.textContent = freed ? '구출 완료' : isLast ? '마지막 친구' : '갇혀 있음';
+      road.appendChild(label);
     });
   }
 
@@ -3985,11 +4264,14 @@ const dom = {
   btnMute: $('btnMute'),
   btnNext: $('btnNext'),
   levelSelect: $('levelSelect'),
-  levelGrid: $('levelGrid'),
+  journey: $('journey'),
+  journeyTotal: $('journeyTotal'),
   banner: $('banner'),
   overlay: $('overlay'),
   overlayTitle: $('overlayTitle'),
   overlayInfo: $('overlayInfo'),
+  overlayRescue: $('overlayRescue'),
+  starRow: $('starRow'),
 };
 
 const renderer = new Renderer(dom.board);

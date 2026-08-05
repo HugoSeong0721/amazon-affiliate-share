@@ -18,9 +18,21 @@ import { COLOR_HEX } from './render.js';
 
 const STORAGE_LEVEL = 'mbs.level';
 const STORAGE_CLEARED = 'mbs.cleared'; // 레벨당 '0'/'1' 한 글자
+const STORAGE_STARS = 'mbs.stars'; // 레벨당 '0'~'3' 한 글자
 
 // 첫 판만 손가락으로 짚어준다. 두 번 누르면 옮겨진다는 것만 알면 끝이다.
 const GUIDED_LEVELS = new Set([0]);
+
+// 여정: 4레벨마다 갇힌 친구 하나를 구한다. 마지막 친구는 왕관을 쓴다.
+const CHAPTER = 4;
+const FRIEND_COLORS = ['C', 'G', 'K', 'Y'];
+
+// 별점 기준. 참고 답안(par) 안에 풀면 3개.
+function starsFor(moves, par) {
+  if (moves <= par) return 3;
+  if (moves <= Math.round(par * 1.4)) return 2;
+  return 1;
+}
 
 export class Game {
   constructor({ renderer, sound, dom }) {
@@ -31,6 +43,11 @@ export class Game {
     this.levelIndex = Number.isFinite(saved) ? Math.min(Math.max(saved, 0), LEVEL_DATA.length - 1) : 0;
     const marks = localStorage.getItem(STORAGE_CLEARED) || '';
     this.cleared = LEVEL_DATA.map((_, i) => marks[i] === '1');
+    const starMarks = localStorage.getItem(STORAGE_STARS) || '';
+    this.stars = LEVEL_DATA.map((_, i) => {
+      const n = parseInt(starMarks[i] || '0', 10);
+      return Number.isFinite(n) ? Math.min(Math.max(n, 0), 3) : 0;
+    });
     this.busy = false;
     this.won = false;
     this.selected = null;
@@ -40,8 +57,32 @@ export class Game {
     return LEVEL_DATA[this.levelIndex];
   }
 
-  saveCleared() {
+  saveProgress() {
     localStorage.setItem(STORAGE_CLEARED, this.cleared.map((c) => (c ? '1' : '0')).join(''));
+    localStorage.setItem(STORAGE_STARS, this.stars.join(''));
+  }
+
+  get totalStars() {
+    return this.stars.reduce((a, b) => a + b, 0);
+  }
+
+  // 몇 번째 친구까지 구했는지. 챕터(4레벨)를 다 깨면 그 친구가 풀려난다.
+  friendFreed(chapterIndex) {
+    const last = (chapterIndex + 1) * CHAPTER - 1;
+    for (let i = chapterIndex * CHAPTER; i <= Math.min(last, LEVEL_DATA.length - 1); i++) {
+      if (!this.cleared[i]) return false;
+    }
+    return true;
+  }
+
+  get chapterCount() {
+    return Math.ceil(LEVEL_DATA.length / CHAPTER);
+  }
+
+  get rescuedCount() {
+    let n = 0;
+    for (let c = 0; c < this.chapterCount; c++) if (this.friendFreed(c)) n++;
+    return n;
   }
 
   loadLevel(i) {
@@ -216,15 +257,38 @@ export class Game {
     this.sound.win();
     this.renderer.setGuide(null);
     this.renderer.celebrate();
+
+    const chapter = Math.floor(this.levelIndex / CHAPTER);
+    const wasFreed = this.friendFreed(chapter);
+    const earned = starsFor(this.history.length, this.level.solutionLength);
     this.cleared[this.levelIndex] = true;
-    this.saveCleared();
+    this.stars[this.levelIndex] = Math.max(this.stars[this.levelIndex], earned);
+    this.saveProgress();
+    const nowFreed = this.friendFreed(chapter);
+
     if (this.levelIndex + 1 < LEVEL_DATA.length) {
       localStorage.setItem(STORAGE_LEVEL, String(this.levelIndex + 1));
     }
+
     const last = this.levelIndex >= LEVEL_DATA.length - 1;
-    this.dom.overlayTitle.textContent = last ? '🎉 전 레벨 클리어!' : `레벨 ${this.levelIndex + 1} 클리어!`;
+    this.dom.overlayTitle.textContent = last ? '🎉 모두 구했어요!' : `레벨 ${this.levelIndex + 1} 클리어!`;
     this.dom.overlayInfo.textContent = `${this.history.length}수 · 참고 답안 ${this.level.solutionLength}수`;
     this.dom.btnNext.textContent = last ? '처음부터 다시 ↻' : '다음 레벨 ▶';
+
+    // 별은 오버레이가 뜰 때 하나씩 튀어나오게 (클래스를 다시 붙여 애니메이션 재생)
+    [...this.dom.starRow.children].forEach((el, i) => {
+      el.classList.remove('on');
+      if (i < earned) void el.offsetWidth, el.classList.add('on');
+    });
+
+    // 챕터를 막 끝냈다면 친구 한 명이 풀려난다 — 이게 이 여정의 보상이다
+    if (nowFreed && !wasFreed) {
+      this.dom.overlayRescue.textContent = `친구를 구했어요! (${this.rescuedCount}/${this.chapterCount})`;
+      this.dom.overlayRescue.classList.remove('hidden');
+    } else {
+      this.dom.overlayRescue.classList.add('hidden');
+    }
+
     this._winT = setTimeout(() => this.dom.overlay.classList.remove('hidden'), 800);
   }
 
@@ -235,11 +299,14 @@ export class Game {
     this.dom.btnUndo.disabled = !this.history.length;
   }
 
-  // --- 레벨 목차 ---
+  // --- 여정 지도 ---
   // 프로토타입이라 전부 열어둔다. 실제 출시 때는 클리어한 다음 레벨까지만 여는 게 맞다.
   openLevels() {
-    this.buildLevelGrid();
+    this.buildJourney();
     this.dom.levelSelect.classList.remove('hidden');
+    // 현재 레벨이 보이도록 스크롤
+    const cur = this.dom.journey.querySelector('.jn.current');
+    if (cur) cur.scrollIntoView({ block: 'center' });
   }
 
   closeLevels() {
@@ -251,33 +318,64 @@ export class Game {
     else this.closeLevels();
   }
 
-  buildLevelGrid() {
-    const grid = this.dom.levelGrid;
-    grid.innerHTML = '';
+  // 길을 따라 늘어선 레벨들과, 4레벨마다 놓인 갇힌 친구.
+  // 목표가 지도에 그려져 있으니 "왜 하는지"를 글로 설명할 필요가 없다.
+  buildJourney() {
+    const road = this.dom.journey;
+    road.innerHTML = '';
+
+    this.dom.journeyTotal.innerHTML = `<span class="star on"></span>${this.totalStars} / ${
+      LEVEL_DATA.length * 3
+    }`;
+
     LEVEL_DATA.forEach((lv, i) => {
       const btn = document.createElement('button');
       btn.type = 'button';
       btn.className =
-        'lv' + (this.cleared[i] ? ' cleared' : '') + (i === this.levelIndex ? ' current' : '');
+        'jn' + (this.cleared[i] ? ' cleared' : '') + (i === this.levelIndex ? ' current' : '');
+      btn.textContent = String(i + 1);
       btn.setAttribute(
         'aria-label',
-        `레벨 ${i + 1}${this.cleared[i] ? ' (클리어함)' : ''} — 색 ${lv.targets.length}가지`
+        `레벨 ${i + 1} — 색 ${lv.targets.length}가지, 별 ${this.stars[i]}개`
       );
 
-      const num = document.createElement('span');
-      num.textContent = String(i + 1);
-
-      const dots = document.createElement('span');
-      dots.className = 'dots';
-      for (const t of lv.targets) {
-        const d = document.createElement('i');
-        d.style.setProperty('--c', COLOR_HEX[t]);
-        dots.appendChild(d);
+      if (this.stars[i] > 0) {
+        const row = document.createElement('span');
+        row.className = 'jstars';
+        for (let s = 0; s < 3; s++) {
+          const st = document.createElement('span');
+          st.className = 'star' + (s < this.stars[i] ? ' on' : '');
+          row.appendChild(st);
+        }
+        btn.appendChild(row);
       }
 
-      btn.append(num, dots);
       btn.addEventListener('click', () => this.loadLevel(i));
-      grid.appendChild(btn);
+      road.appendChild(btn);
+
+      // 챕터의 마지막 레벨 다음에 친구를 놓는다
+      const chapter = Math.floor(i / CHAPTER);
+      const isChapterEnd = (i + 1) % CHAPTER === 0 || i === LEVEL_DATA.length - 1;
+      if (!isChapterEnd) return;
+
+      const freed = this.friendFreed(chapter);
+      const isLast = chapter === this.chapterCount - 1;
+      const friend = document.createElement('div');
+      friend.className = 'jf' + (freed ? ' freed' : '');
+      friend.style.setProperty('--c', COLOR_HEX[FRIEND_COLORS[chapter % FRIEND_COLORS.length]]);
+      friend.setAttribute(
+        'aria-label',
+        `${isLast ? '마지막 친구' : `${chapter + 1}번째 친구`} — ${freed ? '구출 완료' : '아직 갇혀 있음'}`
+      );
+      friend.innerHTML =
+        (isLast ? '<span class="crown"></span>' : '') +
+        '<span class="eye l"></span><span class="eye r"></span><span class="mouth"></span>';
+      road.appendChild(friend);
+
+      const label = document.createElement('div');
+      label.className = 'jf-label';
+      label.textContent = freed ? '구출 완료' : isLast ? '마지막 친구' : '갇혀 있음';
+      road.appendChild(label);
     });
   }
 

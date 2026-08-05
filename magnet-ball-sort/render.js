@@ -94,6 +94,7 @@ export class Renderer {
     this.guide = null;
     this.impacts = []; // 착지·완성 충격 { tube, index, t0, dur, amp }
     this.rings = []; // 퍼지는 링 { x, y, t0, dur, hex, r0, r1 }
+    this.faces = new Map(); // 튜브 → 얼굴이 뜨기 시작한 시각
     this.screenShake = null;
     this.particles = [];
     this.rects = [];
@@ -139,6 +140,7 @@ export class Renderer {
     this.guide = null;
     this.impacts = [];
     this.rings = [];
+    this.faces.clear();
     this.screenShake = null;
     this.particles = [];
   }
@@ -255,7 +257,8 @@ export class Renderer {
     this.screenShake = { t0: performance.now(), mag, dur };
   }
 
-  // 튜브 하나가 완성됐을 때: 링 + 구슬이 아래에서 위로 톡톡 튀는 파동 + 살짝 화면 흔들림
+  // 튜브 하나가 완성됐을 때: 링 + 구슬이 아래에서 위로 톡톡 튀는 파동 + 살짝 화면 흔들림.
+  // 그리고 갇혀 있던 구슬 친구들이 눈을 뜬다 — 이게 정렬하는 이유다.
   completeTube(i, hex) {
     const rect = this.rects[i];
     if (!rect) return;
@@ -266,6 +269,7 @@ export class Renderer {
     this.addRing(rect.x + rect.w / 2, rect.y + rect.h / 2, hex, { r0: 8, r1: rect.w * 1.5, dur: 460 });
     this.shakeScreen(3.5, 190);
     this.burstAtTube(i, hex, 20);
+    this.faces.set(i, now + 150); // 파동이 지나간 뒤 얼굴이 뜬다
   }
 
   burstAtTube(i, hex, n = 18) {
@@ -553,11 +557,19 @@ export class Renderer {
     ctx.fillStyle = 'rgba(255,255,255,0.05)';
     ctx.fill();
 
-    // 구슬 — 충격을 받은 칸은 눌리고 밀린다
+    // 구슬 — 충격을 받은 칸은 눌리고 밀린다.
+    // 완성된 튜브의 구슬은 눈을 뜬다 (갇혀 있던 친구가 깨어난 것)
+    const faceAt = complete ? (this.faces.get(tubeIndex) ?? -Infinity) : null;
+    const faceIn = faceAt === null ? 0 : clamp01((now - faceAt) / 260);
     for (let k = 0; k < balls.length; k++) {
       const p = this._slotPos(rect, k);
       const { squash, dy } = this._impactAt(tubeIndex, k, now);
-      this._drawBall(p.x, p.y + dy, ballR, COLOR_HEX[balls[k]], { squash });
+      this._drawBall(p.x, p.y + dy, ballR, COLOR_HEX[balls[k]], {
+        squash,
+        face: faceIn > 0 ? faceIn : 0,
+        faceSeed: tubeIndex * 7 + k,
+        now,
+      });
     }
 
     // 유리 광택
@@ -601,9 +613,44 @@ export class Renderer {
     }
   }
 
+  // 깨어난 구슬 친구의 얼굴. grow는 0~1 (뜨는 중), seed로 눈 깜빡임 타이밍을 흩는다.
+  _drawFace(r, grow, seed, now) {
+    const ctx = this.ctx;
+    const s = easeOutBack(clamp01(grow));
+    if (s <= 0) return;
+    // 3초쯤마다 한 번씩, 구슬마다 다른 시점에 깜빡인다
+    const cycle = (now / 1000 + seed * 0.83) % 3.2;
+    const blink = cycle < 0.13 ? 1 - Math.abs(cycle - 0.065) / 0.065 : 0;
+    const eyeR = r * 0.13 * s;
+    const eyeY = -r * 0.16;
+    const eyeX = r * 0.3;
+
+    ctx.save();
+    ctx.fillStyle = 'rgba(28,26,48,0.88)';
+    for (const sx of [-eyeX, eyeX]) {
+      ctx.beginPath();
+      if (blink > 0.4) {
+        // 감은 눈 — 짧은 선
+        ctx.ellipse(sx, eyeY, eyeR * 1.15, eyeR * 0.22, 0, 0, Math.PI * 2);
+      } else {
+        ctx.ellipse(sx, eyeY, eyeR, eyeR * 1.2, 0, 0, Math.PI * 2);
+      }
+      ctx.fill();
+    }
+    // 웃는 입
+    ctx.strokeStyle = 'rgba(28,26,48,0.8)';
+    ctx.lineWidth = Math.max(1.1, r * 0.075) * s;
+    ctx.lineCap = 'round';
+    ctx.beginPath();
+    ctx.arc(0, r * 0.1, r * 0.32 * s, 0.28 * Math.PI, 0.72 * Math.PI);
+    ctx.stroke();
+    ctx.restore();
+  }
+
   // 금속 느낌의 구슬. magnet=true면 자석에 붙은 듯 테두리가 빛난다.
   // squash < 1 이면 납작하게 눌리고, > 1 이면 위로 늘어난다.
-  _drawBall(cx, cy, r, hex, { magnet = false, squash = 1 }) {
+  // face > 0 이면 깨어난 얼굴을 그린다.
+  _drawBall(cx, cy, r, hex, { magnet = false, squash = 1, face = 0, faceSeed = 0, now = 0 }) {
     const ctx = this.ctx;
     ctx.save();
     ctx.translate(cx, cy);
@@ -635,6 +682,8 @@ export class Renderer {
     ctx.beginPath();
     ctx.arc(0, 0, r - 0.5, 0, Math.PI * 2);
     ctx.stroke();
+
+    if (face > 0) this._drawFace(r, face, faceSeed, now);
     ctx.restore();
   }
 

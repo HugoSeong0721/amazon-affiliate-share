@@ -14,11 +14,14 @@ const dom = {
   btnMute: $('btnMute'),
   btnNext: $('btnNext'),
   levelSelect: $('levelSelect'),
-  levelGrid: $('levelGrid'),
+  journey: $('journey'),
+  journeyTotal: $('journeyTotal'),
   banner: $('banner'),
   overlay: $('overlay'),
   overlayTitle: $('overlayTitle'),
   overlayInfo: $('overlayInfo'),
+  overlayRescue: $('overlayRescue'),
+  starRow: $('starRow'),
 };
 
 const renderer = new Renderer(dom.board);

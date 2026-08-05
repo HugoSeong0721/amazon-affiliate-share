@@ -16,7 +16,7 @@
         <div id="moveLabel">0수</div>
       </div>
       <div class="hud-right">
-        <button id="btnLevels" class="hud-btn" title="레벨 목차" aria-label="레벨 목차">☰</button>
+        <button id="btnLevels" class="hud-btn" title="여정 지도" aria-label="여정 지도">☰</button>
         <button id="btnUndo" class="hud-btn" title="되돌리기" aria-label="되돌리기">↩︎</button>
         <button id="btnRestart" class="hud-btn" title="다시하기" aria-label="다시하기">⟳</button>
         <button id="btnMute" class="hud-btn" title="소리 켜기/끄기" aria-label="소리">🔊</button>
@@ -30,9 +30,13 @@
     <div id="overlay" class="hidden">
       <div class="overlay-card">
         <h2 id="overlayTitle">레벨 클리어!</h2>
+        <div id="starRow" class="stars">
+          <span class="star"></span><span class="star"></span><span class="star"></span>
+        </div>
         <p id="overlayInfo"></p>
+        <p id="overlayRescue" class="rescue-note hidden"></p>
         <div class="overlay-actions">
-          <button id="btnLevelsFromWin" class="ghost-btn">목차</button>
+          <button id="btnLevelsFromWin" class="ghost-btn">여정</button>
           <button id="btnNext">다음 레벨 ▶</button>
         </div>
       </div>
@@ -41,11 +45,11 @@
     <div id="levelSelect" class="hidden">
       <div class="ls-card">
         <div class="ls-head">
-          <h2>레벨 목차</h2>
+          <h2>여정</h2>
+          <div id="journeyTotal" class="j-total"></div>
           <button id="btnCloseLevels" class="hud-btn" title="닫기" aria-label="닫기">✕</button>
         </div>
-        <p class="ls-note">아래 점이 그 레벨에 나오는 색입니다.</p>
-        <div id="levelGrid"></div>
+        <div id="journey"></div>
       </div>
     </div>
   </div>
