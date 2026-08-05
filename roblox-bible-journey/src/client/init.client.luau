@@ -7,6 +7,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Net = require(ReplicatedStorage.Shared.Net)
 
 local Beacon = require(script.Beacon)
+local CardView = require(script.CardView)
 local Narration = require(script.Narration)
 local ObjectiveHud = require(script.ObjectiveHud)
 local RoadView = require(script.RoadView)
@@ -14,6 +15,7 @@ local RoadView = require(script.RoadView)
 ObjectiveHud.start()
 RoadView.start()
 Beacon.start()
+CardView.start()
 
 Net.event("ProgressChanged").OnClientEvent:Connect(function(snapshot)
 	if typeof(snapshot) ~= "table" then
@@ -25,6 +27,9 @@ Net.event("ProgressChanged").OnClientEvent:Connect(function(snapshot)
 	end
 	ObjectiveHud.setProgress(snapshot)
 	RoadView.apply(snapshot)
+	if typeof(snapshot.fragments) == "table" then
+		CardView.setState(snapshot.fragments, if typeof(snapshot.locale) == "string" then snapshot.locale else "ko")
+	end
 end)
 
 Net.event("ChapterEntered").OnClientEvent:Connect(function(chapterId)

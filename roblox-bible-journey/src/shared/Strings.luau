@@ -64,6 +64,48 @@ local STRINGS: { [string]: Entry } = {
 	["ch01.sheepLeft"] = { ko = "아직 남은 양이 있어요.", en = "Some sheep are still out there." },
 	["ch01.allPenned"] = { ko = "모두 안전해요. 잘했어요!", en = "All safe. Well done!" },
 
+	["chapter.ch05_wilderness.title"] = { ko = "광야의 시험", en = "The Wilderness" },
+	["chapter.ch05_wilderness.intro"] = {
+		ko = "메마른 광야예요. 여기서 사십 일을 보내셨어요.",
+		en = "A dry wilderness. Forty days were spent here.",
+	},
+	["ch05.walkPath"] = {
+		ko = "길을 따라가며 말씀 조각을 모으세요. 곧 필요해져요.",
+		en = "Gather the verse pieces along the path. You'll need them soon.",
+	},
+	["ch05.trial_bread"] = {
+		ko = "\"배고프지? 이 돌들한테 빵이 되라고 해 봐.\"",
+		en = "\"Hungry? Tell these stones to become bread.\"",
+	},
+	["ch05.trial_leap"] = {
+		ko = "\"여기서 뛰어내려 봐. 천사들이 받아 줄 거야.\"",
+		en = "\"Jump from here. The angels will catch you.\"",
+	},
+	["ch05.trial_worship"] = {
+		ko = "\"나한테 절하면, 이 모든 걸 다 줄게.\"",
+		en = "\"Bow to me, and I will give you everything.\"",
+	},
+	["ch05.chooseCard"] = {
+		ko = "말씀 카드를 골라 대답하세요.",
+		en = "Answer by choosing a verse card.",
+	},
+	["ch05.wrong"] = {
+		ko = "음... 다시 생각해 볼까요?",
+		en = "Hmm... want to think again?",
+	},
+	["ch05.hint"] = {
+		ko = "길에서 모은 말씀을 떠올려 보세요.",
+		en = "Remember the words you gathered on the path.",
+	},
+	["ch05.reveal"] = {
+		ko = "빛이 한 카드를 가리켜요.",
+		en = "The light is pointing at one card.",
+	},
+	["ch05.correct"] = {
+		ko = "어두운 목소리가 물러갔어요!",
+		en = "The dark voice backs away!",
+	},
+
 	["chapter.ch06_nets.title"] = { ko = "그물을 던져라", en = "Let Down the Nets" },
 	["chapter.ch06_nets.intro"] = {
 		ko = "밤새 고기를 잡았지만, 그물은 텅 비어 있었어요.",

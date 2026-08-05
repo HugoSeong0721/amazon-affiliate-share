@@ -43,6 +43,38 @@ local VERSES: { Verse } = {
 			{ id = "ch01_f3", ko = "태어나셨어요.", en = "has been born." },
 		},
 	},
+	-- 5장의 세 구절은 세 시험의 답 그 자체다. 광야 길에서 조각으로 줍고,
+	-- 몇 걸음 뒤의 시험에서 카드로 꺼내 쓴다 (DESIGN.md 3-2).
+	{
+		id = "ch05_bread",
+		chapterId = "ch05_wilderness",
+		reference = "신명기 8:3",
+		fragments = {
+			{ id = "ch05_bread_f1", ko = "사람은 빵만으로는", en = "People cannot live" },
+			{ id = "ch05_bread_f2", ko = "살 수 없어요,", en = "on bread alone," },
+			{ id = "ch05_bread_f3", ko = "하나님의 모든 말씀으로 살아요.", en = "but on every word from God." },
+		},
+	},
+	{
+		id = "ch05_test",
+		chapterId = "ch05_wilderness",
+		reference = "신명기 6:16",
+		fragments = {
+			{ id = "ch05_test_f1", ko = "주 너의 하나님을", en = "You must not" },
+			{ id = "ch05_test_f2", ko = "함부로 시험하면", en = "put the Lord your God" },
+			{ id = "ch05_test_f3", ko = "안 돼요.", en = "to the test." },
+		},
+	},
+	{
+		id = "ch05_worship",
+		chapterId = "ch05_wilderness",
+		reference = "신명기 6:13",
+		fragments = {
+			{ id = "ch05_worship_f1", ko = "주 너의 하나님께만", en = "Worship the Lord" },
+			{ id = "ch05_worship_f2", ko = "절하고,", en = "your God alone," },
+			{ id = "ch05_worship_f3", ko = "그분만 섬기세요.", en = "and serve only him." },
+		},
+	},
 	{
 		id = "ch06_verse",
 		chapterId = "ch06_nets",
@@ -67,12 +99,21 @@ local VERSES: { Verse } = {
 
 local byFragmentId: { [string]: { verse: Verse, fragment: Fragment, index: number } } = {}
 local byVerseId: { [string]: Verse } = {}
-local byChapterId: { [string]: Verse } = {}
+local byChapterId: { [string]: { Verse } } = {}
 
 for _, verse in VERSES do
+	assert(byVerseId[verse.id] == nil, `duplicate verse id "{verse.id}"`)
 	byVerseId[verse.id] = verse
-	byChapterId[verse.chapterId] = verse
+
+	local chapterList = byChapterId[verse.chapterId]
+	if not chapterList then
+		chapterList = {}
+		byChapterId[verse.chapterId] = chapterList
+	end
+	table.insert(chapterList, verse)
+
 	for index, fragment in verse.fragments do
+		assert(byFragmentId[fragment.id] == nil, `duplicate fragment id "{fragment.id}"`)
 		byFragmentId[fragment.id] = { verse = verse, fragment = fragment, index = index }
 	end
 end
@@ -83,8 +124,14 @@ function Verses.all(): { Verse }
 	return VERSES
 end
 
-function Verses.forChapter(chapterId: string): Verse?
-	return byChapterId[chapterId]
+function Verses.get(verseId: string): Verse?
+	return byVerseId[verseId]
+end
+
+-- A chapter may carry several verses (chapter 5 hides three — one per trial).
+function Verses.versesFor(chapterId: string): { Verse }
+	local list = byChapterId[chapterId]
+	return if list then table.clone(list) else {}
 end
 
 function Verses.fragment(fragmentId: string): Fragment?
@@ -93,14 +140,11 @@ function Verses.fragment(fragmentId: string): Fragment?
 end
 
 function Verses.fragmentIdsFor(chapterId: string): { string }
-	local verse = byChapterId[chapterId]
-	if not verse then
-		return {}
-	end
-
 	local ids = {}
-	for _, fragment in verse.fragments do
-		table.insert(ids, fragment.id)
+	for _, verse in Verses.versesFor(chapterId) do
+		for _, fragment in verse.fragments do
+			table.insert(ids, fragment.id)
+		end
 	end
 	return ids
 end
