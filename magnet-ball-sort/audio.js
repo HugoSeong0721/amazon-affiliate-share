@@ -71,33 +71,48 @@ export class Sound {
     } catch {}
   }
 
+  // 진동. 안드로이드 크롬은 지원하고 iOS 사파리는 무시한다 — 있으면 손맛이 확 올라간다.
+  buzz(pattern) {
+    if (this.muted) return;
+    try {
+      navigator.vibrate?.(pattern);
+    } catch {}
+  }
+
   // 자석에 붙는 소리: 짧은 저음 툭 + 금속성 딸깍
   pick(count) {
     this._tone(180, { type: 'sine', dur: 0.09, gain: 0.08, slide: 90 });
     for (let i = 0; i < Math.min(count, 4); i++) {
       this._click({ freq: 2600 + i * 220, gain: 0.06, delay: 0.02 * i });
     }
+    this.buzz(9);
   }
 
-  drop(count) {
-    for (let i = 0; i < Math.min(count, 5); i++) {
-      this._click({ freq: 1500 + Math.random() * 900, gain: 0.11, delay: 0.055 * i });
-      this._tone(320 + i * 40, { type: 'triangle', dur: 0.07, gain: 0.05, delay: 0.055 * i });
-    }
+  // 구슬 하나가 착지하는 소리. 튜브가 찰수록 음이 올라간다 — 쌓이는 쾌감의 핵심.
+  land(slotIndex) {
+    const scale = [523, 587, 659, 784, 880, 988];
+    const pitch = scale[Math.min(slotIndex, scale.length - 1)];
+    this._click({ freq: 1900 + slotIndex * 260, gain: 0.1, dur: 0.035 });
+    this._tone(pitch, { type: 'triangle', dur: 0.08, gain: 0.07 });
+    this._tone(pitch / 2, { type: 'sine', dur: 0.06, gain: 0.05 });
+    this.buzz(12);
   }
 
   complete() {
     this._tone(880, { type: 'triangle', dur: 0.13, gain: 0.09 });
     this._tone(1320, { type: 'triangle', dur: 0.2, gain: 0.08, delay: 0.07 });
+    this.buzz([0, 26, 40, 26]);
   }
 
   win() {
     [523, 659, 784, 1047].forEach((f, i) =>
       this._tone(f, { type: 'triangle', dur: 0.26, gain: 0.11, delay: i * 0.09 })
     );
+    this.buzz([0, 40, 60, 40, 60, 70]);
   }
 
   error() {
     this._tone(140, { type: 'square', dur: 0.09, gain: 0.05 });
+    this.buzz(24);
   }
 }

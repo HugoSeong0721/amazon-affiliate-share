@@ -1,9 +1,12 @@
-// 캔버스 렌더러 — 튜브, 구슬, 자석 집기/날아가기 애니메이션.
+// 캔버스 렌더러 — 튜브, 구슬, 자석 집기/날아가기 애니메이션, 충격 연출.
 // 게임 로직은 전혀 모르고, 상태와 수(move) 결과만 받아 그린다.
 //
 // 이 게임의 규칙은 설명 대신 애니메이션으로 전달된다:
 // 튜브를 누르면 맨 위 같은 색 구슬들이 자석처럼 딱 붙어 함께 떠오른다.
 // 몇 개가 움직일지 손대기 전에 눈으로 보이므로 규칙을 글로 읽을 필요가 없다.
+//
+// 손맛은 "부딪히는 느낌"에서 나온다. 구슬이 도착만 하지 않고,
+// 착지할 때 눌리고 · 아래 구슬들이 밀리고 · 링이 퍼지고 · 화면이 흔들린다.
 
 export const COLOR_HEX = {
   R: '#ff4d5a',
@@ -40,6 +43,10 @@ function shade(hex, amt) {
     b + (target - b) * t
   )})`;
 }
+function rgba(hex, a) {
+  const [r, g, b] = hexToRgb(hex);
+  return `rgba(${r},${g},${b},${a})`;
+}
 
 const clamp01 = (t) => Math.max(0, Math.min(1, t));
 const easeOutCubic = (t) => 1 - Math.pow(1 - t, 3);
@@ -70,6 +77,7 @@ function qbez(p0, cp, p1, t) {
 }
 
 const LIFT_GAP = 15; // 튜브 입구와 떠오른 구슬 사이 간격
+const IMPACT_DUR = 190; // 착지 충격이 잦아드는 시간(ms)
 
 export class Renderer {
   constructor(canvas) {
@@ -84,6 +92,9 @@ export class Renderer {
     this.flight = null;
     this.nudge = null; // 잘못 눌렀을 때 흔들기
     this.guide = null;
+    this.impacts = []; // 착지·완성 충격 { tube, index, t0, dur, amp }
+    this.rings = []; // 퍼지는 링 { x, y, t0, dur, hex, r0, r1 }
+    this.screenShake = null;
     this.particles = [];
     this.rects = [];
     this._loop = this._loop.bind(this);
@@ -126,6 +137,9 @@ export class Renderer {
     this.flight = null;
     this.nudge = null;
     this.guide = null;
+    this.impacts = [];
+    this.rings = [];
+    this.screenShake = null;
     this.particles = [];
   }
 
@@ -204,7 +218,8 @@ export class Renderer {
 
   // 구슬이 날아가는 애니메이션.
   // amount개는 목적지로, 남은 것(공간 부족)은 원래 튜브로 되돌아간다.
-  animateMove({ result, heldCount, onDone }) {
+  // onLand(slotIndex)는 구슬 하나가 실제로 착지하는 순간마다 호출된다 — 소리를 여기 맞춘다.
+  animateMove({ result, heldCount, onLand, onDone }) {
     const { from, to, amount } = result;
     if (!this.rects[from] || !this.rects[to]) {
       onDone && onDone();
@@ -217,13 +232,40 @@ export class Renderer {
       amount,
       returning: Math.max(0, heldCount - amount),
       t0: performance.now(),
-      TRAVEL: 330,
-      STAGGER: 42,
+      TRAVEL: 205, // 빠릿한 게 손맛이 좋다
+      STAGGER: 26,
+      onLand,
       onDone,
       doneFired: false,
-      landed: new Set(),
+      landedAt: new Map(),
     };
     this.held = null;
+  }
+
+  // 착지 충격: 맞은 칸이 눌리고 아래 구슬들이 밀린다.
+  addImpact(tube, index, amp = 0.26, dur = IMPACT_DUR) {
+    this.impacts.push({ tube, index, t0: performance.now(), dur, amp });
+  }
+
+  addRing(x, y, hex, { r0 = 4, r1 = 30, dur = 320 } = {}) {
+    this.rings.push({ x, y, hex, r0, r1, dur, t0: performance.now() });
+  }
+
+  shakeScreen(mag = 4, dur = 200) {
+    this.screenShake = { t0: performance.now(), mag, dur };
+  }
+
+  // 튜브 하나가 완성됐을 때: 링 + 구슬이 아래에서 위로 톡톡 튀는 파동 + 살짝 화면 흔들림
+  completeTube(i, hex) {
+    const rect = this.rects[i];
+    if (!rect) return;
+    const now = performance.now();
+    for (let k = 0; k < this.capacity; k++) {
+      this.impacts.push({ tube: i, index: k, t0: now + k * 45, dur: 230, amp: 0.3 });
+    }
+    this.addRing(rect.x + rect.w / 2, rect.y + rect.h / 2, hex, { r0: 8, r1: rect.w * 1.5, dur: 460 });
+    this.shakeScreen(3.5, 190);
+    this.burstAtTube(i, hex, 20);
   }
 
   burstAtTube(i, hex, n = 18) {
@@ -271,6 +313,24 @@ export class Renderer {
     }
   }
 
+  // 특정 칸 구슬이 지금 받고 있는 충격량 → 눌림 정도와 밀림 거리
+  _impactAt(tube, index, now) {
+    let squash = 1;
+    let dy = 0;
+    for (const im of this.impacts) {
+      if (im.tube !== tube) continue;
+      const d = im.index - index; // 0 = 맞은 칸, 1 = 그 아래, 2 = 그 아래아래
+      if (d < 0 || d > 2) continue;
+      const p = (now - im.t0) / im.dur;
+      if (p < 0 || p >= 1) continue;
+      const decay = d === 0 ? 1 : d === 1 ? 0.45 : 0.18;
+      const amp = Math.pow(1 - p, 2.2) * im.amp * decay;
+      squash -= amp;
+      dy += amp * 7;
+    }
+    return { squash: Math.max(0.62, squash), dy };
+  }
+
   // ---------- 매 프레임 ----------
 
   _loop(now) {
@@ -281,6 +341,29 @@ export class Renderer {
       return;
     }
     ctx.clearRect(0, 0, this.cssW, this.cssH);
+
+    // 끝난 충격/링 정리
+    if (this.impacts.length) {
+      this.impacts = this.impacts.filter((im) => now - im.t0 < im.dur);
+    }
+    if (this.rings.length) {
+      this.rings = this.rings.filter((r) => now - r.t0 < r.dur);
+    }
+
+    let sx = 0;
+    let sy = 0;
+    if (this.screenShake) {
+      const p = (now - this.screenShake.t0) / this.screenShake.dur;
+      if (p >= 1) this.screenShake = null;
+      else {
+        const m = this.screenShake.mag * Math.pow(1 - p, 2);
+        sx = Math.sin(now / 11) * m;
+        sy = Math.cos(now / 8) * m * 0.6;
+      }
+    }
+
+    ctx.save();
+    if (sx || sy) ctx.translate(sx, sy);
 
     const F = this.flight;
     // 공중에 떠 있어서 튜브에 그리지 않을 구슬 수
@@ -306,17 +389,35 @@ export class Renderer {
       const dim = this.guide !== null && i !== this.guide && !(this.held && this.held.tube === i);
 
       if (dim) ctx.save(), (ctx.globalAlpha = 0.62);
-      this._drawTube(rect, visible, {
+      this._drawTube(rect, visible, i, now, {
         selected: this.held?.tube === i,
         complete,
       });
       if (dim) ctx.restore();
     }
 
+    this._drawRings(now);
     if (this.held) this._drawHeld(now);
     if (F) this._drawFlight(now, F);
     if (!this.held && !F) this._drawGuide(now);
     this._drawParticles(now);
+
+    ctx.restore();
+  }
+
+  _drawRings(now) {
+    const ctx = this.ctx;
+    for (const ring of this.rings) {
+      const p = clamp01((now - ring.t0) / ring.dur);
+      const r = ring.r0 + (ring.r1 - ring.r0) * easeOutCubic(p);
+      ctx.save();
+      ctx.strokeStyle = rgba(ring.hex, 0.7 * (1 - p));
+      ctx.lineWidth = 3 * (1 - p) + 0.6;
+      ctx.beginPath();
+      ctx.arc(ring.x, ring.y, r, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.restore();
+    }
   }
 
   // 떠오르는 중~떠 있는 묶음
@@ -326,10 +427,14 @@ export class Renderer {
     if (!rect) return;
     const balls = this.state.bottles[H.tube];
     const base = balls.length - H.count; // 묶음 아래에 남는 구슬 수
-    const t = easeOutBack(clamp01((now - H.t0) / 190));
+    const raw = clamp01((now - H.t0) / 190);
+    const t = easeOutBack(raw);
     const hex = COLOR_HEX[H.color];
     // 살짝 위아래로 떠 있는 느낌
     const bob = Math.sin(now / 420) * 2;
+    // 솟아오를 때 살짝 늘어난다 (자석에 끌려 올라가는 느낌)
+    const stretch = 1 + 0.2 * (1 - raw) * (raw > 0 ? 1 : 0);
+    const { ballR } = this._metrics(rect);
 
     for (let j = 0; j < H.count; j++) {
       const from = this._slotPos(rect, base + j);
@@ -338,8 +443,7 @@ export class Renderer {
         x: from.x + (to.x - from.x) * t,
         y: from.y + (to.y - from.y) * t + bob * t,
       };
-      const { ballR } = this._metrics(rect);
-      this._drawBall(p.x, p.y, ballR, hex, { magnet: t > 0.6 });
+      this._drawBall(p.x, p.y, ballR, hex, { magnet: raw > 0.55, squash: stretch });
     }
   }
 
@@ -359,26 +463,56 @@ export class Renderer {
       const order = F.amount - 1 - j;
       const start = order * F.STAGGER;
       const t = clamp01((el - start) / F.TRAVEL);
-      if (t < 1) allDone = false;
+      const slotIndex = dstLen - F.amount + j;
       const p0 = this._heldPos(srcRect, F.returning + order);
-      const p1 = this._slotPos(dstRect, dstLen - F.amount + j);
+      const p1 = this._slotPos(dstRect, slotIndex);
       const cp = { x: (p0.x + p1.x) / 2, y: Math.min(p0.y, p1.y) - 46 };
-      const e = easeInOut(t);
-      const p = qbez(p0, cp, p1, e);
-      if (t >= 1 && !F.landed.has(j)) F.landed.add(j);
-      // 착지 직전 살짝 눌리는 스쿼시
-      const squash = t > 0.86 ? 1 - Math.sin((t - 0.86) / 0.14 * Math.PI) * 0.16 : 1;
-      this._drawBall(p.x, p.y, ballR, hex, { squash });
+
+      if (t < 1) {
+        allDone = false;
+        const e = easeInOut(t);
+        // 잔상 — 빠른 움직임이 눈에 남게. 입체 구슬을 반투명하게 겹치면 어두운 얼룩처럼
+        // 보이므로, 밝은 단색 원으로 그려 색이 흐르는 궤적처럼 읽히게 한다.
+        const ctx = this.ctx;
+        for (const [back, alpha] of [[0.14, 0.16], [0.07, 0.3]]) {
+          const g = qbez(p0, cp, p1, easeInOut(Math.max(0, t - back)));
+          ctx.save();
+          ctx.globalAlpha = alpha;
+          ctx.fillStyle = shade(hex, 0.2);
+          ctx.beginPath();
+          ctx.arc(g.x, g.y, ballR * 0.88, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.restore();
+        }
+        const p = qbez(p0, cp, p1, e);
+        this._drawBall(p.x, p.y, ballR, hex, {});
+      } else {
+        if (!F.landedAt.has(j)) {
+          F.landedAt.set(j, now);
+          this.addImpact(F.to, slotIndex);
+          this.addRing(p1.x, p1.y, hex, { r0: ballR * 0.7, r1: ballR * 2.1, dur: 260 });
+          F.onLand && F.onLand(slotIndex);
+        }
+        const { squash, dy } = this._impactAt(F.to, slotIndex, now);
+        this._drawBall(p1.x, p1.y + dy, ballR, hex, { squash });
+      }
     }
 
     // 공간이 없어 되돌아가는 구슬
     for (let j = 0; j < F.returning; j++) {
-      const t = clamp01(el / (F.TRAVEL * 0.7));
+      const t = clamp01(el / (F.TRAVEL * 0.75));
       if (t < 1) allDone = false;
       const p0 = this._heldPos(srcRect, j);
-      const p1 = this._slotPos(srcRect, srcLen - F.returning + j);
+      const slotIndex = srcLen - F.returning + j;
+      const p1 = this._slotPos(srcRect, slotIndex);
       const e = easeOutCubic(t);
-      this._drawBall(p0.x, p0.y + (p1.y - p0.y) * e, this._metrics(srcRect).ballR, hex, {});
+      const r = this._metrics(srcRect).ballR;
+      if (t >= 1) {
+        const { squash, dy } = this._impactAt(F.from, slotIndex, now);
+        this._drawBall(p1.x, p1.y + dy, r, hex, { squash });
+      } else {
+        this._drawBall(p0.x, p0.y + (p1.y - p0.y) * e, r, hex, {});
+      }
     }
 
     if (allDone) {
@@ -390,7 +524,7 @@ export class Renderer {
     }
   }
 
-  _drawTube(rect, balls, { selected, complete }) {
+  _drawTube(rect, balls, tubeIndex, now, { selected, complete }) {
     const ctx = this.ctx;
     const { x, y, w, h } = rect;
     const r = w * 0.42;
@@ -419,13 +553,14 @@ export class Renderer {
     ctx.fillStyle = 'rgba(255,255,255,0.05)';
     ctx.fill();
 
-    // 구슬
+    // 구슬 — 충격을 받은 칸은 눌리고 밀린다
     for (let k = 0; k < balls.length; k++) {
       const p = this._slotPos(rect, k);
-      this._drawBall(p.x, p.y, ballR, COLOR_HEX[balls[k]], {});
+      const { squash, dy } = this._impactAt(tubeIndex, k, now);
+      this._drawBall(p.x, p.y + dy, ballR, COLOR_HEX[balls[k]], { squash });
     }
 
-    // 유리 광택 + 외곽선
+    // 유리 광택
     ctx.save();
     rr(ctx, x + 1, y + 1, w - 2, h - 2, r - 1);
     ctx.clip();
@@ -467,6 +602,7 @@ export class Renderer {
   }
 
   // 금속 느낌의 구슬. magnet=true면 자석에 붙은 듯 테두리가 빛난다.
+  // squash < 1 이면 납작하게 눌리고, > 1 이면 위로 늘어난다.
   _drawBall(cx, cy, r, hex, { magnet = false, squash = 1 }) {
     const ctx = this.ctx;
     ctx.save();

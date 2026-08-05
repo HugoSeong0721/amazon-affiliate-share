@@ -145,6 +145,9 @@ export class Game {
 
     this.history.push(prev);
     this.state = res.state;
+    // 렌더러도 곧바로 새 상태를 알아야 한다. 옛 상태로 그리면 날아가는 구슬의
+    // 목적지 칸 번호가 어긋나 튜브 밖에 그려진다.
+    this.renderer.setState(this.state);
     this.selected = null;
     this.busy = true;
     this.hideBanner();
@@ -156,12 +159,14 @@ export class Game {
     this.renderer.animateMove({
       result: res,
       heldCount,
+      // 구슬 하나하나가 실제로 닿는 순간에 소리를 낸다 (칸이 높을수록 음이 올라간다)
+      onLand: (slotIndex) => this.sound.land(slotIndex),
       onDone: () => {
         this.busy = false;
         this.renderer.setState(this.state);
         this.updateHud();
         if (completedNow) {
-          this.renderer.burstAtTube(to, COLOR_HEX[res.color]);
+          this.renderer.completeTube(to, COLOR_HEX[res.color]);
           this.sound.complete();
         }
         if (isWin(this.state, this.targets)) this.win();
@@ -171,8 +176,6 @@ export class Game {
         }
       },
     });
-    // 구슬이 착지하는 타이밍에 맞춰 소리
-    setTimeout(() => this.sound.drop(res.amount), 210);
   }
 
   undo() {
