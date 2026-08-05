@@ -1,0 +1,80 @@
+# Magnet Balls 안드로이드 빌드.
+# 안드로이드 스튜디오 없이도 앱 파일이 나온다:
+#   - 디버그 APK: 항상 빌드. Actions 아티팩트에서 받아 폰에 바로 설치해 테스트.
+#   - 릴리즈 AAB: 서명 시크릿이 등록된 경우에만 빌드. Play Console에 업로드하는 파일.
+#
+# 서명 시크릿 (Settings → Secrets and variables → Actions):
+#   ANDROID_KEYSTORE_BASE64   키스토어(.jks) 파일의 base64
+#   ANDROID_KEYSTORE_PASSWORD 키스토어 비밀번호
+#   ANDROID_KEY_ALIAS         키 별칭
+#   ANDROID_KEY_PASSWORD      키 비밀번호
+
+name: Android build
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - 'magnet-balls-app/**'
+      - 'magnet-ball-sort/**'
+      - 'sort-engine/**'
+      - '.github/workflows/android-build.yml'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    env:
+      KEYSTORE_B64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+    defaults:
+      run:
+        working-directory: magnet-balls-app
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+
+      - name: Install Capacitor
+        run: npm ci
+
+      - name: Build game into www/
+        run: node ../magnet-ball-sort/tools/build-single-file.mjs www/index.html
+
+      - name: Sync web assets into Android project
+        run: npx cap sync android
+
+      - name: Build debug APK
+        run: cd android && chmod +x gradlew && ./gradlew assembleDebug --no-daemon
+
+      - name: Upload debug APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: magnet-balls-debug-apk
+          path: magnet-balls-app/android/app/build/outputs/apk/debug/app-debug.apk
+
+      - name: Decode signing keystore
+        if: ${{ env.KEYSTORE_B64 != '' }}
+        run: echo "$KEYSTORE_B64" | base64 -d > /tmp/upload-keystore.jks
+
+      - name: Build signed release AAB
+        if: ${{ env.KEYSTORE_B64 != '' }}
+        env:
+          ANDROID_KEYSTORE_PATH: /tmp/upload-keystore.jks
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: cd android && ./gradlew bundleRelease --no-daemon
+
+      - name: Upload release AAB
+        if: ${{ env.KEYSTORE_B64 != '' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: magnet-balls-release-aab
+          path: magnet-balls-app/android/app/build/outputs/bundle/release/app-release.aab

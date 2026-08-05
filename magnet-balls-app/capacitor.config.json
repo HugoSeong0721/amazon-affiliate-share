@@ -1,0 +1,13 @@
+{
+  "appId": "io.github.hugoseong0721.magnetballs",
+  "appName": "Magnet Balls",
+  "webDir": "www",
+  "backgroundColor": "#0f1830",
+  "android": {
+    "backgroundColor": "#0f1830",
+    "allowMixedContent": false
+  },
+  "server": {
+    "androidScheme": "https"
+  }
+}
