@@ -115,9 +115,23 @@ function Session.say(self: Session, stringKey: string)
 	self._deps.narrate(self.players, stringKey)
 end
 
+-- For lines that belong to one player, not the whole session — "you shared your
+-- lunch" reads very differently when everyone hears it.
+function Session.sayTo(self: Session, player: Player, stringKey: string)
+	if not self._active then
+		return
+	end
+	self._deps.narrate({ player }, stringKey)
+end
+
 -- Where the client should plant the guiding light pillar. Kids do not read a
 -- objective line at the top of the screen; they follow a beam (DESIGN.md 5-5).
 function Session.point(self: Session, position: Vector3?)
+	-- Guarded like say(): chapters point from task.delay callbacks, which can fire
+	-- after the session died and would otherwise re-light a beacon back in the hub.
+	if not self._active then
+		return
+	end
 	self.focus = position
 	self._deps.objectiveChanged(self)
 end

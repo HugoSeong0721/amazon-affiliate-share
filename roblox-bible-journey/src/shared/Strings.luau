@@ -63,6 +63,66 @@ local STRINGS: { [string]: Entry } = {
 	},
 	["ch01.sheepLeft"] = { ko = "아직 남은 양이 있어요.", en = "Some sheep are still out there." },
 	["ch01.allPenned"] = { ko = "모두 안전해요. 잘했어요!", en = "All safe. Well done!" },
+
+	["chapter.ch06_nets.title"] = { ko = "그물을 던져라", en = "Let Down the Nets" },
+	["chapter.ch06_nets.intro"] = {
+		ko = "밤새 고기를 잡았지만, 그물은 텅 비어 있었어요.",
+		en = "They fished all night, and the nets came up empty.",
+	},
+	["ch06.castShallow"] = {
+		ko = "부두 끝에서 그물을 던져 보세요.",
+		en = "Cast the net from the end of the pier.",
+	},
+	["ch06.emptyNet"] = {
+		ko = "이번에도... 아무것도 없어요.",
+		en = "Again... nothing.",
+	},
+	["ch06.goDeeper"] = {
+		ko = "\"깊은 곳으로 가서 그물을 내려라.\" 목소리가 들려요.",
+		en = "\"Go out into the deep, and let down the nets.\" A voice.",
+	},
+	["ch06.fullNet"] = {
+		ko = "그물이 찢어질 만큼 가득해요!",
+		en = "The net is so full it's starting to tear!",
+	},
+
+	["chapter.ch10_loaves.title"] = { ko = "오병이어", en = "Five Loaves, Two Fish" },
+	["chapter.ch10_loaves.intro"] = {
+		ko = "배고픈 사람이 아주 많아요. 그런데 먹을 것이 없어요.",
+		en = "So many hungry people. And no food anywhere.",
+	},
+	["ch10.shareLunch"] = {
+		ko = "가진 도시락을 바구니에 넣어 보세요.",
+		en = "Put your lunch in the basket.",
+	},
+	["ch10.shared"] = {
+		ko = "도시락을 내놓았어요. 그런데... 바구니가 가득해요!",
+		en = "You gave your lunch away. And... the basket is full!",
+	},
+	["ch10.basketWaits"] = {
+		ko = "바구니가 비어 있어요. 누가 먼저 나눌까요?",
+		en = "The basket is empty. Who will share first?",
+	},
+	["ch10.pickedUp"] = {
+		ko = "빵을 들었어요! 배고픈 사람들에게 가져다 주세요.",
+		en = "You're carrying bread! Take it to the hungry.",
+	},
+	["ch10.handsFull"] = {
+		ko = "손이 가득해요. 먼저 나눠 주고 오세요.",
+		en = "Your hands are full. Share this first.",
+	},
+	["ch10.needBread"] = {
+		ko = "바구니에서 빵을 받아 오세요.",
+		en = "Get bread from the basket first.",
+	},
+	["ch10.groupFed"] = {
+		ko = "이쪽 사람들은 배불러요!",
+		en = "These people are full!",
+	},
+	["ch10.leftovers"] = {
+		ko = "모두 먹고도 열두 바구니가 남았어요!",
+		en = "Everyone ate — and twelve baskets are left over!",
+	},
 }
 
 local Strings = {}

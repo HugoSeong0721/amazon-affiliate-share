@@ -23,6 +23,7 @@ export type Session = {
 	isObjectiveDone: (self: Session, objectiveId: string) -> boolean,
 	point: (self: Session, position: Vector3?) -> (),
 	say: (self: Session, stringKey: string) -> (),
+	sayTo: (self: Session, player: Player, stringKey: string) -> (),
 	grantFragment: (self: Session, player: Player, fragmentId: string) -> (),
 	isActive: (self: Session) -> boolean,
 }

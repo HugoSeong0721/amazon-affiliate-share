@@ -43,6 +43,26 @@ local VERSES: { Verse } = {
 			{ id = "ch01_f3", ko = "태어나셨어요.", en = "has been born." },
 		},
 	},
+	{
+		id = "ch06_verse",
+		chapterId = "ch06_nets",
+		reference = "누가복음 5:5",
+		fragments = {
+			{ id = "ch06_f1", ko = "밤새 아무것도 못 잡았지만,", en = "We caught nothing all night," },
+			{ id = "ch06_f2", ko = "말씀하시니", en = "but because you say so," },
+			{ id = "ch06_f3", ko = "그물을 내려 보겠어요.", en = "I will let down the nets." },
+		},
+	},
+	{
+		id = "ch10_verse",
+		chapterId = "ch10_loaves",
+		reference = "요한복음 6:9",
+		fragments = {
+			{ id = "ch10_f1", ko = "여기 한 아이가 있어요,", en = "Here is a child" },
+			{ id = "ch10_f2", ko = "보리빵 다섯 개와", en = "with five barley loaves" },
+			{ id = "ch10_f3", ko = "작은 물고기 두 마리를 가진.", en = "and two little fish." },
+		},
+	},
 }
 
 local byFragmentId: { [string]: { verse: Verse, fragment: Fragment, index: number } } = {}

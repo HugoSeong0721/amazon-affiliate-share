@@ -133,11 +133,15 @@ return function(env: Runner.Env)
 		it("goes inert after destroy", function()
 			local session, calls = newSession(fakeChapter({ "a" }))
 			session:destroy()
+			local broadcastsAtDeath = calls.objectiveBroadcasts
 
 			session:setObjective("a", true)
 			session:say("anything")
+			session:point(Vector3.new(1, 2, 3))
 			expect(session:isObjectiveDone("a")).toBe(false)
 			expect(calls.narrated).toHaveLength(0)
+			expect(calls.objectiveBroadcasts).toBe(broadcastsAtDeath)
+			expect(session.focus).toBeNil()
 		end)
 
 		it("cleans up even when the chapter's cleanup throws", function()
@@ -164,6 +168,18 @@ return function(env: Runner.Env)
 			session:addPlayer(player)
 			expect(session.players).toHaveLength(1)
 			expect(session:removePlayer(player)).toBe(0)
+		end)
+
+		it("narrates to one player without addressing the room", function()
+			local session, calls = newSession(fakeChapter({ "a" }))
+			local player = Instance.new("Folder") :: any
+
+			session:sayTo(player, "ch10.shared")
+			expect(calls.narrated).toEqual({ "ch10.shared" })
+
+			session:destroy()
+			session:sayTo(player, "ch10.shared")
+			expect(calls.narrated).toHaveLength(1)
 		end)
 
 		it("refuses to grant a fragment the chapter does not own", function()
