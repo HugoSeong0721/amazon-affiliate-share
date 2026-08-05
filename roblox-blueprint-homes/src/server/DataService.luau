@@ -118,6 +118,17 @@ function DataService.Credit(player: Player, amount: number)
 	moneyChanged:FireClient(player, profile.money)
 end
 
+-- Used by undo/redo, which restores an exact earlier balance rather than
+-- applying a delta.
+function DataService.SetMoney(player: Player, amount: number)
+	local profile = profiles[player]
+	if not profile then
+		return
+	end
+	profile.money = math.max(0, math.floor(amount))
+	moneyChanged:FireClient(player, profile.money)
+end
+
 function DataService.TryDebit(player: Player, amount: number): boolean
 	local profile = profiles[player]
 	amount = math.floor(amount)
@@ -149,6 +160,9 @@ function DataService.CreditToUser(userId: number, amount: number, reason: string
 		profile.totalRoyalties += amount
 		DataService.Credit(online, amount)
 		notify:FireClient(online, ("Blueprint sold! +%s"):format(Util.money(amount)), "good")
+		-- Persist now: the buyer already owns the blueprint, so a crash before
+		-- the next autosave would take the creator's cut with it.
+		DataService.Save(online)
 		return
 	end
 	if not earningsStore then
@@ -170,6 +184,11 @@ function DataService.ClaimEarnings(player: Player)
 	if not profile or not earningsStore then
 		return
 	end
+	-- Claiming empties the inbox, so never claim into a profile that cannot be
+	-- written back: the credit would vanish with the session.
+	if not profile.loadedOk then
+		return
+	end
 	local claimed = 0
 	local ok = pcall(function()
 		(earningsStore :: any):UpdateAsync("e_" .. player.UserId, function(old)
@@ -181,6 +200,9 @@ function DataService.ClaimEarnings(player: Player)
 		profile.totalRoyalties += claimed
 		DataService.Credit(player, claimed)
 		notify:FireClient(player, ("Your blueprints sold while you were away! +%s"):format(Util.money(claimed)), "good")
+		-- The inbox is already zeroed; make the credit durable before anything
+		-- else can end the session.
+		DataService.Save(player)
 	end
 end
 

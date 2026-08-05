@@ -19,7 +19,7 @@ export type Plot = {
 	ownerUserId: number?,
 	-- build state (managed by BuildService)
 	items: { [number]: any },
-	occupancy: { [string]: { [string]: boolean } },
+	occupancy: { [string]: { [string]: boolean? } },
 	nextUid: number,
 }
 

@@ -20,6 +20,7 @@ Config.DailyBonusCooldown = 20 * 3600 -- seconds
 Config.PassiveIncomeAmount = 500 -- "rent" while playing
 Config.PassiveIncomeInterval = 600 -- seconds
 Config.SellRefundRate = 0.75 -- refund when deleting an item
+Config.UndoDepth = 20 -- build steps kept for undo/redo, per player
 
 -- // Blueprint market (the differentiator)
 Config.Blueprint = {
@@ -67,6 +68,8 @@ Config.EarningsClaimInterval = 90 -- poll offline-sale earnings while online
 Config.RateLimits = {
 	PlaceItem = 0.06,
 	RemoveItem = 0.06,
+	MoveItem = 0.06,
+	Undo = 0.15,
 	GetMarket = 1.0,
 	BuyBlueprint = 2.0,
 	ApplyBlueprint = 5.0,

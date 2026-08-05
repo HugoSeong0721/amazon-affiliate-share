@@ -2,7 +2,6 @@
 -- Client build mode: grid ghost preview, rotate, place, delete.
 -- Purely cosmetic - the server re-validates everything.
 
-local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
 
@@ -25,9 +24,12 @@ local plotOrigin: Vector3? = nil
 -- occupancy mirror (cell key -> overlapping item count) for instant green/red feedback
 local occupancyCount: { [string]: { [string]: number } } = { floor = {}, object = {} }
 
--- build mode state
+-- build mode state. Exactly one tool is active: place (an item is selected),
+-- delete, or move.
 local active = false
 local deleteMode = false
+local moveMode = false
+local heldUid: number? = nil -- item picked up in move mode
 local selectedId: string? = nil
 local rotation = 0
 local ghost: Model? = nil
@@ -48,8 +50,11 @@ local function trackItem(model: Instance, add: boolean)
 	local x = model:GetAttribute("X")
 	local z = model:GetAttribute("Z")
 	local r = model:GetAttribute("R")
-	local def = itemId and Catalog.ById[itemId]
-	if not def or type(x) ~= "number" or type(z) ~= "number" or type(r) ~= "number" then
+	if type(itemId) ~= "string" or type(x) ~= "number" or type(z) ~= "number" or type(r) ~= "number" then
+		return -- attributes not replicated yet, or an item from another version
+	end
+	local def = Catalog.ById[itemId]
+	if not def then
 		return
 	end
 	local layerMap = occupancyCount[def.layer]
@@ -109,14 +114,26 @@ local function refreshGhost()
 	destroyGhost()
 	if active and not deleteMode and selectedId then
 		local def = Catalog.ById[selectedId]
-		if def then
-			ghost = ItemModels.buildGhost(def)
-			ghost.Parent = workspace.CurrentCamera -- camera children don't collide/replicate
+		-- Parent to the camera so the preview never collides or replicates.
+		-- CurrentCamera is nil for a frame or two while the client boots; without
+		-- a parent the ghost would exist but never render.
+		local camera = workspace.CurrentCamera
+		if def and camera then
+			local model = ItemModels.buildGhost(def)
+			model.Parent = camera
+			ghost = model
 		end
 	end
 end
 
 -- // input helpers -------------------------------------------------------
+
+local function ctrlHeld(): boolean
+	return UserInputService:IsKeyDown(Enum.KeyCode.LeftControl)
+		or UserInputService:IsKeyDown(Enum.KeyCode.RightControl)
+		or UserInputService:IsKeyDown(Enum.KeyCode.LeftMeta)
+		or UserInputService:IsKeyDown(Enum.KeyCode.RightMeta)
+end
 
 local function pointerRay(): Ray?
 	local camera = workspace.CurrentCamera
@@ -169,7 +186,7 @@ end
 -- // actions -------------------------------------------------------------
 
 local function tryPlace()
-	if not (active and not deleteMode and selectedId and lastCell and ghostValid) then
+	if not (active and not deleteMode and not moveMode and selectedId and lastCell and ghostValid) then
 		return
 	end
 	local result = Net.func("PlaceItem"):InvokeServer(selectedId, lastCell.x, lastCell.z, rotation)
@@ -177,6 +194,41 @@ local function tryPlace()
 		if placeSound then
 			placeSound:Play()
 		end
+	elseif result then
+		UI.Toast(UI.ErrorText(result.err), "bad")
+	end
+end
+
+-- Move mode: first click picks an item up, second click drops it on the grid.
+local function tryPickUp()
+	local model = raycastOwnItem()
+	if not model then
+		return
+	end
+	local uid = model:GetAttribute("Uid")
+	local itemId = model:GetAttribute("ItemId")
+	local r = model:GetAttribute("R")
+	if type(uid) ~= "number" or type(itemId) ~= "string" then
+		return
+	end
+	heldUid = uid
+	selectedId = itemId
+	rotation = type(r) == "number" and r or 0
+	refreshGhost()
+	UI.SetCarrying(true)
+end
+
+local function tryDrop()
+	local uid = heldUid
+	if not (uid and lastCell and ghostValid) then
+		return
+	end
+	local result = Net.func("MoveItem"):InvokeServer(uid, lastCell.x, lastCell.z, rotation)
+	if result and result.ok then
+		heldUid = nil
+		selectedId = nil
+		destroyGhost()
+		UI.SetCarrying(false)
 	elseif result then
 		UI.Toast(UI.ErrorText(result.err), "bad")
 	end
@@ -194,20 +246,37 @@ local function tryDelete()
 	end
 end
 
+local function sendHistory(which: string)
+	local result = Net.func(which):InvokeServer()
+	if result and not result.ok then
+		UI.Toast(UI.ErrorText(result.err), "bad")
+	end
+end
+
 -- // mode control --------------------------------------------------------
 
-local function setDeleteMode(on: boolean)
-	deleteMode = on
-	if deleteMode then
-		destroyGhost()
-	else
-		refreshGhost()
-	end
+local function clearHover()
 	if hoverHighlight then
 		hoverHighlight:Destroy()
 		hoverHighlight = nil
 	end
-	UI.SetBuildMode(active, deleteMode)
+end
+
+-- Delete and move are mutually exclusive tools; entering either drops whatever
+-- was being carried so the two never fight over the ghost.
+local function setTool(tool: string)
+	deleteMode = tool == "delete"
+	moveMode = tool == "move"
+	heldUid = nil
+	clearHover()
+	if deleteMode or moveMode then
+		selectedId = nil
+		destroyGhost()
+	else
+		refreshGhost()
+	end
+	UI.SetBuildMode(active, deleteMode, moveMode)
+	UI.SetCarrying(false)
 end
 
 function BuildController.EnterBuild()
@@ -217,7 +286,9 @@ function BuildController.EnterBuild()
 	end
 	active = true
 	deleteMode = false
-	UI.SetBuildMode(true, false)
+	moveMode = false
+	heldUid = nil
+	UI.SetBuildMode(true, false, false)
 	if plotSelection then
 		plotSelection:Destroy()
 	end
@@ -233,26 +304,25 @@ end
 function BuildController.ExitBuild()
 	active = false
 	deleteMode = false
+	moveMode = false
+	heldUid = nil
 	selectedId = nil
 	destroyGhost()
 	if plotSelection then
 		plotSelection:Destroy()
 		plotSelection = nil
 	end
-	if hoverHighlight then
-		hoverHighlight:Destroy()
-		hoverHighlight = nil
-	end
-	UI.SetBuildMode(false, false)
+	clearHover()
+	UI.SetBuildMode(false, false, false)
+	UI.SetCarrying(false)
 end
 
 function BuildController.SelectItem(itemId: string)
-	selectedId = itemId
-	if deleteMode then
-		setDeleteMode(false)
-	else
-		refreshGhost()
+	if deleteMode or moveMode then
+		setTool("place")
 	end
+	selectedId = itemId
+	refreshGhost()
 end
 
 function BuildController.Rotate()
@@ -261,7 +331,25 @@ end
 
 function BuildController.ToggleDelete()
 	if active then
-		setDeleteMode(not deleteMode)
+		setTool(deleteMode and "place" or "delete")
+	end
+end
+
+function BuildController.ToggleMove()
+	if active then
+		setTool(moveMode and "place" or "move")
+	end
+end
+
+function BuildController.Undo()
+	if active then
+		sendHistory("Undo")
+	end
+end
+
+function BuildController.Redo()
+	if active then
+		sendHistory("Redo")
 	end
 end
 
@@ -272,7 +360,8 @@ local function updatePreview()
 		return
 	end
 
-	if deleteMode then
+	-- delete, and move before an item is picked up, both hover-highlight
+	if deleteMode or (moveMode and not heldUid) then
 		local model = raycastOwnItem()
 		if hoverHighlight and hoverHighlight.Adornee ~= model then
 			hoverHighlight:Destroy()
@@ -280,7 +369,7 @@ local function updatePreview()
 		end
 		if model and not hoverHighlight then
 			local highlight = Instance.new("Highlight")
-			highlight.FillColor = Color3.fromRGB(220, 80, 70)
+			highlight.FillColor = deleteMode and Color3.fromRGB(220, 80, 70) or Color3.fromRGB(90, 170, 240)
 			highlight.FillTransparency = 0.5
 			highlight.Adornee = model
 			highlight.Parent = model
@@ -288,9 +377,13 @@ local function updatePreview()
 		end
 		return
 	end
+	clearHover()
 
 	local origin = plotOrigin
 	local id = selectedId
+	if id and not ghost then
+		refreshGhost() -- CurrentCamera wasn't ready when the item was picked
+	end
 	if not (ghost and origin and id) then
 		return
 	end
@@ -319,6 +412,9 @@ function BuildController.Init(ui: any)
 		exitBuild = BuildController.ExitBuild,
 		selectItem = BuildController.SelectItem,
 		toggleDelete = BuildController.ToggleDelete,
+		toggleMove = BuildController.ToggleMove,
+		undo = BuildController.Undo,
+		redo = BuildController.Redo,
 		rotate = BuildController.Rotate,
 	})
 
@@ -351,6 +447,12 @@ function BuildController.Init(ui: any)
 			end
 			if deleteMode then
 				tryDelete()
+			elseif moveMode then
+				if heldUid then
+					tryDrop()
+				else
+					tryPickUp()
+				end
 			else
 				-- on touch, first tap aims (RenderStepped follows GetMouseLocation), second tap places
 				tryPlace()
@@ -359,7 +461,13 @@ function BuildController.Init(ui: any)
 			if active then
 				BuildController.Rotate()
 			end
-		elseif input.KeyCode == Enum.KeyCode.X then
+		elseif input.KeyCode == Enum.KeyCode.Z and ctrlHeld() then
+			BuildController.Undo()
+		elseif input.KeyCode == Enum.KeyCode.Y and ctrlHeld() then
+			BuildController.Redo()
+		elseif input.KeyCode == Enum.KeyCode.M then
+			BuildController.ToggleMove()
+		elseif input.KeyCode == Enum.KeyCode.X or input.KeyCode == Enum.KeyCode.G then
 			BuildController.ToggleDelete()
 		elseif input.KeyCode == Enum.KeyCode.Q then
 			if active then

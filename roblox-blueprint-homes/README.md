@@ -44,7 +44,7 @@
 
 ## 바로 받기 (툴체인 불필요)
 
-**⬇️ [BlueprintHomes-v4.rbxl 다운로드](https://github.com/HugoSeong0721/amazon-affiliate-share/raw/claude/roblox-house-building-game-sxuk4g/roblox-blueprint-homes/build/BlueprintHomes-v4.rbxl)**
+**⬇️ [BlueprintHomes-v5.rbxl 다운로드](https://github.com/HugoSeong0721/amazon-affiliate-share/raw/claude/roblox-house-building-game-sxuk4g/roblox-blueprint-homes/build/BlueprintHomes-v5.rbxl)**
 
 받아서 Roblox Studio로 열고 **Play(F5)** 누르면 스폰 광장에서 시작한다.
 Studio에서 파일을 열었을 때 Workspace가 비어 보이는 건 정상이다 — 동네 맵(도로,
@@ -52,6 +52,7 @@ Studio에서 파일을 열었을 때 Workspace가 비어 보이는 건 정상이
 
 | 버전 | 변경 |
 |---|---|
+| v5 | Bloxburg 대응 기능 추가(가구 이동 `M`, 되돌리기 `Ctrl+Z`/`Ctrl+Y`, 삭제 `G`), 타입 검사·테스트 스위트 도입, 로열티 유실 버그 수정 |
 | v4 | 미퍼블리시 시 프리미티브 파츠로 만든 R6 리그(StarterCharacter)를 사용해 캐릭터가 실제로 보이도록 수정 |
 | v3 | 미퍼블리시 대응 1차 시도(`LoadCharacterAppearance=false`) — 기본 아바타가 R15 메시라 불충분했음, 존재하지 않는 사운드 에셋 참조 제거 |
 | v2 | 맵 생성 전 캐릭터가 빈 공간에 스폰돼 낙사하던 문제 수정, 스폰 광장 추가, 플롯 간판 크기를 스터드 기준으로 변경(거리별 축소) |
@@ -89,12 +90,14 @@ aftman install        # rojo 7.4.4
 rojo serve
 
 # B) 배포용 .rbxl 재빌드 (위 다운로드 파일을 만든 명령)
-rojo build default.project.json -o build/BlueprintHomes-v4.rbxl
+rojo build default.project.json -o build/BlueprintHomes-v5.rbxl
 ```
 
 서버당 플롯이 8개이므로 퍼블리시할 때 place 설정에서 **최대 플레이어 8명**으로 맞출 것.
 
 ## 조작
+
+Bloxburg의 조작 체계를 최대한 그대로 따랐다(`R` 회전, `G` 삭제, `Ctrl+Z` 되돌리기).
 
 | 입력 | 동작 |
 |---|---|
@@ -102,10 +105,32 @@ rojo build default.project.json -o build/BlueprintHomes-v4.rbxl
 | 마우스 이동 | 고스트 프리뷰 (초록 = 가능 / 빨강 = 불가) |
 | 클릭 | 설치 (연속 설치 지원) |
 | `R` | 90° 회전 |
-| `X` | 삭제 모드 (75% 환불) |
+| `M` | 이동 모드 — 가구 클릭해서 집고, 다시 클릭해서 내려놓기 (무료) |
+| `G` / `X` | 삭제 모드 (75% 환불) |
+| `Ctrl+Z` / `Ctrl+Y` | 되돌리기 / 다시 실행 (최근 20단계) |
 | `Q` | 건축 모드 종료 |
 | MARKET 버튼 | 블루프린트 마켓 (Top Sellers / Newest / Mine) |
 | PUBLISH 버튼 | 현재 플롯을 설계도로 마켓에 등록 |
+
+## 개발 검증
+
+Roblox 없이 돌아가는 검증 두 단계. 둘 다 이 저장소만으로 실행된다.
+
+```bash
+# 1) 타입 검사 — 실제 Roblox 타입 정의로 정적 분석
+rojo sourcemap default.project.json -o /tmp/sourcemap.json
+luau-lsp analyze --sourcemap=/tmp/sourcemap.json --definitions=globalTypes.d.luau src
+
+# 2) 서버 로직 테스트 — Roblox API를 모킹해 실제 모듈을 실행 (43 케이스)
+python3 tests/run.py --luau /path/to/luau
+```
+
+테스트가 다루는 범위: 그리드 수학, 블루프린트 검증(겹침·경계·손상된 데이터·구버전 아이템),
+설치/삭제/이동 규칙과 요금, 되돌리기의 금액 정합성, 마켓 전 과정(퍼블리시 → 구매 →
+로열티 → 시공)과 **오프라인 로열티 정산**, 플롯 배정·회수.
+
+한계: 클라이언트 렌더링·입력·카메라는 헤드리스로 정직하게 검증할 수 없어 범위 밖이다.
+그쪽은 여전히 Studio에서 직접 확인해야 한다.
 
 ## 폴더 구조
 
@@ -125,9 +150,11 @@ src/server/
   BuildService.luau       설치/삭제 서버 판정 (전 입력 타입·경계·점유·잔액 검증)
   BlueprintMarketService.luau  퍼블리시/브라우징/구매/시공 + 판매 차트
   EconomyService.luau     수입 루프 + 게임패스/개발자상품 훅
+  FallbackCharacter.luau  미퍼블리시 플레이스용 R6 리그 (다운로드 0)
 src/client/
-  BuildController.luau    고스트 프리뷰, 회전, 설치/삭제 입력
+  BuildController.luau    고스트 프리뷰, 회전, 설치/삭제/이동, 되돌리기 입력
   UI.luau                 HUD, 카탈로그, 마켓 창, 퍼블리시 다이얼로그, 토스트
+tests/                    Roblox API 모킹 + 서버 로직 스위트 (run.py로 실행)
 docs/                     시장 리서치 + 게임 디자인 문서
 ```
 

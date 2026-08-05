@@ -14,6 +14,9 @@ local EVENTS = {
 local FUNCTIONS = {
 	"PlaceItem", -- (itemId, x, z, r) -> {ok, err?, money?}
 	"RemoveItem", -- (uid) -> {ok, err?, money?}
+	"MoveItem", -- (uid, x, z, r) -> {ok, err?, money?}
+	"Undo", -- () -> {ok, err?, money?}
+	"Redo", -- () -> {ok, err?, money?}
 	"PublishBlueprint", -- (name, price) -> {ok, err?, meta?}
 	"GetMarket", -- (tab: "top"|"new") -> {ok, listings?}
 	"BuyBlueprint", -- (blueprintId) -> {ok, err?, money?}

@@ -30,6 +30,8 @@ local EconomyService = require(script.Parent.EconomyService)
 
 local BlueprintMarketService = {}
 
+type Result = BuildService.Result & { meta: any?, listings: { any }?, published: { any }?, owned: { any }?, totalRoyalties: number? }
+
 local BP = Config.Blueprint
 
 local dataStore = nil -- blueprint item data (immutable once published)
@@ -107,7 +109,7 @@ end
 
 -- // handlers -----------------------------------------------------------
 
-function BlueprintMarketService.Publish(player: Player, name: any, price: any)
+function BlueprintMarketService.Publish(player: Player, name: any, price: any): Result
 	if BuildService.RateLimited(player, "PublishBlueprint") then
 		return { ok = false, err = "slow-down" }
 	end
@@ -175,7 +177,7 @@ function BlueprintMarketService.Publish(player: Player, name: any, price: any)
 	return { ok = true, meta = meta }
 end
 
-function BlueprintMarketService.GetMarket(player: Player, tab: any)
+function BlueprintMarketService.GetMarket(player: Player, tab: any): Result
 	if BuildService.RateLimited(player, "GetMarket") then
 		return { ok = false, err = "slow-down" }
 	end
@@ -206,7 +208,7 @@ function BlueprintMarketService.GetMarket(player: Player, tab: any)
 	return { ok = true, listings = listings }
 end
 
-function BlueprintMarketService.Buy(player: Player, id: any)
+function BlueprintMarketService.Buy(player: Player, id: any): Result
 	if BuildService.RateLimited(player, "BuyBlueprint") then
 		return { ok = false, err = "slow-down" }
 	end
@@ -217,15 +219,17 @@ function BlueprintMarketService.Buy(player: Player, id: any)
 	if not profile then
 		return { ok = false, err = "bad-request" }
 	end
-	if profile.ownedBlueprints[id] then
-		return { ok = false, err = "already-owned" }
-	end
 	local meta = getMeta(id)
 	if not meta then
 		return { ok = false, err = "not-found" }
 	end
+	-- Creators already own what they published, so check authorship first to
+	-- return the more specific reason.
 	if meta.creatorId == player.UserId then
 		return { ok = false, err = "own-blueprint" }
+	end
+	if profile.ownedBlueprints[id] then
+		return { ok = false, err = "already-owned" }
 	end
 	if not DataService.TryDebit(player, meta.price) then
 		return { ok = false, err = "no-money" }
@@ -260,7 +264,7 @@ function BlueprintMarketService.Buy(player: Player, id: any)
 	return { ok = true, money = DataService.GetMoney(player) }
 end
 
-function BlueprintMarketService.Apply(player: Player, id: any)
+function BlueprintMarketService.Apply(player: Player, id: any): Result
 	if BuildService.RateLimited(player, "ApplyBlueprint") then
 		return { ok = false, err = "slow-down" }
 	end
@@ -284,6 +288,11 @@ function BlueprintMarketService.Apply(player: Player, id: any)
 		return { ok = false, err = "bad-build" }
 	end
 
+	if DataService.GetMoney(player) < materialCost then
+		return { ok = false, err = "no-money", materialCost = materialCost }
+	end
+	-- Snapshot before anything changes, so one undo puts the old house back.
+	BuildService.Snapshot(player)
 	-- charge materials first; then clearing refunds the old furniture
 	if not DataService.TryDebit(player, materialCost) then
 		return { ok = false, err = "no-money", materialCost = materialCost }
@@ -294,7 +303,7 @@ function BlueprintMarketService.Apply(player: Player, id: any)
 	return { ok = true, money = DataService.GetMoney(player), materialCost = materialCost }
 end
 
-function BlueprintMarketService.GetMine(player: Player)
+function BlueprintMarketService.GetMine(player: Player): Result
 	if BuildService.RateLimited(player, "GetMyBlueprints") then
 		return { ok = false, err = "slow-down" }
 	end

@@ -43,6 +43,8 @@ local ERR: { [string]: string } = {
 	["not-owned"] = "Buy the blueprint first.",
 	["bad-build"] = "This blueprint can't be built.",
 	["too-many-items"] = "Too many items.",
+	["nothing-to-undo"] = "Nothing left to undo.",
+	["nothing-to-redo"] = "Nothing to redo.",
 }
 
 function UI.ErrorText(code: any): string
@@ -96,12 +98,17 @@ local publishDialog: Frame
 local confirmDialog: Frame
 local buildButton: TextButton
 local deleteButton: TextButton
+local moveButton: TextButton
+local carryHint: TextLabel
 
 local handlers = {
 	enterBuild = function() end,
 	exitBuild = function() end,
 	selectItem = function(_id: string) end,
 	toggleDelete = function() end,
+	toggleMove = function() end,
+	undo = function() end,
+	redo = function() end,
 	rotate = function() end,
 }
 
@@ -298,6 +305,20 @@ local function buildCatalog()
 		Text = "Build Catalog",
 	}, catalogPanel)
 
+	carryHint = new("TextLabel", {
+		Size = UDim2.fromOffset(300, 32),
+		Position = UDim2.new(0.5, -150, 1, -108),
+		BackgroundColor3 = C_PANEL,
+		BackgroundTransparency = 0.1,
+		Font = Enum.Font.GothamMedium,
+		TextSize = 14,
+		TextColor3 = C_TEXT,
+		Text = "Carrying - click to drop, R to rotate",
+		Visible = false,
+	}, screen)
+	round(carryHint, 8)
+	stroke(carryHint, C_ACCENT, 1.5)
+
 	-- category tabs
 	local tabs = new("ScrollingFrame", {
 		Size = UDim2.new(1, -16, 0, 30),
@@ -376,37 +397,59 @@ local function buildCatalog()
 
 	-- action buttons (also the mobile path for rotate/delete/exit)
 	local actions = new("Frame", {
-		Size = UDim2.new(1, -16, 0, 78),
-		Position = UDim2.new(0, 8, 1, -86),
+		Size = UDim2.new(1, -16, 0, 122),
+		Position = UDim2.new(0, 8, 1, -130),
 		BackgroundTransparency = 1,
 	}, catalogPanel)
 	local rotateBtn = textButton("Rotate [R]", { Size = UDim2.new(0.5, -4, 0, 34) }, actions)
-	deleteButton = textButton("Delete [X]", { Size = UDim2.new(0.5, -4, 0, 34), Position = UDim2.new(0.5, 4, 0, 0) }, actions)
+	moveButton = textButton("Move [M]", { Size = UDim2.new(0.5, -4, 0, 34), Position = UDim2.new(0.5, 4, 0, 0) }, actions)
+	deleteButton = textButton("Delete [G]", { Size = UDim2.new(0.5, -4, 0, 34), Position = UDim2.new(0, 0, 0, 40) }, actions)
+	local undoBtn = textButton("Undo", { Size = UDim2.new(0.25, -4, 0, 34), Position = UDim2.new(0.5, 4, 0, 40), TextSize = 13 }, actions)
+	local redoBtn = textButton("Redo", { Size = UDim2.new(0.25, -4, 0, 34), Position = UDim2.new(0.75, 4, 0, 40), TextSize = 13 }, actions)
 	local exitBtn = textButton("Exit Build [Q]", {
 		Size = UDim2.new(1, 0, 0, 34),
-		Position = UDim2.new(0, 0, 0, 40),
+		Position = UDim2.new(0, 0, 0, 80),
 		BackgroundColor3 = C_BAD,
 	}, actions)
 
 	rotateBtn.Activated:Connect(function()
 		handlers.rotate()
 	end)
+	moveButton.Activated:Connect(function()
+		handlers.toggleMove()
+	end)
 	deleteButton.Activated:Connect(function()
 		handlers.toggleDelete()
+	end)
+	undoBtn.Activated:Connect(function()
+		handlers.undo()
+	end)
+	redoBtn.Activated:Connect(function()
+		handlers.redo()
 	end)
 	exitBtn.Activated:Connect(function()
 		handlers.exitBuild()
 	end)
 end
 
-function UI.SetBuildMode(active: boolean, deleteMode: boolean)
+function UI.SetBuildMode(active: boolean, deleteMode: boolean, moveMode: boolean?)
 	catalogPanel.Visible = active
 	buildButton.Text = active and "DONE" or "BUILD"
 	deleteButton.BackgroundColor3 = deleteMode and C_BAD or C_PANEL2
+	moveButton.BackgroundColor3 = moveMode and C_ACCENT or C_PANEL2
+	if (deleteMode or moveMode) and selectedItemButton then
+		selectedItemButton.BackgroundColor3 = C_PANEL2
+		selectedItemButton = nil
+	end
 	if not active and selectedItemButton then
 		selectedItemButton.BackgroundColor3 = C_PANEL2
 		selectedItemButton = nil
 	end
+end
+
+-- Shown while an item is picked up in move mode, so the second click is obvious.
+function UI.SetCarrying(carrying: boolean)
+	carryHint.Visible = carrying
 end
 
 -- // blueprint market ----------------------------------------------------
