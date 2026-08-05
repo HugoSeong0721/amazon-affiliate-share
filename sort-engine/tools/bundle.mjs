@@ -41,11 +41,12 @@ const safeStorage = (() => {
  * @param {string} opts.title        <title>
  * @param {string} opts.favicon      파비콘 이모지
  * @param {string} opts.themeColor   theme-color 메타값
+ * @param {string} [opts.lang]      html lang 속성 (기본 'ko')
  * @param {string} opts.outPath      출력 절대경로
  * @param {boolean} [opts.fragment]  true면 <!DOCTYPE>/<html>/<head>/<body> 껍데기를 뺀다
  */
 export function buildSingleFile(opts) {
-  const { repoRoot, jsFiles, htmlFile, cssFile, title, favicon, themeColor, outPath, fragment } = opts;
+  const { repoRoot, jsFiles, htmlFile, cssFile, title, favicon, themeColor, outPath, fragment, lang = 'ko' } = opts;
   const read = (p) => readFileSync(join(repoRoot, p), 'utf8');
 
   let bundle = jsFiles.map((f) => `// ===== ${f} =====\n${stripModuleSyntax(read(f))}`).join('\n');
@@ -76,7 +77,7 @@ ${bundle}
   const page = fragment
     ? `${HEAD}\n${BODY}\n`
     : `<!DOCTYPE html>
-<html lang="ko">
+<html lang="${lang}">
 <head>
 <meta charset="UTF-8">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>${favicon}</text></svg>">

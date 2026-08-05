@@ -20,8 +20,8 @@ export const COLOR_HEX = {
 };
 
 export const COLOR_NAME = {
-  R: '빨강', O: '주황', Y: '노랑', G: '초록',
-  C: '청록', B: '파랑', P: '보라', K: '분홍',
+  R: 'Red', O: 'Orange', Y: 'Yellow', G: 'Green',
+  C: 'Teal', B: 'Blue', P: 'Purple', K: 'Pink',
 };
 
 const rgbCache = new Map();

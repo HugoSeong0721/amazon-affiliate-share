@@ -45,7 +45,7 @@ export function createPlaceholderProvider({ root, closeBtn, config = AD_CONFIG }
           clearInterval(tick);
           closeBtn.disabled = false;
           closeBtn.textContent = '✕';
-          closeBtn.setAttribute('aria-label', '광고 닫기');
+          closeBtn.setAttribute('aria-label', 'Close ad');
         }, 1000);
 
         const done = () => {

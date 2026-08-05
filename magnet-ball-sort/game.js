@@ -285,9 +285,9 @@ export class Game {
     }
 
     const last = this.levelIndex >= LEVEL_DATA.length - 1;
-    this.dom.overlayTitle.textContent = last ? '🎉 모두 구했어요!' : `레벨 ${this.levelIndex + 1} 클리어!`;
-    this.dom.overlayInfo.textContent = `${this.history.length}수 · 참고 답안 ${this.level.par}수`;
-    this.dom.btnNext.textContent = last ? '처음부터 다시 ↻' : '다음 레벨 ▶';
+    this.dom.overlayTitle.textContent = last ? '🎉 Everyone rescued!' : `Level ${this.levelIndex + 1} Clear!`;
+    this.dom.overlayInfo.textContent = `${this.history.length} moves · Par ${this.level.par}`;
+    this.dom.btnNext.textContent = last ? 'Play Again ↻' : 'Next Level ▶';
 
     // 별은 오버레이가 뜰 때 하나씩 튀어나오게 (클래스를 다시 붙여 애니메이션 재생)
     [...this.dom.starRow.children].forEach((el, i) => {
@@ -297,7 +297,7 @@ export class Game {
 
     // 챕터를 막 끝냈다면 친구 한 명이 풀려난다 — 이게 이 여정의 보상이다
     if (nowFreed && !wasFreed) {
-      this.dom.overlayRescue.textContent = `친구를 구했어요! (${this.rescuedCount}/${this.chapterCount})`;
+      this.dom.overlayRescue.textContent = `You rescued a friend! (${this.rescuedCount}/${this.chapterCount})`;
       this.dom.overlayRescue.classList.remove('hidden');
     } else {
       this.dom.overlayRescue.classList.add('hidden');
@@ -309,8 +309,8 @@ export class Game {
 
   updateHud() {
     const done = this.state.bottles.filter((_, i) => isComplete(this.state, i)).length;
-    this.dom.levelLabel.textContent = `레벨 ${this.levelIndex + 1}`;
-    this.dom.moveLabel.textContent = `완성 ${done}/${this.targets.length} · ${this.history.length}수`;
+    this.dom.levelLabel.textContent = `Level ${this.levelIndex + 1}`;
+    this.dom.moveLabel.textContent = `${done}/${this.targets.length} sorted · ${this.history.length} moves`;
     this.dom.btnUndo.disabled = !this.history.length;
   }
 
@@ -351,7 +351,7 @@ export class Game {
       btn.textContent = String(i + 1);
       btn.setAttribute(
         'aria-label',
-        `레벨 ${i + 1} — 색 ${colorsOf(lv.tubes).length}가지, 별 ${this.stars[i]}개`
+        `Level ${i + 1} — ${colorsOf(lv.tubes).length} colors, ${this.stars[i]} stars`
       );
 
       if (this.stars[i] > 0) {
@@ -380,7 +380,7 @@ export class Game {
       friend.style.setProperty('--c', COLOR_HEX[FRIEND_COLORS[chapter % FRIEND_COLORS.length]]);
       friend.setAttribute(
         'aria-label',
-        `${isLast ? '마지막 친구' : `${chapter + 1}번째 친구`} — ${freed ? '구출 완료' : '아직 갇혀 있음'}`
+        `${isLast ? 'Final friend' : `Friend ${chapter + 1}`} — ${freed ? 'rescued' : 'still trapped'}`
       );
       friend.innerHTML =
         (isLast ? '<span class="crown"></span>' : '') +
@@ -389,7 +389,7 @@ export class Game {
 
       const label = document.createElement('div');
       label.className = 'jf-label';
-      label.textContent = freed ? '구출 완료' : isLast ? '마지막 친구' : '갇혀 있음';
+      label.textContent = freed ? 'Rescued' : isLast ? 'Final friend' : 'Trapped';
       road.appendChild(label);
     });
   }

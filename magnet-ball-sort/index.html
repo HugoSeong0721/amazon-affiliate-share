@@ -1,50 +1,50 @@
 <!DOCTYPE html>
-<html lang="ko">
+<html lang="en">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <meta name="theme-color" content="#0f1830">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🧲</text></svg>">
-<title>자석 구슬 — 색깔별로 모으는 퍼즐</title>
+<title>Magnet Balls — Color Sort Puzzle</title>
 <link rel="stylesheet" href="./style.css">
 </head>
 <body>
   <div id="app">
     <header id="topbar">
       <div class="hud-left">
-        <div id="levelLabel">레벨 1</div>
-        <div id="moveLabel">0수</div>
+        <div id="levelLabel">Level 1</div>
+        <div id="moveLabel">0 moves</div>
       </div>
       <div class="hud-right">
-        <button id="btnLevels" class="hud-btn" title="여정 지도" aria-label="여정 지도">☰</button>
-        <button id="btnUndo" class="hud-btn" title="되돌리기" aria-label="되돌리기">↩︎</button>
-        <button id="btnRestart" class="hud-btn" title="다시하기" aria-label="다시하기">⟳</button>
-        <button id="btnMute" class="hud-btn" title="소리 켜기/끄기" aria-label="소리">🔊</button>
+        <button id="btnLevels" class="hud-btn" title="Journey map" aria-label="Journey map">☰</button>
+        <button id="btnUndo" class="hud-btn" title="Undo" aria-label="Undo">↩︎</button>
+        <button id="btnRestart" class="hud-btn" title="Restart level" aria-label="Restart level">⟳</button>
+        <button id="btnMute" class="hud-btn" title="Sound on/off" aria-label="Sound">🔊</button>
       </div>
     </header>
 
     <canvas id="board"></canvas>
 
     <div id="deadEnd" class="hidden">
-      <p class="de-title">🚫 막다른 길이에요!</p>
-      <p class="de-sub">게임이 멈춘 게 아니에요 — 이 배치로는 더 풀 수 없어요</p>
+      <p class="de-title">🚫 Dead end!</p>
+      <p class="de-sub">The game isn&#39;t broken — this layout can&#39;t be solved anymore</p>
       <div class="de-actions">
-        <button id="deUndo" class="de-btn" type="button">↩︎ 되돌리기</button>
-        <button id="deRestart" class="de-btn primary" type="button">⟳ 처음부터</button>
+        <button id="deUndo" class="de-btn" type="button">↩︎ Undo</button>
+        <button id="deRestart" class="de-btn primary" type="button">⟳ Restart</button>
       </div>
     </div>
 
     <div id="overlay" class="hidden">
       <div class="overlay-card">
-        <h2 id="overlayTitle">레벨 클리어!</h2>
+        <h2 id="overlayTitle">Level Clear!</h2>
         <div id="starRow" class="stars">
           <span class="star"></span><span class="star"></span><span class="star"></span>
         </div>
         <p id="overlayInfo"></p>
         <p id="overlayRescue" class="rescue-note hidden"></p>
         <div class="overlay-actions">
-          <button id="btnLevelsFromWin" class="ghost-btn">여정</button>
-          <button id="btnNext">다음 레벨 ▶</button>
+          <button id="btnLevelsFromWin" class="ghost-btn">Journey</button>
+          <button id="btnNext">Next Level ▶</button>
         </div>
       </div>
     </div>
@@ -52,12 +52,12 @@
     <div id="adSlot" class="hidden">
       <div class="ad-frame">
         <div class="ad-head">
-          <span class="ad-tag">광고</span>
+          <span class="ad-tag">AD</span>
           <button id="adClose" class="ad-close" disabled>5</button>
         </div>
         <div class="ad-body">
-          <p class="ad-title">광고 자리</p>
-          <p class="ad-sub">광고 SDK를 연결하면 이 자리에 전면 광고가 표시됩니다.</p>
+          <p class="ad-title">Ad placeholder</p>
+          <p class="ad-sub">An interstitial ad will appear here once an ad network is connected.</p>
         </div>
       </div>
     </div>
@@ -65,9 +65,9 @@
     <div id="levelSelect" class="hidden">
       <div class="ls-card">
         <div class="ls-head">
-          <h2>여정</h2>
+          <h2>Journey</h2>
           <div id="journeyTotal" class="j-total"></div>
-          <button id="btnCloseLevels" class="hud-btn" title="닫기" aria-label="닫기">✕</button>
+          <button id="btnCloseLevels" class="hud-btn" title="Close" aria-label="Close">✕</button>
         </div>
         <div id="journey"></div>
       </div>

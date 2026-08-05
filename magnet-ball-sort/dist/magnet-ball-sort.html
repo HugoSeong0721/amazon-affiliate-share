@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="ko">
+<html lang="en">
 <head>
 <meta charset="UTF-8">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🧲</text></svg>">
-<title>자석 구슬 — 색깔별로 모으는 퍼즐</title>
+<title>Magnet Balls — Color Sort Puzzle</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <meta name="theme-color" content="#0f1830">
 <style>
@@ -516,39 +516,39 @@ body {
 <div id="app">
     <header id="topbar">
       <div class="hud-left">
-        <div id="levelLabel">레벨 1</div>
-        <div id="moveLabel">0수</div>
+        <div id="levelLabel">Level 1</div>
+        <div id="moveLabel">0 moves</div>
       </div>
       <div class="hud-right">
-        <button id="btnLevels" class="hud-btn" title="여정 지도" aria-label="여정 지도">☰</button>
-        <button id="btnUndo" class="hud-btn" title="되돌리기" aria-label="되돌리기">↩︎</button>
-        <button id="btnRestart" class="hud-btn" title="다시하기" aria-label="다시하기">⟳</button>
-        <button id="btnMute" class="hud-btn" title="소리 켜기/끄기" aria-label="소리">🔊</button>
+        <button id="btnLevels" class="hud-btn" title="Journey map" aria-label="Journey map">☰</button>
+        <button id="btnUndo" class="hud-btn" title="Undo" aria-label="Undo">↩︎</button>
+        <button id="btnRestart" class="hud-btn" title="Restart level" aria-label="Restart level">⟳</button>
+        <button id="btnMute" class="hud-btn" title="Sound on/off" aria-label="Sound">🔊</button>
       </div>
     </header>
 
     <canvas id="board"></canvas>
 
     <div id="deadEnd" class="hidden">
-      <p class="de-title">🚫 막다른 길이에요!</p>
-      <p class="de-sub">게임이 멈춘 게 아니에요 — 이 배치로는 더 풀 수 없어요</p>
+      <p class="de-title">🚫 Dead end!</p>
+      <p class="de-sub">The game isn&#39;t broken — this layout can&#39;t be solved anymore</p>
       <div class="de-actions">
-        <button id="deUndo" class="de-btn" type="button">↩︎ 되돌리기</button>
-        <button id="deRestart" class="de-btn primary" type="button">⟳ 처음부터</button>
+        <button id="deUndo" class="de-btn" type="button">↩︎ Undo</button>
+        <button id="deRestart" class="de-btn primary" type="button">⟳ Restart</button>
       </div>
     </div>
 
     <div id="overlay" class="hidden">
       <div class="overlay-card">
-        <h2 id="overlayTitle">레벨 클리어!</h2>
+        <h2 id="overlayTitle">Level Clear!</h2>
         <div id="starRow" class="stars">
           <span class="star"></span><span class="star"></span><span class="star"></span>
         </div>
         <p id="overlayInfo"></p>
         <p id="overlayRescue" class="rescue-note hidden"></p>
         <div class="overlay-actions">
-          <button id="btnLevelsFromWin" class="ghost-btn">여정</button>
-          <button id="btnNext">다음 레벨 ▶</button>
+          <button id="btnLevelsFromWin" class="ghost-btn">Journey</button>
+          <button id="btnNext">Next Level ▶</button>
         </div>
       </div>
     </div>
@@ -556,12 +556,12 @@ body {
     <div id="adSlot" class="hidden">
       <div class="ad-frame">
         <div class="ad-head">
-          <span class="ad-tag">광고</span>
+          <span class="ad-tag">AD</span>
           <button id="adClose" class="ad-close" disabled>5</button>
         </div>
         <div class="ad-body">
-          <p class="ad-title">광고 자리</p>
-          <p class="ad-sub">광고 SDK를 연결하면 이 자리에 전면 광고가 표시됩니다.</p>
+          <p class="ad-title">Ad placeholder</p>
+          <p class="ad-sub">An interstitial ad will appear here once an ad network is connected.</p>
         </div>
       </div>
     </div>
@@ -569,9 +569,9 @@ body {
     <div id="levelSelect" class="hidden">
       <div class="ls-card">
         <div class="ls-head">
-          <h2>여정</h2>
+          <h2>Journey</h2>
           <div id="journeyTotal" class="j-total"></div>
-          <button id="btnCloseLevels" class="hud-btn" title="닫기" aria-label="닫기">✕</button>
+          <button id="btnCloseLevels" class="hud-btn" title="Close" aria-label="Close">✕</button>
         </div>
         <div id="journey"></div>
       </div>
@@ -1074,8 +1074,8 @@ const COLOR_HEX = {
 };
 
 const COLOR_NAME = {
-  R: '빨강', O: '주황', Y: '노랑', G: '초록',
-  C: '청록', B: '파랑', P: '보라', K: '분홍',
+  R: 'Red', O: 'Orange', Y: 'Yellow', G: 'Green',
+  C: 'Teal', B: 'Blue', P: 'Purple', K: 'Pink',
 };
 
 const rgbCache = new Map();
@@ -1982,7 +1982,7 @@ function createPlaceholderProvider({ root, closeBtn, config = AD_CONFIG }) {
           clearInterval(tick);
           closeBtn.disabled = false;
           closeBtn.textContent = '✕';
-          closeBtn.setAttribute('aria-label', '광고 닫기');
+          closeBtn.setAttribute('aria-label', 'Close ad');
         }, 1000);
 
         const done = () => {
@@ -2338,9 +2338,9 @@ class Game {
     }
 
     const last = this.levelIndex >= LEVEL_DATA.length - 1;
-    this.dom.overlayTitle.textContent = last ? '🎉 모두 구했어요!' : `레벨 ${this.levelIndex + 1} 클리어!`;
-    this.dom.overlayInfo.textContent = `${this.history.length}수 · 참고 답안 ${this.level.par}수`;
-    this.dom.btnNext.textContent = last ? '처음부터 다시 ↻' : '다음 레벨 ▶';
+    this.dom.overlayTitle.textContent = last ? '🎉 Everyone rescued!' : `Level ${this.levelIndex + 1} Clear!`;
+    this.dom.overlayInfo.textContent = `${this.history.length} moves · Par ${this.level.par}`;
+    this.dom.btnNext.textContent = last ? 'Play Again ↻' : 'Next Level ▶';
 
     // 별은 오버레이가 뜰 때 하나씩 튀어나오게 (클래스를 다시 붙여 애니메이션 재생)
     [...this.dom.starRow.children].forEach((el, i) => {
@@ -2350,7 +2350,7 @@ class Game {
 
     // 챕터를 막 끝냈다면 친구 한 명이 풀려난다 — 이게 이 여정의 보상이다
     if (nowFreed && !wasFreed) {
-      this.dom.overlayRescue.textContent = `친구를 구했어요! (${this.rescuedCount}/${this.chapterCount})`;
+      this.dom.overlayRescue.textContent = `You rescued a friend! (${this.rescuedCount}/${this.chapterCount})`;
       this.dom.overlayRescue.classList.remove('hidden');
     } else {
       this.dom.overlayRescue.classList.add('hidden');
@@ -2362,8 +2362,8 @@ class Game {
 
   updateHud() {
     const done = this.state.bottles.filter((_, i) => isComplete(this.state, i)).length;
-    this.dom.levelLabel.textContent = `레벨 ${this.levelIndex + 1}`;
-    this.dom.moveLabel.textContent = `완성 ${done}/${this.targets.length} · ${this.history.length}수`;
+    this.dom.levelLabel.textContent = `Level ${this.levelIndex + 1}`;
+    this.dom.moveLabel.textContent = `${done}/${this.targets.length} sorted · ${this.history.length} moves`;
     this.dom.btnUndo.disabled = !this.history.length;
   }
 
@@ -2404,7 +2404,7 @@ class Game {
       btn.textContent = String(i + 1);
       btn.setAttribute(
         'aria-label',
-        `레벨 ${i + 1} — 색 ${colorsOf(lv.tubes).length}가지, 별 ${this.stars[i]}개`
+        `Level ${i + 1} — ${colorsOf(lv.tubes).length} colors, ${this.stars[i]} stars`
       );
 
       if (this.stars[i] > 0) {
@@ -2433,7 +2433,7 @@ class Game {
       friend.style.setProperty('--c', COLOR_HEX[FRIEND_COLORS[chapter % FRIEND_COLORS.length]]);
       friend.setAttribute(
         'aria-label',
-        `${isLast ? '마지막 친구' : `${chapter + 1}번째 친구`} — ${freed ? '구출 완료' : '아직 갇혀 있음'}`
+        `${isLast ? 'Final friend' : `Friend ${chapter + 1}`} — ${freed ? 'rescued' : 'still trapped'}`
       );
       friend.innerHTML =
         (isLast ? '<span class="crown"></span>' : '') +
@@ -2442,7 +2442,7 @@ class Game {
 
       const label = document.createElement('div');
       label.className = 'jf-label';
-      label.textContent = freed ? '구출 완료' : isLast ? '마지막 친구' : '갇혀 있음';
+      label.textContent = freed ? 'Rescued' : isLast ? 'Final friend' : 'Trapped';
       road.appendChild(label);
     });
   }
