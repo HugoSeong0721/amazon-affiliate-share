@@ -35,10 +35,12 @@ function starsFor(moves, par) {
 }
 
 export class Game {
-  constructor({ renderer, sound, dom }) {
+  // onCleared: 레벨을 깰 때마다 불린다. 광고 빈도 계산 같은 게임 밖 관심사를 여기로 뺀다.
+  constructor({ renderer, sound, dom, onCleared }) {
     this.renderer = renderer;
     this.sound = sound;
     this.dom = dom;
+    this.onCleared = onCleared;
     const saved = parseInt(localStorage.getItem(STORAGE_LEVEL) || '0', 10);
     this.levelIndex = Number.isFinite(saved) ? Math.min(Math.max(saved, 0), LEVEL_DATA.length - 1) : 0;
     const marks = localStorage.getItem(STORAGE_CLEARED) || '';
@@ -290,6 +292,7 @@ export class Game {
     }
 
     this._winT = setTimeout(() => this.dom.overlay.classList.remove('hidden'), 800);
+    this.onCleared?.(this.levelIndex);
   }
 
   updateHud() {

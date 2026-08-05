@@ -2,6 +2,7 @@
 
 import { Renderer } from './render.js';
 import { Sound } from './audio.js';
+import { AdManager, AD_CONFIG, createPlaceholderProvider } from './ads.js';
 import { Game, LEVEL_DATA } from './game.js';
 
 const $ = (id) => document.getElementById(id);
@@ -24,9 +25,27 @@ const dom = {
   starRow: $('starRow'),
 };
 
+const params = new URLSearchParams(location.search);
+
 const renderer = new Renderer(dom.board);
 const sound = new Sound();
-const game = new Game({ renderer, sound, dom });
+
+// ?noads 로 광고를 끌 수 있다 (개발·자동화 테스트용)
+const ads = new AdManager({
+  enabled: !params.has('noads'),
+  provider: createPlaceholderProvider({
+    root: $('adSlot'),
+    closeBtn: $('adClose'),
+    config: AD_CONFIG,
+  }),
+});
+
+const game = new Game({
+  renderer,
+  sound,
+  dom,
+  onCleared: () => ads.noteLevelCleared(),
+});
 
 function updateMuteIcon() {
   dom.btnMute.textContent = sound.muted ? '🔇' : '🔊';
@@ -43,7 +62,17 @@ dom.board.addEventListener('contextmenu', (e) => e.preventDefault());
 
 dom.btnUndo.addEventListener('click', () => game.undo());
 dom.btnRestart.addEventListener('click', () => game.restart());
-dom.btnNext.addEventListener('click', () => game.next());
+// 광고는 레벨을 깬 뒤 "다음 레벨"을 누를 때만 띄운다.
+// 퍼즐 도중이나 다시하기에는 절대 띄우지 않는다.
+dom.btnNext.addEventListener('click', async () => {
+  dom.btnNext.disabled = true;
+  try {
+    await ads.maybeShow();
+  } finally {
+    dom.btnNext.disabled = false;
+  }
+  game.next();
+});
 dom.btnMute.addEventListener('click', () => {
   sound.setMuted(!sound.muted);
   updateMuteIcon();
@@ -67,11 +96,13 @@ renderer.resize();
 game.loadLevel(game.levelIndex);
 
 // ?debug — 자동화 테스트/개발용 훅
-if (new URLSearchParams(location.search).has('debug')) {
+if (params.has('debug')) {
   window.__mbs = {
     game,
     renderer,
     sound,
+    ads,
+    adsModule: { AdManager, AD_CONFIG },
     levelCount: LEVEL_DATA.length,
     tap: (i) => game.tap(i),
     state: () => game.state,

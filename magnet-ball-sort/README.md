@@ -35,6 +35,49 @@
   목표가 지도에 그려져 있어서 "왜 하는지"를 문구로 설명하지 않는다.
 - 진행·별점은 기기에 저장된다 (`mbs.level` / `mbs.cleared` / `mbs.stars`)
 
+## 광고
+
+전면 광고 자리와 **노출 빈도 규칙**이 `ads.js`에 들어 있다. 기본 제공자는 자리만 보여주는
+플레이스홀더라서, 광고 계정 없이도 "언제 얼마나 끊기는지"를 직접 플레이해보며 조정할 수 있다.
+
+빈도 규칙이 이 파일의 핵심이다. 광고는 수익보다 리텐션을 더 빨리 망가뜨려서
+**언제 안 띄울지가 더 중요하다**:
+
+| 규칙 | 기본값 | 이유 |
+|---|---|---|
+| `freeLevels` | 3 | 재미를 느끼기 전에 끊으면 그대로 이탈한다 |
+| `everyNLevels` | 2 | 그 뒤로는 두 판마다 |
+| `minSecondsBetween` | 45 | 빨리 깨는 사람에게 연속으로 뜨지 않게 |
+| `countdownSeconds` | 5 | 닫기 버튼이 열리기까지 |
+
+그리고 코드로 못 박아둔 것들:
+
+- **퍼즐 도중에는 절대 안 뜬다.** 레벨을 깬 뒤 "다음 레벨"을 누를 때만 뜬다
+- **다시하기(재도전)에는 안 뜬다.** 재도전에 벌을 주면 아무도 안 한다
+- `?noads` 를 붙이면 완전히 끈다 (개발·자동화 테스트용)
+
+### 실제 광고를 붙일 때
+
+`provider` 하나만 갈아끼우면 된다. 인터페이스는 `isReady()` 와 `show(): Promise` 둘뿐이다.
+
+```js
+// 예: Capacitor + AdMob (네이티브 앱으로 감쌌을 때)
+const admob = {
+  name: 'admob',
+  isReady: () => interstitialLoaded,
+  show: async () => { await AdMob.showInterstitial(); await AdMob.prepareInterstitial(opts); },
+};
+const ads = new AdManager({ provider: admob });
+```
+
+플랫폼별 현실:
+
+- **AdMob** — 실제 수익이 나는 경로지만 **네이티브 앱에만** 붙는다.
+  Capacitor로 감싸고 스토어에 올려야 한다. 단일 파일 빌드가 그 웹뷰에 그대로 들어간다.
+- **웹(GitHub Pages)** — AdSense는 사이트 심사가 필요하고, 트래픽 없이는 사실상 수익이 없다.
+- **아티팩트/샌드박스** — CSP가 외부 스크립트를 차단하므로 실제 광고를 띄울 수 없다.
+  플레이스홀더만 동작한다.
+
 ## 실행
 
 정적 서버로 레포 루트를 서빙하고 `/magnet-ball-sort/` 접속:
