@@ -111,14 +111,13 @@ export class Game {
     this.busy = false;
     this.guided = GUIDED_LEVELS.has(this.levelIndex);
     clearTimeout(this._deadT);
-    clearTimeout(this._bannerT);
     clearTimeout(this._winT);
 
     this.renderer.clearEffects();
     this.renderer.setState(this.state);
     this.dom.overlay.classList.add('hidden');
     this.closeLevels();
-    this.hideBanner();
+    this.hideDeadEnd();
     this.updateHud();
     this.updateGuide();
   }
@@ -205,7 +204,7 @@ export class Game {
     this.renderer.setState(this.state);
     this.selected = null;
     this.busy = true;
-    this.hideBanner();
+    this.hideDeadEnd();
     this.updateHud();
     this.renderer.setGuide(null);
 
@@ -238,10 +237,13 @@ export class Game {
     this.state = this.history.pop();
     this.release();
     this.renderer.setState(this.state);
-    this.hideBanner();
+    this.hideDeadEnd();
     this.updateHud();
     this.updateGuide();
     this.sound.pick(1);
+    // 되돌린 상태도 여전히 막혔으면 패널이 다시 떠야 한다.
+    // 이게 없으면 한 수 무른 뒤 "이제 됐나?" 하고 헤매게 된다 (실플레이에서 나온 문제).
+    this.scheduleDeadCheck();
   }
 
   restart() {
@@ -259,9 +261,7 @@ export class Game {
     this._deadT = setTimeout(() => {
       if (this.won || this.busy) return;
       const r = solve(this.state, this.targets, CLASSIC_RULES, { maxNodes: 25000 });
-      if (!r.solved && r.exhausted) {
-        this.showBanner('🚫 더 이상 풀 수 없어요 — 되돌리기(↩︎)를 눌러보세요', true);
-      }
+      if (!r.solved && r.exhausted) this.showDeadEnd();
     }, 160);
   }
 
@@ -394,15 +394,14 @@ export class Game {
     });
   }
 
-  showBanner(text, sticky = false) {
-    clearTimeout(this._bannerT);
-    this.dom.banner.textContent = text;
-    this.dom.banner.classList.remove('hidden');
-    if (!sticky) this._bannerT = setTimeout(() => this.hideBanner(), 2300);
+  // 막다른 길 패널. 버튼(되돌리기/처음부터)이 패널 안에 직접 들어 있어
+  // 아이콘을 찾아 헤맬 필요가 없다.
+  showDeadEnd() {
+    this.dom.deadEnd.classList.remove('hidden');
   }
 
-  hideBanner() {
-    this.dom.banner.classList.add('hidden');
+  hideDeadEnd() {
+    this.dom.deadEnd.classList.add('hidden');
   }
 
   // 디버그/검증용

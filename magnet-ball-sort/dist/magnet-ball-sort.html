@@ -102,21 +102,55 @@ body {
 
 #board { flex: 1; width: 100%; display: block; min-height: 0; }
 
-#banner {
+/* 막다른 길 패널 — 문구로 아이콘을 가리키는 대신 버튼을 직접 담는다.
+   플레이테스트에서 이 상태를 "게임 고장"으로 오해했다. */
+#deadEnd {
   position: absolute;
   left: 50%;
-  bottom: calc(24px + env(safe-area-inset-bottom));
+  bottom: calc(22px + env(safe-area-inset-bottom));
   transform: translateX(-50%);
-  max-width: min(92vw, 480px);
+  width: min(92%, 360px);
   background: #23305a;
   border: 1px solid #3d5088;
-  padding: 11px 18px;
-  border-radius: 15px;
-  font-size: 14px;
-  font-weight: 600;
+  padding: 14px 16px 12px;
+  border-radius: 18px;
   text-align: center;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.45);
+  box-shadow: 0 12px 34px rgba(0, 0, 0, 0.5);
   z-index: 20;
+  animation: pop 0.3s cubic-bezier(0.2, 1.4, 0.4, 1);
+}
+
+.de-title { font-size: 15px; font-weight: 800; }
+
+.de-sub {
+  color: var(--muted);
+  font-size: 12px;
+  margin: 3px 0 11px;
+  line-height: 1.45;
+}
+
+.de-actions { display: flex; gap: 8px; }
+
+.de-btn {
+  flex: 1;
+  padding: 11px 0;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  background: rgba(255, 255, 255, 0.07);
+  color: var(--text);
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 800;
+  cursor: pointer;
+  transition: transform 0.08s;
+}
+.de-btn:active { transform: scale(0.95); }
+
+.de-btn.primary {
+  background: linear-gradient(180deg, #5cc4ff, #2b7ff0);
+  border: 0;
+  color: #fff;
+  box-shadow: 0 5px 14px rgba(43, 127, 240, 0.4);
 }
 
 #overlay {
@@ -495,7 +529,14 @@ body {
 
     <canvas id="board"></canvas>
 
-    <div id="banner" class="hidden"></div>
+    <div id="deadEnd" class="hidden">
+      <p class="de-title">🚫 막다른 길이에요!</p>
+      <p class="de-sub">게임이 멈춘 게 아니에요 — 이 배치로는 더 풀 수 없어요</p>
+      <div class="de-actions">
+        <button id="deUndo" class="de-btn" type="button">↩︎ 되돌리기</button>
+        <button id="deRestart" class="de-btn primary" type="button">⟳ 처음부터</button>
+      </div>
+    </div>
 
     <div id="overlay" class="hidden">
       <div class="overlay-card">
@@ -2123,14 +2164,13 @@ class Game {
     this.busy = false;
     this.guided = GUIDED_LEVELS.has(this.levelIndex);
     clearTimeout(this._deadT);
-    clearTimeout(this._bannerT);
     clearTimeout(this._winT);
 
     this.renderer.clearEffects();
     this.renderer.setState(this.state);
     this.dom.overlay.classList.add('hidden');
     this.closeLevels();
-    this.hideBanner();
+    this.hideDeadEnd();
     this.updateHud();
     this.updateGuide();
   }
@@ -2217,7 +2257,7 @@ class Game {
     this.renderer.setState(this.state);
     this.selected = null;
     this.busy = true;
-    this.hideBanner();
+    this.hideDeadEnd();
     this.updateHud();
     this.renderer.setGuide(null);
 
@@ -2250,10 +2290,13 @@ class Game {
     this.state = this.history.pop();
     this.release();
     this.renderer.setState(this.state);
-    this.hideBanner();
+    this.hideDeadEnd();
     this.updateHud();
     this.updateGuide();
     this.sound.pick(1);
+    // 되돌린 상태도 여전히 막혔으면 패널이 다시 떠야 한다.
+    // 이게 없으면 한 수 무른 뒤 "이제 됐나?" 하고 헤매게 된다 (실플레이에서 나온 문제).
+    this.scheduleDeadCheck();
   }
 
   restart() {
@@ -2271,9 +2314,7 @@ class Game {
     this._deadT = setTimeout(() => {
       if (this.won || this.busy) return;
       const r = solve(this.state, this.targets, CLASSIC_RULES, { maxNodes: 25000 });
-      if (!r.solved && r.exhausted) {
-        this.showBanner('🚫 더 이상 풀 수 없어요 — 되돌리기(↩︎)를 눌러보세요', true);
-      }
+      if (!r.solved && r.exhausted) this.showDeadEnd();
     }, 160);
   }
 
@@ -2406,15 +2447,14 @@ class Game {
     });
   }
 
-  showBanner(text, sticky = false) {
-    clearTimeout(this._bannerT);
-    this.dom.banner.textContent = text;
-    this.dom.banner.classList.remove('hidden');
-    if (!sticky) this._bannerT = setTimeout(() => this.hideBanner(), 2300);
+  // 막다른 길 패널. 버튼(되돌리기/처음부터)이 패널 안에 직접 들어 있어
+  // 아이콘을 찾아 헤맬 필요가 없다.
+  showDeadEnd() {
+    this.dom.deadEnd.classList.remove('hidden');
   }
 
-  hideBanner() {
-    this.dom.banner.classList.add('hidden');
+  hideDeadEnd() {
+    this.dom.deadEnd.classList.add('hidden');
   }
 
   // 디버그/검증용
@@ -2466,7 +2506,7 @@ const dom = {
   levelSelect: $('levelSelect'),
   journey: $('journey'),
   journeyTotal: $('journeyTotal'),
-  banner: $('banner'),
+  deadEnd: $('deadEnd'),
   overlay: $('overlay'),
   overlayTitle: $('overlayTitle'),
   overlayInfo: $('overlayInfo'),
@@ -2527,6 +2567,8 @@ dom.btnMute.addEventListener('click', () => {
   updateMuteIcon();
 });
 
+$('deUndo').addEventListener('click', () => game.undo());
+$('deRestart').addEventListener('click', () => game.restart());
 $('btnLevels').addEventListener('click', () => game.toggleLevels());
 $('btnCloseLevels').addEventListener('click', () => game.closeLevels());
 $('btnLevelsFromWin').addEventListener('click', () => game.openLevels());

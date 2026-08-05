@@ -25,7 +25,14 @@
 
     <canvas id="board"></canvas>
 
-    <div id="banner" class="hidden"></div>
+    <div id="deadEnd" class="hidden">
+      <p class="de-title">🚫 막다른 길이에요!</p>
+      <p class="de-sub">게임이 멈춘 게 아니에요 — 이 배치로는 더 풀 수 없어요</p>
+      <div class="de-actions">
+        <button id="deUndo" class="de-btn" type="button">↩︎ 되돌리기</button>
+        <button id="deRestart" class="de-btn primary" type="button">⟳ 처음부터</button>
+      </div>
+    </div>
 
     <div id="overlay" class="hidden">
       <div class="overlay-card">

@@ -17,7 +17,7 @@ const dom = {
   levelSelect: $('levelSelect'),
   journey: $('journey'),
   journeyTotal: $('journeyTotal'),
-  banner: $('banner'),
+  deadEnd: $('deadEnd'),
   overlay: $('overlay'),
   overlayTitle: $('overlayTitle'),
   overlayInfo: $('overlayInfo'),
@@ -78,6 +78,8 @@ dom.btnMute.addEventListener('click', () => {
   updateMuteIcon();
 });
 
+$('deUndo').addEventListener('click', () => game.undo());
+$('deRestart').addEventListener('click', () => game.restart());
 $('btnLevels').addEventListener('click', () => game.toggleLevels());
 $('btnCloseLevels').addEventListener('click', () => game.closeLevels());
 $('btnLevelsFromWin').addEventListener('click', () => game.openLevels());

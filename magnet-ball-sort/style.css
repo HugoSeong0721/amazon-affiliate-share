@@ -93,21 +93,55 @@ body {
 
 #board { flex: 1; width: 100%; display: block; min-height: 0; }
 
-#banner {
+/* 막다른 길 패널 — 문구로 아이콘을 가리키는 대신 버튼을 직접 담는다.
+   플레이테스트에서 이 상태를 "게임 고장"으로 오해했다. */
+#deadEnd {
   position: absolute;
   left: 50%;
-  bottom: calc(24px + env(safe-area-inset-bottom));
+  bottom: calc(22px + env(safe-area-inset-bottom));
   transform: translateX(-50%);
-  max-width: min(92vw, 480px);
+  width: min(92%, 360px);
   background: #23305a;
   border: 1px solid #3d5088;
-  padding: 11px 18px;
-  border-radius: 15px;
-  font-size: 14px;
-  font-weight: 600;
+  padding: 14px 16px 12px;
+  border-radius: 18px;
   text-align: center;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.45);
+  box-shadow: 0 12px 34px rgba(0, 0, 0, 0.5);
   z-index: 20;
+  animation: pop 0.3s cubic-bezier(0.2, 1.4, 0.4, 1);
+}
+
+.de-title { font-size: 15px; font-weight: 800; }
+
+.de-sub {
+  color: var(--muted);
+  font-size: 12px;
+  margin: 3px 0 11px;
+  line-height: 1.45;
+}
+
+.de-actions { display: flex; gap: 8px; }
+
+.de-btn {
+  flex: 1;
+  padding: 11px 0;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  background: rgba(255, 255, 255, 0.07);
+  color: var(--text);
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 800;
+  cursor: pointer;
+  transition: transform 0.08s;
+}
+.de-btn:active { transform: scale(0.95); }
+
+.de-btn.primary {
+  background: linear-gradient(180deg, #5cc4ff, #2b7ff0);
+  border: 0;
+  color: #fff;
+  box-shadow: 0 5px 14px rgba(43, 127, 240, 0.4);
 }
 
 #overlay {
