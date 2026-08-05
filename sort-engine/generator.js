@@ -27,14 +27,17 @@ export function generateLevel(params) {
   } = params;
   if (!Number.isInteger(seed)) throw new Error('generateLevel: seed가 필요합니다');
   if (!targets || !targets.length) throw new Error('generateLevel: targets가 필요합니다');
-  if (capacity % 2 !== 0) throw new Error('generateLevel: capacity는 짝수여야 합니다 (반반 혼합)');
+  if (rules.shake && capacity % 2 !== 0) {
+    throw new Error('generateLevel: 흔들기 규칙에서는 capacity가 짝수여야 합니다 (반반 혼합)');
+  }
   const rand = mulberry32(seed);
 
-  // 목표색 → 필요한 물감 단위.
-  // 2차색은 두 1차색을 정확히 반반씩 써야 만들어진다.
+  // 목표색 → 필요한 재료 단위.
+  // 흔들기가 없는 규칙에서는 색이 그냥 이름표라서 목표색을 그대로 채우면 된다.
+  // 흔들기 규칙에서만 2차색을 두 1차색 반반으로 쪼갠다.
   const units = [];
   for (const t of targets) {
-    if (isPrimary(t)) {
+    if (!rules.shake || isPrimary(t)) {
       for (let i = 0; i < capacity; i++) units.push(t);
     } else {
       const comps = componentsOf(t);

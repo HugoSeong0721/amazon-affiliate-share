@@ -2,19 +2,18 @@
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
-<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎨</text></svg>">
-<title>페인트 믹스 — 색을 섞는 소트 퍼즐</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🧲</text></svg>">
+<title>자석 구슬 — 색깔별로 모으는 퍼즐</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<meta name="theme-color" content="#14152b">
+<meta name="theme-color" content="#0f1830">
 <style>
 :root {
-  --bg: #14152b;
-  --board-bg: radial-gradient(130% 100% at 50% 0%, #222350 0%, #14152b 52%, #0d0e1f 100%);
-  --panel: #222448;
+  --board-bg: radial-gradient(125% 100% at 50% 0%, #1d2a4f 0%, #0f1830 55%, #080d1c 100%);
+  --panel: #1c2846;
   --panel-line: rgba(255, 255, 255, 0.09);
-  --text: #eef0ff;
-  --muted: #8b8fb5;
-  --accent: #8b6bff;
+  --text: #eaf0ff;
+  --muted: #8794b8;
+  --accent: #4fb8ff;
 }
 
 * {
@@ -43,21 +42,21 @@ body {
   position: relative;
   height: 100dvh;
   width: 100%;
-  max-width: 520px;
+  max-width: 540px;
   display: flex;
   flex-direction: column;
-  padding: calc(6px + env(safe-area-inset-top)) 12px calc(8px + env(safe-area-inset-bottom));
+  padding: calc(6px + env(safe-area-inset-top)) 12px calc(10px + env(safe-area-inset-bottom));
   background: var(--board-bg);
 }
 
 /* 넓은 화면에서는 여백에 흩어지지 않도록 기기 형태의 프레임 안에 담는다 */
 @media (min-width: 600px) and (min-height: 700px) {
   body {
-    background: radial-gradient(120% 85% at 50% -10%, #1b1c3a 0%, #0b0c19 62%, #07080f 100%);
+    background: radial-gradient(120% 85% at 50% -10%, #16203d 0%, #080c18 62%, #05070f 100%);
     padding: 24px;
   }
   #app {
-    height: min(calc(100dvh - 48px), 880px);
+    height: min(calc(100dvh - 48px), 900px);
     border-radius: 30px;
     border: 1px solid rgba(255, 255, 255, 0.09);
     box-shadow: 0 34px 90px rgba(0, 0, 0, 0.62);
@@ -75,18 +74,23 @@ body {
 }
 
 #levelLabel { font-weight: 800; font-size: 19px; letter-spacing: -0.2px; }
-#moveLabel { color: var(--muted); font-size: 13px; margin-top: 1px; }
+#moveLabel {
+  color: var(--muted);
+  font-size: 13px;
+  margin-top: 1px;
+  font-variant-numeric: tabular-nums;
+}
 
-.hud-right { display: flex; gap: 8px; }
+.hud-right { display: flex; gap: 7px; }
 
 .hud-btn {
-  width: 42px;
-  height: 42px;
-  border-radius: 14px;
+  width: 40px;
+  height: 40px;
+  border-radius: 13px;
   border: 1px solid var(--panel-line);
   background: var(--panel);
   color: var(--text);
-  font-size: 19px;
+  font-size: 18px;
   line-height: 1;
   cursor: pointer;
   display: grid;
@@ -96,172 +100,16 @@ body {
 .hud-btn:active { transform: scale(0.92); }
 .hud-btn:disabled { opacity: 0.35; }
 
-/* 흔들기 버튼 — 고른 병을 섞을 수 있을 때만 나타난다 */
-#btnShake {
-  align-self: center;
-  display: flex;
-  align-items: center;
-  gap: 9px;
-  margin: 2px 0 6px;
-  padding: 13px 22px;
-  border: 0;
-  border-radius: 16px;
-  background: linear-gradient(180deg, #9c7dff, #6a48f0);
-  color: #fff;
-  font-family: inherit;
-  font-size: 15px;
-  font-weight: 800;
-  cursor: pointer;
-  box-shadow: 0 6px 18px rgba(106, 72, 240, 0.45);
-  animation: shakeIn 0.22s cubic-bezier(0.2, 1.5, 0.4, 1);
-}
-#btnShake:active { transform: scale(0.95); }
-
-/* 결과 색 미리보기 */
-#btnShake .swatch {
-  width: 18px;
-  height: 18px;
-  border-radius: 50%;
-  background: var(--c, #fff);
-  box-shadow: inset 0 -4px rgba(0, 0, 0, 0.22), inset 0 2px rgba(255, 255, 255, 0.3),
-    0 0 0 2px rgba(255, 255, 255, 0.35);
-}
-
-/* 튜토리얼에서 이 버튼을 눌러야 할 때 */
-#btnShake.pulse { animation: shakeNudge 0.9s ease-in-out infinite; }
-
-@keyframes shakeIn {
-  from { transform: scale(0.8); opacity: 0; }
-  to { transform: scale(1); opacity: 1; }
-}
-@keyframes shakeNudge {
-  0%, 100% { transform: scale(1); box-shadow: 0 6px 18px rgba(106, 72, 240, 0.45); }
-  50% { transform: scale(1.07); box-shadow: 0 8px 26px rgba(156, 125, 255, 0.75); }
-}
-@media (prefers-reduced-motion: reduce) {
-  #btnShake, #btnShake.pulse { animation: none; }
-}
-
-/* 하단 목표 선반 — 빈 병 실루엣이 "만들어야 할 병", 채워지면 완성 */
-#goalShelf {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 7px;
-  padding: 11px 12px 10px;
-  margin-top: 4px;
-  border-radius: 18px;
-  background: rgba(255, 255, 255, 0.035);
-  border: 1px solid rgba(255, 255, 255, 0.06);
-}
-
-#goalCaption {
-  color: var(--muted);
-  font-size: 11px;
-  font-weight: 800;
-  letter-spacing: 0.14em;
-}
-
-#goalSlots {
-  display: flex;
-  gap: 12px;
-  flex-wrap: wrap;
-  justify-content: center;
-  padding-top: 5px;
-}
-
-.goal {
-  position: relative;
-  width: 30px;
-  height: 46px;
-  border: 2px solid var(--c);
-  border-radius: 6px 6px 10px 10px;
-  opacity: 0.5;
-  transition: opacity 0.3s, background-color 0.3s, box-shadow 0.3s;
-}
-
-/* 병목 */
-.goal::before {
-  content: "";
-  position: absolute;
-  left: 50%;
-  top: -7px;
-  transform: translateX(-50%);
-  width: 13px;
-  height: 7px;
-  border: 2px solid var(--c);
-  border-bottom: 0;
-  border-radius: 4px 4px 0 0;
-}
-
-.goal.done {
-  opacity: 1;
-  background-color: var(--c);
-  box-shadow: 0 0 18px -3px var(--c);
-}
-
-.goal.done::after {
-  content: "✓";
-  position: absolute;
-  inset: 0;
-  display: grid;
-  place-items: center;
-  color: #fff;
-  font-weight: 900;
-  font-size: 18px;
-  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.55);
-}
-
-.goal.pop { animation: goalPop 0.45s cubic-bezier(0.2, 1.5, 0.4, 1); }
-
-@keyframes goalPop {
-  0% { transform: scale(1); }
-  40% { transform: scale(1.3); }
-  100% { transform: scale(1); }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .goal.pop { animation: none; }
-}
-
-#legend {
-  display: flex;
-  gap: 16px;
-  justify-content: center;
-  align-items: center;
-  padding: 5px 0 2px;
-  color: var(--muted);
-  font-size: 12px;
-}
-.formula { display: inline-flex; align-items: center; gap: 2px; font-weight: 700; }
-.formula em { font-style: normal; margin: 0 3px; font-size: 11px; }
-.dot {
-  width: 13px;
-  height: 13px;
-  border-radius: 50%;
-  display: inline-block;
-  background: var(--c);
-  box-shadow: inset 0 -3px rgba(0, 0, 0, 0.25), inset 0 1px rgba(255, 255, 255, 0.3);
-}
-
-#hint {
-  text-align: center;
-  color: #cfc7ff;
-  font-size: 13px;
-  padding: 6px 14px 2px;
-  line-height: 1.45;
-}
-
 #board { flex: 1; width: 100%; display: block; min-height: 0; }
 
 #banner {
   position: absolute;
   left: 50%;
-  bottom: calc(26px + env(safe-area-inset-bottom));
+  bottom: calc(24px + env(safe-area-inset-bottom));
   transform: translateX(-50%);
   max-width: min(92vw, 480px);
-  background: #2c2347;
-  border: 1px solid #514179;
+  background: #23305a;
+  border: 1px solid #3d5088;
   padding: 11px 18px;
   border-radius: 15px;
   font-size: 14px;
@@ -274,7 +122,7 @@ body {
 #overlay {
   position: absolute;
   inset: 0;
-  background: rgba(9, 9, 24, 0.66);
+  background: rgba(6, 10, 22, 0.68);
   backdrop-filter: blur(5px);
   -webkit-backdrop-filter: blur(5px);
   display: grid;
@@ -284,21 +132,21 @@ body {
 
 .overlay-card {
   background: var(--panel);
-  padding: 30px 36px;
+  padding: 30px 34px;
   border-radius: 22px;
   text-align: center;
   border: 1px solid rgba(255, 255, 255, 0.1);
   box-shadow: 0 24px 70px rgba(0, 0, 0, 0.55);
-  animation: pop 0.35s cubic-bezier(0.2, 1.4, 0.4, 1);
+  animation: pop 0.32s cubic-bezier(0.2, 1.4, 0.4, 1);
 }
 @keyframes pop {
-  from { transform: scale(0.7); opacity: 0; }
+  from { transform: scale(0.72); opacity: 0; }
   to { transform: scale(1); opacity: 1; }
 }
 .overlay-card h2 { font-size: 25px; margin-bottom: 8px; letter-spacing: -0.3px; }
 #overlayInfo { color: var(--muted); font-size: 14px; margin-bottom: 20px; }
 
-.overlay-actions { display: flex; gap: 10px; justify-content: center; align-items: stretch; }
+.overlay-actions { display: flex; gap: 10px; justify-content: center; }
 
 .ghost-btn {
   background: rgba(255, 255, 255, 0.07);
@@ -310,16 +158,31 @@ body {
   padding: 13px 20px;
   border-radius: 15px;
   cursor: pointer;
-  transition: transform 0.08s, background-color 0.15s;
+  transition: transform 0.08s;
 }
 .ghost-btn:active { transform: scale(0.95); }
+
+#btnNext {
+  background: linear-gradient(180deg, #5cc4ff, #2b7ff0);
+  color: #fff;
+  border: 0;
+  font-size: 16px;
+  font-weight: 800;
+  font-family: inherit;
+  padding: 13px 28px;
+  border-radius: 15px;
+  cursor: pointer;
+  box-shadow: 0 6px 18px rgba(43, 127, 240, 0.45);
+  transition: transform 0.08s;
+}
+#btnNext:active { transform: scale(0.95); }
 
 /* 레벨 목차 */
 #levelSelect {
   position: absolute;
   inset: 0;
   z-index: 40;
-  background: rgba(9, 9, 24, 0.72);
+  background: rgba(6, 10, 22, 0.74);
   backdrop-filter: blur(6px);
   -webkit-backdrop-filter: blur(6px);
   display: grid;
@@ -338,7 +201,7 @@ body {
   border-radius: 22px;
   padding: 18px;
   box-shadow: 0 24px 70px rgba(0, 0, 0, 0.55);
-  animation: pop 0.28s cubic-bezier(0.2, 1.4, 0.4, 1);
+  animation: pop 0.26s cubic-bezier(0.2, 1.4, 0.4, 1);
 }
 
 .ls-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
@@ -374,7 +237,13 @@ body {
 }
 .lv:active { transform: scale(0.93); }
 
-.lv .dots { display: flex; gap: 3px; flex-wrap: wrap; justify-content: center; max-width: 56px; }
+.lv .dots {
+  display: flex;
+  gap: 3px;
+  flex-wrap: wrap;
+  justify-content: center;
+  max-width: 52px;
+}
 .lv .dots i {
   display: block;
   width: 6px;
@@ -384,8 +253,8 @@ body {
 }
 
 .lv.cleared {
-  background: rgba(139, 107, 255, 0.16);
-  border-color: rgba(139, 107, 255, 0.45);
+  background: rgba(79, 184, 255, 0.16);
+  border-color: rgba(79, 184, 255, 0.45);
 }
 .lv.cleared::after {
   content: "✓";
@@ -394,30 +263,15 @@ body {
   right: 7px;
   font-size: 11px;
   font-weight: 900;
-  color: #b6a2ff;
+  color: #8fd6ff;
 }
 
 .lv.current {
   border-color: var(--accent);
-  box-shadow: 0 0 0 2px rgba(139, 107, 255, 0.4);
+  box-shadow: 0 0 0 2px rgba(79, 184, 255, 0.4);
 }
 
 :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
-
-#btnNext {
-  background: linear-gradient(180deg, #9c7dff, #6a48f0);
-  color: #fff;
-  border: 0;
-  font-size: 16px;
-  font-weight: 800;
-  font-family: inherit;
-  padding: 13px 30px;
-  border-radius: 15px;
-  cursor: pointer;
-  box-shadow: 0 6px 18px rgba(106, 72, 240, 0.45);
-  transition: transform 0.08s;
-}
-#btnNext:active { transform: scale(0.95); }
 
 .hidden { display: none !important; }
 
@@ -438,17 +292,7 @@ body {
       </div>
     </header>
 
-    <div id="legend"></div>
-    <div id="hint" class="hidden"></div>
-
     <canvas id="board"></canvas>
-
-    <button id="btnShake" class="hidden" type="button">흔들어 섞기 <span class="swatch"></span></button>
-
-    <div id="goalShelf">
-      <span id="goalCaption">만들 색</span>
-      <div id="goalSlots"></div>
-    </div>
 
     <div id="banner" class="hidden"></div>
 
@@ -469,8 +313,7 @@ body {
           <h2>레벨 목차</h2>
           <button id="btnCloseLevels" class="hud-btn" title="닫기" aria-label="닫기">✕</button>
         </div>
-        <p class="ls-note">아래 점이 그 레벨에서 만들어야 할 색입니다.</p>
-
+        <p class="ls-note">아래 점이 그 레벨에 나오는 색입니다.</p>
         <div id="levelGrid"></div>
       </div>
     </div>
@@ -801,244 +644,89 @@ function solve(state, targets, rules = CLASSIC_RULES, opts = {}) {
   return { solved: false, nodes, exhausted: true };
 }
 
-// ===== paint-mix-sort/levels-data.js =====
+// ===== magnet-ball-sort/levels-data.js =====
 // 자동 생성 파일 — 직접 수정하지 말 것.
-// 다시 만들려면: node paint-mix-sort/tools/bake-levels.mjs
+// 다시 만들려면: node magnet-ball-sort/tools/bake-levels.mjs
 // 원본 스펙: levels.js
 
+// 용량은 레벨마다 다를 수 있다 (마지막 두 판은 5칸). CAPACITY는 기본값일 뿐이다.
 const CAPACITY = 4;
 
 const LEVEL_DATA = [
  {
-  "targets": [
-   "O"
-  ],
-  "bottles": [
-   [
-    "R",
-    "R",
-    "Y",
-    "Y"
-   ],
-   []
-  ],
-  "solution": [
-   {
-    "type": "shake",
-    "at": 0
-   }
-  ],
-  "solutionLength": 1,
-  "seed": 201
- },
- {
-  "targets": [
-   "O"
-  ],
-  "bottles": [
-   [],
-   [
-    "Y",
-    "Y"
-   ],
-   [
-    "R",
-    "R"
-   ]
-  ],
-  "solution": [
-   {
-    "type": "pour",
-    "from": 1,
-    "to": 2
-   },
-   {
-    "type": "shake",
-    "at": 2
-   }
-  ],
-  "solutionLength": 2,
-  "seed": 202
- },
- {
-  "targets": [
-   "G"
-  ],
-  "bottles": [
-   [],
-   [
-    "B",
-    "Y"
-   ],
-   [
-    "Y",
-    "B"
-   ]
-  ],
-  "solution": [
-   {
-    "type": "pour",
-    "from": 1,
-    "to": 2
-   },
-   {
-    "type": "pour",
-    "from": 1,
-    "to": 2
-   },
-   {
-    "type": "shake",
-    "at": 2
-   }
-  ],
-  "solutionLength": 3,
-  "seed": 203
- },
- {
-  "targets": [
-   "O",
-   "P"
-  ],
-  "bottles": [
-   [],
-   [
-    "B",
-    "R",
-    "R",
-    "R"
-   ],
-   [
-    "R",
-    "Y",
-    "Y",
-    "B"
-   ],
-   []
-  ],
-  "solution": [
-   {
-    "type": "pour",
-    "from": 1,
-    "to": 0
-   },
-   {
-    "type": "pour",
-    "from": 2,
-    "to": 1
-   },
-   {
-    "type": "pour",
-    "from": 0,
-    "to": 2
-   },
-   {
-    "type": "shake",
-    "at": 2
-   },
-   {
-    "type": "pour",
-    "from": 0,
-    "to": 1
-   },
-   {
-    "type": "shake",
-    "at": 1
-   }
-  ],
-  "solutionLength": 6,
-  "seed": 204
- },
- {
-  "targets": [
-   "G",
-   "O"
-  ],
-  "bottles": [
-   [
-    "R",
-    "B"
-   ],
-   [
-    "B",
-    "R",
-    "Y"
-   ],
-   [
-    "Y",
-    "Y",
-    "Y"
-   ],
-   []
-  ],
-  "solution": [
-   {
-    "type": "pour",
-    "from": 1,
-    "to": 2
-   },
-   {
-    "type": "pour",
-    "from": 0,
-    "to": 3
-   },
-   {
-    "type": "pour",
-    "from": 1,
-    "to": 0
-   },
-   {
-    "type": "pour",
-    "from": 1,
-    "to": 3
-   },
-   {
-    "type": "pour",
-    "from": 2,
-    "to": 3
-   },
-   {
-    "type": "shake",
-    "at": 3
-   },
-   {
-    "type": "pour",
-    "from": 0,
-    "to": 2
-   },
-   {
-    "type": "shake",
-    "at": 2
-   }
-  ],
-  "solutionLength": 8,
-  "seed": 205
- },
- {
+  "capacity": 4,
   "targets": [
    "R",
    "O"
   ],
-  "bottles": [
-   [],
+  "tubes": [
    [
+    "O",
+    "O",
     "R",
-    "R",
-    "Y",
     "R"
    ],
+   [],
    [
+    "O",
     "R",
-    "R",
-    "R",
-    "Y"
-   ]
+    "O",
+    "R"
+   ],
+   []
   ],
   "solution": [
+   {
+    "type": "pour",
+    "from": 0,
+    "to": 1
+   },
+   {
+    "type": "pour",
+    "from": 2,
+    "to": 1
+   },
    {
     "type": "pour",
     "from": 2,
     "to": 0
    },
+   {
+    "type": "pour",
+    "from": 2,
+    "to": 1
+   },
+   {
+    "type": "pour",
+    "from": 0,
+    "to": 2
+   }
+  ],
+  "solutionLength": 5,
+  "seed": 301
+ },
+ {
+  "capacity": 4,
+  "targets": [
+   "R",
+   "O"
+  ],
+  "tubes": [
+   [
+    "O",
+    "R",
+    "R",
+    "O"
+   ],
+   [
+    "R",
+    "R",
+    "O",
+    "O"
+   ],
+   []
+  ],
+  "solution": [
    {
     "type": "pour",
     "from": 1,
@@ -1047,127 +735,144 @@ const LEVEL_DATA = [
    {
     "type": "pour",
     "from": 0,
+    "to": 2
+   },
+   {
+    "type": "pour",
+    "from": 0,
     "to": 1
    },
    {
-    "type": "shake",
-    "at": 1
+    "type": "pour",
+    "from": 0,
+    "to": 2
    }
   ],
   "solutionLength": 4,
-  "seed": 206
+  "seed": 302
  },
  {
+  "capacity": 4,
   "targets": [
+   "R",
    "O",
-   "O"
+   "Y"
   ],
-  "bottles": [
-   [
-    "Y",
-    "Y",
-    "Y"
-   ],
+  "tubes": [
    [],
    [
+    "Y",
+    "O",
     "R",
+    "Y"
+   ],
+   [
+    "R",
+    "Y",
+    "Y",
+    "O"
+   ],
+   [
+    "O",
+    "O",
     "R",
     "R"
    ],
-   [
-    "Y",
-    "R"
-   ]
+   []
   ],
   "solution": [
    {
     "type": "pour",
-    "from": 0,
-    "to": 2
-   },
-   {
-    "type": "pour",
-    "from": 2,
-    "to": 3
-   },
-   {
-    "type": "pour",
-    "from": 2,
-    "to": 3
-   },
-   {
-    "type": "shake",
-    "at": 3
-   },
-   {
-    "type": "pour",
-    "from": 0,
-    "to": 2
-   },
-   {
-    "type": "shake",
-    "at": 2
-   }
-  ],
-  "solutionLength": 6,
-  "seed": 207
- },
- {
-  "targets": [
-   "O",
-   "G",
-   "P"
-  ],
-  "bottles": [
-   [
-    "Y",
-    "B",
-    "R",
-    "R"
-   ],
-   [
-    "Y",
-    "B",
-    "B",
-    "Y"
-   ],
-   [],
-   [],
-   [
-    "Y",
-    "R",
-    "R",
-    "B"
-   ]
-  ],
-  "solution": [
-   {
-    "type": "shake",
-    "at": 1
-   },
-   {
-    "type": "pour",
-    "from": 0,
-    "to": 2
-   },
-   {
-    "type": "pour",
-    "from": 4,
+    "from": 3,
     "to": 0
    },
    {
     "type": "pour",
-    "from": 0,
+    "from": 2,
     "to": 3
    },
    {
     "type": "pour",
-    "from": 0,
-    "to": 4
+    "from": 1,
+    "to": 2
    },
    {
-    "type": "shake",
-    "at": 4
+    "type": "pour",
+    "from": 1,
+    "to": 0
+   },
+   {
+    "type": "pour",
+    "from": 1,
+    "to": 3
+   },
+   {
+    "type": "pour",
+    "from": 2,
+    "to": 1
+   },
+   {
+    "type": "pour",
+    "from": 0,
+    "to": 2
+   }
+  ],
+  "solutionLength": 7,
+  "seed": 303
+ },
+ {
+  "capacity": 4,
+  "targets": [
+   "R",
+   "O",
+   "Y"
+  ],
+  "tubes": [
+   [
+    "Y",
+    "R",
+    "Y",
+    "Y"
+   ],
+   [],
+   [
+    "R",
+    "O",
+    "Y",
+    "R"
+   ],
+   [
+    "O",
+    "O",
+    "R",
+    "O"
+   ]
+  ],
+  "solution": [
+   {
+    "type": "pour",
+    "from": 0,
+    "to": 1
+   },
+   {
+    "type": "pour",
+    "from": 2,
+    "to": 0
+   },
+   {
+    "type": "pour",
+    "from": 2,
+    "to": 1
+   },
+   {
+    "type": "pour",
+    "from": 3,
+    "to": 2
+   },
+   {
+    "type": "pour",
+    "from": 3,
+    "to": 0
    },
    {
     "type": "pour",
@@ -1175,469 +880,200 @@ const LEVEL_DATA = [
     "to": 3
    },
    {
-    "type": "shake",
-    "at": 3
+    "type": "pour",
+    "from": 0,
+    "to": 2
+   },
+   {
+    "type": "pour",
+    "from": 0,
+    "to": 1
    }
   ],
   "solutionLength": 8,
-  "seed": 208
+  "seed": 304
  },
  {
-  "targets": [
-   "O",
-   "O",
-   "G"
-  ],
-  "bottles": [
-   [
-    "Y",
-    "R",
-    "Y"
-   ],
-   [
-    "B",
-    "R",
-    "Y"
-   ],
-   [
-    "R",
-    "B",
-    "R"
-   ],
-   [
-    "Y",
-    "Y",
-    "Y"
-   ],
-   []
-  ],
-  "solution": [
-   {
-    "type": "pour",
-    "from": 1,
-    "to": 0
-   },
-   {
-    "type": "pour",
-    "from": 1,
-    "to": 2
-   },
-   {
-    "type": "pour",
-    "from": 0,
-    "to": 3
-   },
-   {
-    "type": "pour",
-    "from": 2,
-    "to": 0
-   },
-   {
-    "type": "shake",
-    "at": 0
-   },
-   {
-    "type": "pour",
-    "from": 2,
-    "to": 4
-   },
-   {
-    "type": "pour",
-    "from": 2,
-    "to": 1
-   },
-   {
-    "type": "pour",
-    "from": 2,
-    "to": 4
-   },
-   {
-    "type": "pour",
-    "from": 3,
-    "to": 4
-   },
-   {
-    "type": "shake",
-    "at": 4
-   },
-   {
-    "type": "pour",
-    "from": 1,
-    "to": 3
-   },
-   {
-    "type": "shake",
-    "at": 3
-   }
-  ],
-  "solutionLength": 12,
-  "seed": 209
- },
- {
-  "targets": [
-   "Y",
-   "G",
-   "P"
-  ],
-  "bottles": [
-   [],
-   [
-    "R",
-    "Y",
-    "B"
-   ],
-   [
-    "Y",
-    "Y",
-    "R"
-   ],
-   [
-    "B",
-    "Y",
-    "B"
-   ],
-   [
-    "Y",
-    "B",
-    "Y"
-   ]
-  ],
-  "solution": [
-   {
-    "type": "pour",
-    "from": 1,
-    "to": 3
-   },
-   {
-    "type": "pour",
-    "from": 1,
-    "to": 4
-   },
-   {
-    "type": "pour",
-    "from": 2,
-    "to": 1
-   },
-   {
-    "type": "pour",
-    "from": 4,
-    "to": 2
-   },
-   {
-    "type": "pour",
-    "from": 3,
-    "to": 4
-   },
-   {
-    "type": "pour",
-    "from": 3,
-    "to": 0
-   },
-   {
-    "type": "pour",
-    "from": 4,
-    "to": 3
-   },
-   {
-    "type": "pour",
-    "from": 0,
-    "to": 4
-   },
-   {
-    "type": "pour",
-    "from": 3,
-    "to": 1
-   },
-   {
-    "type": "shake",
-    "at": 1
-   },
-   {
-    "type": "pour",
-    "from": 3,
-    "to": 4
-   },
-   {
-    "type": "shake",
-    "at": 4
-   }
-  ],
-  "solutionLength": 12,
-  "seed": 210
- },
- {
-  "targets": [
-   "G",
-   "P",
-   "O",
-   "O"
-  ],
-  "bottles": [
-   [
-    "Y",
-    "Y",
-    "Y"
-   ],
-   [
-    "Y",
-    "R",
-    "R"
-   ],
-   [
-    "Y",
-    "R",
-    "B"
-   ],
-   [],
-   [],
-   [
-    "R",
-    "Y",
-    "B"
-   ],
-   [
-    "R",
-    "B",
-    "R",
-    "B"
-   ]
-  ],
-  "solution": [
-   {
-    "type": "shake",
-    "at": 6
-   },
-   {
-    "type": "pour",
-    "from": 2,
-    "to": 5
-   },
-   {
-    "type": "pour",
-    "from": 1,
-    "to": 2
-   },
-   {
-    "type": "pour",
-    "from": 0,
-    "to": 1
-   },
-   {
-    "type": "pour",
-    "from": 2,
-    "to": 0
-   },
-   {
-    "type": "pour",
-    "from": 5,
-    "to": 2
-   },
-   {
-    "type": "pour",
-    "from": 5,
-    "to": 2
-   },
-   {
-    "type": "shake",
-    "at": 2
-   },
-   {
-    "type": "pour",
-    "from": 1,
-    "to": 5
-   },
-   {
-    "type": "pour",
-    "from": 5,
-    "to": 0
-   },
-   {
-    "type": "pour",
-    "from": 0,
-    "to": 1
-   },
-   {
-    "type": "pour",
-    "from": 0,
-    "to": 5
-   },
-   {
-    "type": "shake",
-    "at": 5
-   },
-   {
-    "type": "pour",
-    "from": 0,
-    "to": 1
-   },
-   {
-    "type": "shake",
-    "at": 1
-   }
-  ],
-  "solutionLength": 15,
-  "seed": 211
- },
- {
+  "capacity": 4,
   "targets": [
    "R",
-   "B",
    "O",
+   "Y",
    "G"
   ],
-  "bottles": [
-   [
-    "B",
-    "R",
-    "B"
-   ],
+  "tubes": [
    [
     "Y",
     "R",
-    "Y"
-   ],
-   [],
-   [
-    "B",
     "R",
+    "G"
+   ],
+   [
+    "O",
+    "O",
+    "O",
     "Y"
    ],
    [
-    "B",
-    "B",
+    "R",
+    "G",
+    "Y",
+    "G"
+   ],
+   [
+    "G",
+    "Y",
+    "O",
     "R"
    ],
    [],
-   [
-    "B",
-    "Y",
-    "R",
-    "R"
-   ]
-  ],
-  "solution": [
-   {
-    "type": "pour",
-    "from": 3,
-    "to": 1
-   },
-   {
-    "type": "pour",
-    "from": 6,
-    "to": 3
-   },
-   {
-    "type": "pour",
-    "from": 4,
-    "to": 0
-   },
-   {
-    "type": "pour",
-    "from": 4,
-    "to": 6
-   },
-   {
-    "type": "pour",
-    "from": 3,
-    "to": 2
-   },
-   {
-    "type": "pour",
-    "from": 0,
-    "to": 2
-   },
-   {
-    "type": "pour",
-    "from": 0,
-    "to": 3
-   },
-   {
-    "type": "pour",
-    "from": 6,
-    "to": 3
-   },
-   {
-    "type": "pour",
-    "from": 0,
-    "to": 4
-   },
-   {
-    "type": "pour",
-    "from": 0,
-    "to": 6
-   },
-   {
-    "type": "pour",
-    "from": 1,
-    "to": 6
-   },
-   {
-    "type": "shake",
-    "at": 6
-   },
-   {
-    "type": "pour",
-    "from": 4,
-    "to": 1
-   },
-   {
-    "type": "shake",
-    "at": 1
-   }
-  ],
-  "solutionLength": 14,
-  "seed": 212
- },
- {
-  "targets": [
-   "G",
-   "P",
-   "O",
-   "O"
-  ],
-  "bottles": [
-   [
-    "Y",
-    "B",
-    "R"
-   ],
-   [
-    "R",
-    "B",
-    "Y"
-   ],
-   [
-    "Y",
-    "R",
-    "R"
-   ],
-   [
-    "R",
-    "B",
-    "R",
-    "Y"
-   ],
-   [
-    "Y",
-    "Y",
-    "B"
-   ],
    []
   ],
   "solution": [
    {
     "type": "pour",
     "from": 0,
+    "to": 4
+   },
+   {
+    "type": "pour",
+    "from": 3,
+    "to": 0
+   },
+   {
+    "type": "pour",
+    "from": 0,
+    "to": 5
+   },
+   {
+    "type": "pour",
+    "from": 1,
+    "to": 0
+   },
+   {
+    "type": "pour",
+    "from": 3,
+    "to": 1
+   },
+   {
+    "type": "pour",
+    "from": 3,
+    "to": 0
+   },
+   {
+    "type": "pour",
+    "from": 3,
+    "to": 4
+   },
+   {
+    "type": "pour",
+    "from": 2,
+    "to": 4
+   },
+   {
+    "type": "pour",
+    "from": 2,
+    "to": 0
+   },
+   {
+    "type": "pour",
+    "from": 2,
+    "to": 4
+   },
+   {
+    "type": "pour",
+    "from": 2,
+    "to": 5
+   }
+  ],
+  "solutionLength": 11,
+  "seed": 305
+ },
+ {
+  "capacity": 4,
+  "targets": [
+   "R",
+   "O",
+   "Y",
+   "G"
+  ],
+  "tubes": [
+   [
+    "G",
+    "Y",
+    "G",
+    "G"
+   ],
+   [
+    "O",
+    "Y",
+    "O",
+    "R"
+   ],
+   [
+    "R",
+    "Y",
+    "R",
+    "Y"
+   ],
+   [
+    "O",
+    "G",
+    "O",
+    "R"
+   ],
+   []
+  ],
+  "solution": [
+   {
+    "type": "pour",
+    "from": 1,
+    "to": 4
+   },
+   {
+    "type": "pour",
+    "from": 3,
+    "to": 4
+   },
+   {
+    "type": "pour",
+    "from": 1,
+    "to": 3
+   },
+   {
+    "type": "pour",
+    "from": 2,
+    "to": 1
+   },
+   {
+    "type": "pour",
+    "from": 2,
+    "to": 4
+   },
+   {
+    "type": "pour",
+    "from": 2,
+    "to": 1
+   },
+   {
+    "type": "pour",
+    "from": 2,
+    "to": 4
+   },
+   {
+    "type": "pour",
+    "from": 1,
+    "to": 2
+   },
+   {
+    "type": "pour",
+    "from": 3,
     "to": 1
    },
    {
     "type": "pour",
     "from": 0,
-    "to": 4
-   },
-   {
-    "type": "shake",
-    "at": 4
+    "to": 3
    },
    {
     "type": "pour",
@@ -1645,10 +1081,6 @@ const LEVEL_DATA = [
     "to": 2
    },
    {
-    "type": "shake",
-    "at": 2
-   },
-   {
     "type": "pour",
     "from": 3,
     "to": 0
@@ -1657,83 +1089,757 @@ const LEVEL_DATA = [
     "type": "pour",
     "from": 1,
     "to": 3
-   },
-   {
-    "type": "pour",
-    "from": 1,
-    "to": 0
-   },
-   {
-    "type": "pour",
-    "from": 1,
-    "to": 0
-   },
-   {
-    "type": "pour",
-    "from": 3,
-    "to": 1
-   },
-   {
-    "type": "pour",
-    "from": 0,
-    "to": 3
-   },
-   {
-    "type": "pour",
-    "from": 1,
-    "to": 3
-   },
-   {
-    "type": "shake",
-    "at": 3
-   },
-   {
-    "type": "pour",
-    "from": 0,
-    "to": 1
-   },
-   {
-    "type": "shake",
-    "at": 1
    }
   ],
-  "solutionLength": 15,
-  "seed": 214
+  "solutionLength": 13,
+  "seed": 306
  },
  {
+  "capacity": 4,
   "targets": [
+   "R",
    "O",
+   "Y",
    "G",
-   "P",
-   "O",
-   "G"
+   "C"
   ],
-  "bottles": [
+  "tubes": [
+   [
+    "O",
+    "C",
+    "Y",
+    "R"
+   ],
+   [
+    "Y",
+    "G",
+    "O",
+    "Y"
+   ],
+   [],
+   [
+    "C",
+    "G",
+    "C",
+    "O"
+   ],
+   [
+    "R",
+    "R",
+    "O",
+    "C"
+   ],
+   [
+    "R",
+    "Y",
+    "G",
+    "G"
+   ],
+   []
+  ],
+  "solution": [
+   {
+    "type": "pour",
+    "from": 4,
+    "to": 2
+   },
+   {
+    "type": "pour",
+    "from": 3,
+    "to": 4
+   },
+   {
+    "type": "pour",
+    "from": 2,
+    "to": 3
+   },
+   {
+    "type": "pour",
+    "from": 4,
+    "to": 2
+   },
+   {
+    "type": "pour",
+    "from": 0,
+    "to": 4
+   },
+   {
+    "type": "pour",
+    "from": 1,
+    "to": 0
+   },
+   {
+    "type": "pour",
+    "from": 1,
+    "to": 2
+   },
+   {
+    "type": "pour",
+    "from": 5,
+    "to": 1
+   },
+   {
+    "type": "pour",
+    "from": 0,
+    "to": 5
+   },
+   {
+    "type": "pour",
+    "from": 0,
+    "to": 6
+   },
+   {
+    "type": "pour",
+    "from": 0,
+    "to": 2
+   },
+   {
+    "type": "pour",
+    "from": 1,
+    "to": 0
+   },
+   {
+    "type": "pour",
+    "from": 5,
+    "to": 1
+   },
+   {
+    "type": "pour",
+    "from": 4,
+    "to": 5
+   },
+   {
+    "type": "pour",
+    "from": 3,
+    "to": 6
+   },
+   {
+    "type": "pour",
+    "from": 3,
+    "to": 0
+   },
+   {
+    "type": "pour",
+    "from": 3,
+    "to": 6
+   }
+  ],
+  "solutionLength": 17,
+  "seed": 307
+ },
+ {
+  "capacity": 4,
+  "targets": [
+   "R",
+   "O",
+   "Y",
+   "G",
+   "C"
+  ],
+  "tubes": [
+   [
+    "Y",
+    "C",
+    "G",
+    "Y"
+   ],
+   [
+    "O",
+    "G",
+    "R",
+    "R"
+   ],
+   [],
+   [
+    "O",
+    "R",
+    "C",
+    "C"
+   ],
+   [
+    "R",
+    "Y",
+    "G",
+    "Y"
+   ],
+   [
+    "O",
+    "C",
+    "O",
+    "G"
+   ]
+  ],
+  "solution": [
+   {
+    "type": "pour",
+    "from": 4,
+    "to": 2
+   },
+   {
+    "type": "pour",
+    "from": 0,
+    "to": 2
+   },
+   {
+    "type": "pour",
+    "from": 0,
+    "to": 4
+   },
+   {
+    "type": "pour",
+    "from": 3,
+    "to": 0
+   },
+   {
+    "type": "pour",
+    "from": 1,
+    "to": 3
+   },
+   {
+    "type": "pour",
+    "from": 4,
+    "to": 1
+   },
+   {
+    "type": "pour",
+    "from": 2,
+    "to": 4
+   },
+   {
+    "type": "pour",
+    "from": 1,
+    "to": 2
+   },
+   {
+    "type": "pour",
+    "from": 5,
+    "to": 2
+   },
+   {
+    "type": "pour",
+    "from": 1,
+    "to": 5
+   },
+   {
+    "type": "pour",
+    "from": 0,
+    "to": 1
+   },
+   {
+    "type": "pour",
+    "from": 4,
+    "to": 0
+   },
+   {
+    "type": "pour",
+    "from": 3,
+    "to": 4
+   },
+   {
+    "type": "pour",
+    "from": 5,
+    "to": 3
+   },
+   {
+    "type": "pour",
+    "from": 5,
+    "to": 1
+   },
+   {
+    "type": "pour",
+    "from": 3,
+    "to": 5
+   }
+  ],
+  "solutionLength": 16,
+  "seed": 308
+ },
+ {
+  "capacity": 4,
+  "targets": [
+   "R",
+   "O",
+   "Y",
+   "G",
+   "C",
+   "B"
+  ],
+  "tubes": [
+   [
+    "R",
+    "R",
+    "G",
+    "O"
+   ],
    [
     "B",
+    "G",
+    "O",
+    "O"
+   ],
+   [],
+   [
+    "G",
     "R",
-    "Y"
+    "B",
+    "C"
+   ],
+   [],
+   [
+    "Y",
+    "O",
+    "C",
+    "B"
+   ],
+   [
+    "C",
+    "Y",
+    "B",
+    "R"
    ],
    [
     "Y",
+    "Y",
+    "C",
+    "G"
+   ]
+  ],
+  "solution": [
+   {
+    "type": "pour",
+    "from": 0,
+    "to": 2
+   },
+   {
+    "type": "pour",
+    "from": 1,
+    "to": 2
+   },
+   {
+    "type": "pour",
+    "from": 0,
+    "to": 1
+   },
+   {
+    "type": "pour",
+    "from": 6,
+    "to": 0
+   },
+   {
+    "type": "pour",
+    "from": 5,
+    "to": 6
+   },
+   {
+    "type": "pour",
+    "from": 3,
+    "to": 5
+   },
+   {
+    "type": "pour",
+    "from": 7,
+    "to": 1
+   },
+   {
+    "type": "pour",
+    "from": 1,
+    "to": 4
+   },
+   {
+    "type": "pour",
+    "from": 3,
+    "to": 1
+   },
+   {
+    "type": "pour",
+    "from": 3,
+    "to": 0
+   },
+   {
+    "type": "pour",
+    "from": 3,
+    "to": 4
+   },
+   {
+    "type": "pour",
+    "from": 6,
+    "to": 1
+   },
+   {
+    "type": "pour",
+    "from": 5,
+    "to": 3
+   },
+   {
+    "type": "pour",
+    "from": 5,
+    "to": 2
+   },
+   {
+    "type": "pour",
+    "from": 5,
+    "to": 6
+   },
+   {
+    "type": "pour",
+    "from": 7,
+    "to": 3
+   },
+   {
+    "type": "pour",
+    "from": 6,
+    "to": 7
+   },
+   {
+    "type": "pour",
+    "from": 3,
+    "to": 6
+   }
+  ],
+  "solutionLength": 18,
+  "seed": 309
+ },
+ {
+  "capacity": 4,
+  "targets": [
+   "R",
+   "O",
+   "Y",
+   "G",
+   "C",
+   "B"
+  ],
+  "tubes": [
+   [],
+   [
     "R",
-    "Y"
+    "B",
+    "O",
+    "C"
    ],
    [
     "Y",
+    "O",
+    "Y",
+    "R"
+   ],
+   [
+    "G",
+    "Y",
+    "Y",
+    "G"
+   ],
+   [
+    "B",
+    "G",
     "R",
     "B"
    ],
    [
+    "O",
+    "R",
+    "G",
+    "C"
+   ],
+   [
+    "C",
     "B",
+    "C",
+    "O"
+   ]
+  ],
+  "solution": [
+   {
+    "type": "pour",
+    "from": 1,
+    "to": 0
+   },
+   {
+    "type": "pour",
+    "from": 5,
+    "to": 0
+   },
+   {
+    "type": "pour",
+    "from": 6,
+    "to": 1
+   },
+   {
+    "type": "pour",
+    "from": 6,
+    "to": 0
+   },
+   {
+    "type": "pour",
+    "from": 4,
+    "to": 6
+   },
+   {
+    "type": "pour",
+    "from": 2,
+    "to": 4
+   },
+   {
+    "type": "pour",
+    "from": 3,
+    "to": 5
+   },
+   {
+    "type": "pour",
+    "from": 2,
+    "to": 3
+   },
+   {
+    "type": "pour",
+    "from": 1,
+    "to": 2
+   },
+   {
+    "type": "pour",
+    "from": 1,
+    "to": 6
+   },
+   {
+    "type": "pour",
+    "from": 4,
+    "to": 1
+   },
+   {
+    "type": "pour",
+    "from": 5,
+    "to": 4
+   },
+   {
+    "type": "pour",
+    "from": 5,
+    "to": 1
+   },
+   {
+    "type": "pour",
+    "from": 2,
+    "to": 5
+   },
+   {
+    "type": "pour",
+    "from": 3,
+    "to": 2
+   },
+   {
+    "type": "pour",
+    "from": 4,
+    "to": 3
+   },
+   {
+    "type": "pour",
+    "from": 6,
+    "to": 4
+   },
+   {
+    "type": "pour",
+    "from": 0,
+    "to": 6
+   }
+  ],
+  "solutionLength": 18,
+  "seed": 310
+ },
+ {
+  "capacity": 4,
+  "targets": [
+   "R",
+   "O",
+   "Y",
+   "G",
+   "C",
+   "B",
+   "P"
+  ],
+  "tubes": [
+   [
     "B",
+    "O",
+    "C",
+    "O"
+   ],
+   [
+    "G",
+    "Y",
+    "Y",
     "Y"
    ],
    [
-    "B",
-    "Y",
     "R",
+    "B",
+    "B",
+    "C"
+   ],
+   [
+    "G",
+    "C",
+    "O",
+    "P"
+   ],
+   [],
+   [],
+   [
+    "Y",
+    "P",
+    "P",
+    "G"
+   ],
+   [
+    "B",
+    "R",
+    "G",
     "R"
+   ],
+   [
+    "P",
+    "R",
+    "C",
+    "O"
+   ]
+  ],
+  "solution": [
+   {
+    "type": "pour",
+    "from": 1,
+    "to": 4
+   },
+   {
+    "type": "pour",
+    "from": 6,
+    "to": 1
+   },
+   {
+    "type": "pour",
+    "from": 3,
+    "to": 6
+   },
+   {
+    "type": "pour",
+    "from": 8,
+    "to": 3
+   },
+   {
+    "type": "pour",
+    "from": 2,
+    "to": 8
+   },
+   {
+    "type": "pour",
+    "from": 3,
+    "to": 5
+   },
+   {
+    "type": "pour",
+    "from": 8,
+    "to": 3
+   },
+   {
+    "type": "pour",
+    "from": 7,
+    "to": 8
+   },
+   {
+    "type": "pour",
+    "from": 7,
+    "to": 1
+   },
+   {
+    "type": "pour",
+    "from": 7,
+    "to": 8
+   },
+   {
+    "type": "pour",
+    "from": 2,
+    "to": 7
+   },
+   {
+    "type": "pour",
+    "from": 8,
+    "to": 2
+   },
+   {
+    "type": "pour",
+    "from": 6,
+    "to": 8
+   },
+   {
+    "type": "pour",
+    "from": 4,
+    "to": 6
+   },
+   {
+    "type": "pour",
+    "from": 3,
+    "to": 4
+   },
+   {
+    "type": "pour",
+    "from": 1,
+    "to": 3
+   },
+   {
+    "type": "pour",
+    "from": 0,
+    "to": 5
+   },
+   {
+    "type": "pour",
+    "from": 0,
+    "to": 4
+   },
+   {
+    "type": "pour",
+    "from": 0,
+    "to": 5
+   },
+   {
+    "type": "pour",
+    "from": 0,
+    "to": 7
+   }
+  ],
+  "solutionLength": 20,
+  "seed": 311
+ },
+ {
+  "capacity": 4,
+  "targets": [
+   "R",
+   "O",
+   "Y",
+   "G",
+   "C",
+   "B",
+   "P"
+  ],
+  "tubes": [
+   [
+    "G",
+    "G",
+    "B",
+    "C"
+   ],
+   [
+    "O",
+    "O",
+    "R",
+    "B"
+   ],
+   [
+    "C",
+    "P",
+    "G",
+    "C"
+   ],
+   [
+    "R",
+    "O",
+    "G",
+    "P"
    ],
    [],
    [
@@ -1741,67 +1847,40 @@ const LEVEL_DATA = [
     "Y",
     "Y",
     "R"
+   ],
+   [
+    "Y",
+    "P",
+    "R",
+    "C"
+   ],
+   [
+    "P",
+    "B",
+    "O",
+    "Y"
    ]
   ],
   "solution": [
    {
     "type": "pour",
     "from": 0,
+    "to": 4
+   },
+   {
+    "type": "pour",
+    "from": 1,
+    "to": 0
+   },
+   {
+    "type": "pour",
+    "from": 6,
+    "to": 4
+   },
+   {
+    "type": "pour",
+    "from": 6,
     "to": 1
-   },
-   {
-    "type": "pour",
-    "from": 0,
-    "to": 2
-   },
-   {
-    "type": "pour",
-    "from": 0,
-    "to": 3
-   },
-   {
-    "type": "pour",
-    "from": 4,
-    "to": 0
-   },
-   {
-    "type": "pour",
-    "from": 6,
-    "to": 0
-   },
-   {
-    "type": "pour",
-    "from": 4,
-    "to": 6
-   },
-   {
-    "type": "pour",
-    "from": 2,
-    "to": 0
-   },
-   {
-    "type": "pour",
-    "from": 2,
-    "to": 4
-   },
-   {
-    "type": "pour",
-    "from": 2,
-    "to": 4
-   },
-   {
-    "type": "pour",
-    "from": 6,
-    "to": 2
-   },
-   {
-    "type": "pour",
-    "from": 0,
-    "to": 4
-   },
-   {
-    "type": "shake",
-    "at": 4
    },
    {
     "type": "pour",
@@ -1810,30 +1889,13 @@ const LEVEL_DATA = [
    },
    {
     "type": "pour",
-    "from": 1,
-    "to": 3
-   },
-   {
-    "type": "shake",
-    "at": 3
-   },
-   {
-    "type": "pour",
-    "from": 0,
-    "to": 1
-   },
-   {
-    "type": "shake",
-    "at": 1
+    "from": 2,
+    "to": 4
    },
    {
     "type": "pour",
     "from": 2,
-    "to": 0
-   },
-   {
-    "type": "shake",
-    "at": 0
+    "to": 3
    },
    {
     "type": "pour",
@@ -1841,87 +1903,223 @@ const LEVEL_DATA = [
     "to": 6
    },
    {
-    "type": "shake",
-    "at": 6
+    "type": "pour",
+    "from": 2,
+    "to": 4
+   },
+   {
+    "type": "pour",
+    "from": 1,
+    "to": 2
+   },
+   {
+    "type": "pour",
+    "from": 5,
+    "to": 2
+   },
+   {
+    "type": "pour",
+    "from": 7,
+    "to": 5
+   },
+   {
+    "type": "pour",
+    "from": 7,
+    "to": 1
+   },
+   {
+    "type": "pour",
+    "from": 0,
+    "to": 7
+   },
+   {
+    "type": "pour",
+    "from": 3,
+    "to": 0
+   },
+   {
+    "type": "pour",
+    "from": 3,
+    "to": 1
+   },
+   {
+    "type": "pour",
+    "from": 2,
+    "to": 3
+   },
+   {
+    "type": "pour",
+    "from": 5,
+    "to": 2
+   },
+   {
+    "type": "pour",
+    "from": 7,
+    "to": 5
+   },
+   {
+    "type": "pour",
+    "from": 6,
+    "to": 7
+   },
+   {
+    "type": "pour",
+    "from": 2,
+    "to": 6
    }
   ],
   "solutionLength": 21,
-  "seed": 213
+  "seed": 312
  },
  {
+  "capacity": 4,
   "targets": [
+   "R",
    "O",
+   "Y",
    "G",
+   "C",
+   "B",
    "P",
-   "O",
-   "G",
-   "P"
+   "K"
   ],
-  "bottles": [
+  "tubes": [
    [
-    "Y",
-    "B",
-    "B"
-   ],
-   [
-    "R",
-    "B",
-    "Y"
-   ],
-   [
-    "R",
-    "R",
-    "Y"
+    "G",
+    "C",
+    "O",
+    "P"
    ],
    [],
    [
     "Y",
     "R",
-    "B",
-    "Y"
+    "P",
+    "P"
    ],
    [
+    "K",
     "B",
-    "R",
-    "Y"
-   ],
-   [
-    "R",
-    "Y",
-    "B",
-    "B"
-   ],
-   [
-    "R",
-    "R",
     "Y",
     "B"
+   ],
+   [
+    "R",
+    "K",
+    "O",
+    "K"
+   ],
+   [
+    "K",
+    "C",
+    "B",
+    "G"
+   ],
+   [],
+   [
+    "C",
+    "P",
+    "Y",
+    "G"
+   ],
+   [
+    "O",
+    "O",
+    "R",
+    "R"
+   ],
+   [
+    "B",
+    "G",
+    "C",
+    "Y"
    ]
   ],
   "solution": [
    {
     "type": "pour",
-    "from": 1,
-    "to": 0
-   },
-   {
-    "type": "shake",
-    "at": 0
+    "from": 0,
+    "to": 1
    },
    {
     "type": "pour",
-    "from": 1,
-    "to": 5
+    "from": 2,
+    "to": 1
    },
    {
     "type": "pour",
-    "from": 1,
+    "from": 8,
     "to": 2
    },
    {
     "type": "pour",
-    "from": 6,
-    "to": 1
+    "from": 0,
+    "to": 8
+   },
+   {
+    "type": "pour",
+    "from": 0,
+    "to": 6
+   },
+   {
+    "type": "pour",
+    "from": 5,
+    "to": 0
+   },
+   {
+    "type": "pour",
+    "from": 7,
+    "to": 0
+   },
+   {
+    "type": "pour",
+    "from": 9,
+    "to": 7
+   },
+   {
+    "type": "pour",
+    "from": 9,
+    "to": 6
+   },
+   {
+    "type": "pour",
+    "from": 9,
+    "to": 0
+   },
+   {
+    "type": "pour",
+    "from": 5,
+    "to": 9
+   },
+   {
+    "type": "pour",
+    "from": 5,
+    "to": 6
+   },
+   {
+    "type": "pour",
+    "from": 4,
+    "to": 5
+   },
+   {
+    "type": "pour",
+    "from": 4,
+    "to": 8
+   },
+   {
+    "type": "pour",
+    "from": 4,
+    "to": 5
+   },
+   {
+    "type": "pour",
+    "from": 2,
+    "to": 4
+   },
+   {
+    "type": "pour",
+    "from": 7,
+    "to": 2
    },
    {
     "type": "pour",
@@ -1934,8 +2132,331 @@ const LEVEL_DATA = [
     "to": 7
    },
    {
-    "type": "shake",
-    "at": 7
+    "type": "pour",
+    "from": 3,
+    "to": 9
+   },
+   {
+    "type": "pour",
+    "from": 3,
+    "to": 2
+   },
+   {
+    "type": "pour",
+    "from": 3,
+    "to": 9
+   },
+   {
+    "type": "pour",
+    "from": 3,
+    "to": 5
+   }
+  ],
+  "solutionLength": 23,
+  "seed": 313
+ },
+ {
+  "capacity": 4,
+  "targets": [
+   "R",
+   "O",
+   "Y",
+   "G",
+   "C",
+   "B",
+   "P",
+   "K"
+  ],
+  "tubes": [
+   [
+    "P",
+    "K",
+    "P",
+    "Y"
+   ],
+   [
+    "O",
+    "Y",
+    "Y",
+    "G"
+   ],
+   [],
+   [
+    "O",
+    "R",
+    "K",
+    "B"
+   ],
+   [
+    "Y",
+    "B",
+    "C",
+    "G"
+   ],
+   [
+    "O",
+    "P",
+    "G",
+    "R"
+   ],
+   [
+    "C",
+    "C",
+    "K",
+    "C"
+   ],
+   [
+    "P",
+    "K",
+    "R",
+    "B"
+   ],
+   [
+    "R",
+    "B",
+    "O",
+    "G"
+   ]
+  ],
+  "solution": [
+   {
+    "type": "pour",
+    "from": 7,
+    "to": 2
+   },
+   {
+    "type": "pour",
+    "from": 3,
+    "to": 2
+   },
+   {
+    "type": "pour",
+    "from": 5,
+    "to": 7
+   },
+   {
+    "type": "pour",
+    "from": 4,
+    "to": 5
+   },
+   {
+    "type": "pour",
+    "from": 6,
+    "to": 4
+   },
+   {
+    "type": "pour",
+    "from": 3,
+    "to": 6
+   },
+   {
+    "type": "pour",
+    "from": 7,
+    "to": 3
+   },
+   {
+    "type": "pour",
+    "from": 6,
+    "to": 7
+   },
+   {
+    "type": "pour",
+    "from": 4,
+    "to": 6
+   },
+   {
+    "type": "pour",
+    "from": 2,
+    "to": 4
+   },
+   {
+    "type": "pour",
+    "from": 8,
+    "to": 2
+   },
+   {
+    "type": "pour",
+    "from": 1,
+    "to": 2
+   },
+   {
+    "type": "pour",
+    "from": 5,
+    "to": 2
+   },
+   {
+    "type": "pour",
+    "from": 0,
+    "to": 1
+   },
+   {
+    "type": "pour",
+    "from": 5,
+    "to": 0
+   },
+   {
+    "type": "pour",
+    "from": 5,
+    "to": 8
+   },
+   {
+    "type": "pour",
+    "from": 4,
+    "to": 5
+   },
+   {
+    "type": "pour",
+    "from": 1,
+    "to": 4
+   },
+   {
+    "type": "pour",
+    "from": 8,
+    "to": 1
+   },
+   {
+    "type": "pour",
+    "from": 8,
+    "to": 5
+   },
+   {
+    "type": "pour",
+    "from": 3,
+    "to": 8
+   },
+   {
+    "type": "pour",
+    "from": 1,
+    "to": 3
+   },
+   {
+    "type": "pour",
+    "from": 7,
+    "to": 1
+   },
+   {
+    "type": "pour",
+    "from": 0,
+    "to": 7
+   },
+   {
+    "type": "pour",
+    "from": 0,
+    "to": 1
+   },
+   {
+    "type": "pour",
+    "from": 0,
+    "to": 7
+   }
+  ],
+  "solutionLength": 26,
+  "seed": 314
+ },
+ {
+  "capacity": 5,
+  "targets": [
+   "R",
+   "O",
+   "Y",
+   "G",
+   "C",
+   "B",
+   "P"
+  ],
+  "tubes": [
+   [
+    "O",
+    "Y",
+    "G",
+    "B",
+    "R"
+   ],
+   [
+    "R",
+    "O",
+    "C",
+    "G",
+    "R"
+   ],
+   [
+    "P",
+    "G",
+    "C",
+    "O",
+    "Y"
+   ],
+   [],
+   [
+    "G",
+    "Y",
+    "Y",
+    "P",
+    "C"
+   ],
+   [
+    "B",
+    "P",
+    "B",
+    "B",
+    "C"
+   ],
+   [
+    "O",
+    "C",
+    "R",
+    "O",
+    "Y"
+   ],
+   [
+    "B",
+    "G",
+    "P",
+    "R",
+    "P"
+   ],
+   []
+  ],
+  "solution": [
+   {
+    "type": "pour",
+    "from": 4,
+    "to": 3
+   },
+   {
+    "type": "pour",
+    "from": 5,
+    "to": 3
+   },
+   {
+    "type": "pour",
+    "from": 0,
+    "to": 8
+   },
+   {
+    "type": "pour",
+    "from": 0,
+    "to": 5
+   },
+   {
+    "type": "pour",
+    "from": 1,
+    "to": 8
+   },
+   {
+    "type": "pour",
+    "from": 0,
+    "to": 1
+   },
+   {
+    "type": "pour",
+    "from": 2,
+    "to": 0
+   },
+   {
+    "type": "pour",
+    "from": 6,
+    "to": 0
    },
    {
     "type": "pour",
@@ -1944,12 +2465,63 @@ const LEVEL_DATA = [
    },
    {
     "type": "pour",
-    "from": 4,
+    "from": 2,
+    "to": 3
+   },
+   {
+    "type": "pour",
+    "from": 1,
     "to": 2
    },
    {
-    "type": "shake",
-    "at": 2
+    "type": "pour",
+    "from": 1,
+    "to": 3
+   },
+   {
+    "type": "pour",
+    "from": 6,
+    "to": 1
+   },
+   {
+    "type": "pour",
+    "from": 6,
+    "to": 8
+   },
+   {
+    "type": "pour",
+    "from": 6,
+    "to": 3
+   },
+   {
+    "type": "pour",
+    "from": 1,
+    "to": 6
+   },
+   {
+    "type": "pour",
+    "from": 1,
+    "to": 8
+   },
+   {
+    "type": "pour",
+    "from": 0,
+    "to": 1
+   },
+   {
+    "type": "pour",
+    "from": 0,
+    "to": 6
+   },
+   {
+    "type": "pour",
+    "from": 2,
+    "to": 0
+   },
+   {
+    "type": "pour",
+    "from": 4,
+    "to": 2
    },
    {
     "type": "pour",
@@ -1958,74 +2530,319 @@ const LEVEL_DATA = [
    },
    {
     "type": "pour",
+    "from": 0,
+    "to": 4
+   },
+   {
+    "type": "pour",
+    "from": 7,
+    "to": 2
+   },
+   {
+    "type": "pour",
+    "from": 7,
+    "to": 8
+   },
+   {
+    "type": "pour",
+    "from": 7,
+    "to": 2
+   },
+   {
+    "type": "pour",
+    "from": 7,
+    "to": 4
+   },
+   {
+    "type": "pour",
+    "from": 5,
+    "to": 7
+   },
+   {
+    "type": "pour",
+    "from": 5,
+    "to": 2
+   },
+   {
+    "type": "pour",
+    "from": 5,
+    "to": 7
+   }
+  ],
+  "solutionLength": 30,
+  "seed": 315
+ },
+ {
+  "capacity": 5,
+  "targets": [
+   "R",
+   "O",
+   "Y",
+   "G",
+   "C",
+   "B",
+   "P",
+   "K"
+  ],
+  "tubes": [
+   [
+    "P",
+    "C",
+    "P",
+    "C",
+    "Y"
+   ],
+   [
+    "P",
+    "B",
+    "O",
+    "G",
+    "K"
+   ],
+   [
+    "K",
+    "R",
+    "K",
+    "B",
+    "P"
+   ],
+   [
+    "K",
+    "P",
+    "K",
+    "G",
+    "R"
+   ],
+   [
+    "Y",
+    "C",
+    "R",
+    "Y",
+    "O"
+   ],
+   [
+    "Y",
+    "O",
+    "R",
+    "B",
+    "B"
+   ],
+   [
+    "C",
+    "O",
+    "G",
+    "C",
+    "G"
+   ],
+   [
+    "B",
+    "R",
+    "Y",
+    "O",
+    "G"
+   ],
+   []
+  ],
+  "solution": [
+   {
+    "type": "pour",
+    "from": 7,
+    "to": 8
+   },
+   {
+    "type": "pour",
+    "from": 4,
+    "to": 7
+   },
+   {
+    "type": "pour",
+    "from": 0,
+    "to": 4
+   },
+   {
+    "type": "pour",
+    "from": 6,
+    "to": 8
+   },
+   {
+    "type": "pour",
+    "from": 6,
+    "to": 0
+   },
+   {
+    "type": "pour",
+    "from": 6,
+    "to": 8
+   },
+   {
+    "type": "pour",
+    "from": 7,
+    "to": 6
+   },
+   {
+    "type": "pour",
+    "from": 4,
+    "to": 7
+   },
+   {
+    "type": "pour",
+    "from": 3,
+    "to": 4
+   },
+   {
+    "type": "pour",
+    "from": 3,
+    "to": 8
+   },
+   {
+    "type": "pour",
+    "from": 1,
+    "to": 3
+   },
+   {
+    "type": "pour",
+    "from": 1,
+    "to": 8
+   },
+   {
+    "type": "pour",
+    "from": 1,
+    "to": 6
+   },
+   {
+    "type": "pour",
+    "from": 5,
+    "to": 1
+   },
+   {
+    "type": "pour",
+    "from": 4,
+    "to": 5
+   },
+   {
+    "type": "pour",
+    "from": 0,
+    "to": 4
+   },
+   {
+    "type": "pour",
+    "from": 2,
+    "to": 0
+   },
+   {
+    "type": "pour",
+    "from": 2,
+    "to": 1
+   },
+   {
+    "type": "pour",
+    "from": 3,
+    "to": 2
+   },
+   {
+    "type": "pour",
+    "from": 0,
+    "to": 3
+   },
+   {
+    "type": "pour",
+    "from": 0,
+    "to": 4
+   },
+   {
+    "type": "pour",
+    "from": 0,
+    "to": 3
+   },
+   {
+    "type": "pour",
+    "from": 6,
+    "to": 0
+   },
+   {
+    "type": "pour",
     "from": 4,
     "to": 6
    },
    {
     "type": "pour",
-    "from": 5,
-    "to": 6
-   },
-   {
-    "type": "pour",
-    "from": 5,
+    "from": 7,
     "to": 4
    },
    {
     "type": "pour",
-    "from": 6,
+    "from": 5,
+    "to": 7
+   },
+   {
+    "type": "pour",
+    "from": 5,
+    "to": 0
+   },
+   {
+    "type": "pour",
+    "from": 4,
     "to": 5
    },
    {
     "type": "pour",
-    "from": 6,
-    "to": 5
-   },
-   {
-    "type": "shake",
-    "at": 5
-   },
-   {
-    "type": "pour",
-    "from": 1,
+    "from": 7,
     "to": 4
    },
    {
-    "type": "shake",
-    "at": 4
+    "type": "pour",
+    "from": 1,
+    "to": 7
    },
    {
     "type": "pour",
-    "from": 1,
-    "to": 6
+    "from": 3,
+    "to": 1
    },
    {
-    "type": "shake",
-    "at": 6
+    "type": "pour",
+    "from": 2,
+    "to": 3
+   },
+   {
+    "type": "pour",
+    "from": 2,
+    "to": 4
+   },
+   {
+    "type": "pour",
+    "from": 2,
+    "to": 3
    }
   ],
-  "solutionLength": 22,
-  "seed": 215
+  "solutionLength": 34,
+  "seed": 316
  }
 ];
 
-// ===== paint-mix-sort/render.js =====
-// 캔버스 렌더러 — 병, 물감, 붓기/흔들기 애니메이션, 파티클.
+// ===== magnet-ball-sort/render.js =====
+// 캔버스 렌더러 — 튜브, 구슬, 자석 집기/날아가기 애니메이션.
 // 게임 로직은 전혀 모르고, 상태와 수(move) 결과만 받아 그린다.
-
+//
+// 이 게임의 규칙은 설명 대신 애니메이션으로 전달된다:
+// 튜브를 누르면 맨 위 같은 색 구슬들이 자석처럼 딱 붙어 함께 떠오른다.
+// 몇 개가 움직일지 손대기 전에 눈으로 보이므로 규칙을 글로 읽을 필요가 없다.
 
 const COLOR_HEX = {
-  R: '#ff5252',
+  R: '#ff4d5a',
+  O: '#ff9838',
   Y: '#ffd93d',
-  B: '#4d9fff',
-  O: '#ff9f2e',
-  G: '#3ddc84',
-  P: '#b45cff',
+  G: '#35d07f',
+  C: '#2fd3d3',
+  B: '#4a90ff',
+  P: '#a96bff',
+  K: '#ff6bd0',
 };
 
-const COLOR_NAME = { R: '빨강', Y: '노랑', B: '파랑', O: '주황', G: '초록', P: '보라' };
-
-// ---------- 색/이징 유틸 ----------
+const COLOR_NAME = {
+  R: '빨강', O: '주황', Y: '노랑', G: '초록',
+  C: '청록', B: '파랑', P: '보라', K: '분홍',
+};
 
 const rgbCache = new Map();
 function hexToRgb(hex) {
@@ -2036,16 +2853,21 @@ function hexToRgb(hex) {
   }
   return c;
 }
-function lerpColor(hexA, hexB, t) {
-  const a = hexToRgb(hexA);
-  const b = hexToRgb(hexB);
-  return `rgb(${Math.round(a[0] + (b[0] - a[0]) * t)},${Math.round(
-    a[1] + (b[1] - a[1]) * t
-  )},${Math.round(a[2] + (b[2] - a[2]) * t)})`;
+
+// amt > 0 이면 흰쪽, < 0 이면 검은쪽으로. 검정을 직접 섞지 않아 색 정체성이 유지된다.
+function shade(hex, amt) {
+  const [r, g, b] = hexToRgb(hex);
+  const t = Math.abs(amt);
+  const target = amt > 0 ? 255 : 0;
+  return `rgb(${Math.round(r + (target - r) * t)},${Math.round(g + (target - g) * t)},${Math.round(
+    b + (target - b) * t
+  )})`;
 }
+
 const clamp01 = (t) => Math.max(0, Math.min(1, t));
 const easeOutCubic = (t) => 1 - Math.pow(1 - t, 3);
 const easeInOut = (t) => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2);
+const easeOutBack = (t) => 1 + 2.2 * Math.pow(t - 1, 3) + 1.4 * Math.pow(t - 1, 2);
 
 function rr(ctx, x, y, w, h, r) {
   ctx.beginPath();
@@ -2061,10 +2883,16 @@ function rr(ctx, x, y, w, h, r) {
   ctx.closePath();
 }
 
-// ---------- 렌더러 ----------
+// 2차 베지어
+function qbez(p0, cp, p1, t) {
+  const u = 1 - t;
+  return {
+    x: u * u * p0.x + 2 * u * t * cp.x + t * t * p1.x,
+    y: u * u * p0.y + 2 * u * t * cp.y + t * t * p1.y,
+  };
+}
 
-const TILT = 1.08; // 붓는 각도(라디안, 약 62도)
-const LIFT = 13; // 선택 시 떠오르는 높이
+const LIFT_GAP = 15; // 튜브 입구와 떠오른 구슬 사이 간격
 
 class Renderer {
   constructor(canvas) {
@@ -2075,10 +2903,10 @@ class Renderer {
     this.cssH = 0;
     this.state = null;
     this.capacity = 4;
-    this.selected = null;
+    this.held = null; // { tube, color, count, t0 }
+    this.flight = null;
+    this.nudge = null; // 잘못 눌렀을 때 흔들기
     this.guide = null;
-    this.anim = null;
-    this.shake = null;
     this.particles = [];
     this.rects = [];
     this._loop = this._loop.bind(this);
@@ -2103,22 +2931,25 @@ class Renderer {
     this._layout();
   }
 
-  setSelected(i) {
-    this.selected = i;
+  // 맨 위 같은 색 구슬 묶음을 자석처럼 집어 올린다. null이면 놓는다.
+  hold(tube, color, count) {
+    this.held = tube === null ? null : { tube, color, count, t0: performance.now() };
   }
 
-  // 튜토리얼 손가락이 가리킬 병. null이면 안내 없음.
   setGuide(i) {
     this.guide = i;
   }
 
-  // 레벨 전환 시 진행 중인 연출을 모두 정리 (onDone은 호출하지 않는다 —
-  // 호출부가 상태를 새로 세팅하는 중이므로)
+  nudgeTube(i) {
+    this.nudge = { i, t0: performance.now() };
+  }
+
   clearEffects() {
-    this.anim = null;
-    this.particles = [];
-    this.shake = null;
+    this.held = null;
+    this.flight = null;
+    this.nudge = null;
     this.guide = null;
+    this.particles = [];
   }
 
   _layout() {
@@ -2127,40 +2958,38 @@ class Renderer {
       return;
     }
     const n = this.state.bottles.length;
-    const rows = Math.ceil(n / 4);
+    // 한 줄에 최대 5개까지. 튜브가 많아지면 줄을 늘린다.
+    const rows = Math.ceil(n / 5);
     const perRow = Math.ceil(n / rows);
-    const padX = 16;
-    const gap = Math.max(12, Math.min(18, (this.cssW - padX * 2) * 0.045));
-    const RATIO = 2.5; // 병 높이/너비
-    let bw = Math.min(74, (this.cssW - padX * 2 - gap * (perRow - 1)) / perRow);
-    const topPad = 30; // 배지/들어올림 여유
-    const bottomPad = 18;
-    const rowGap = 46;
+    const padX = 14;
+    const gap = Math.max(10, Math.min(16, (this.cssW - padX * 2) * 0.035));
+    // 구슬이 관 폭을 꽉 채우도록: 한 칸 높이 ≈ 관 내부 폭이 되는 비율
+    const ratio = this.capacity * 0.9;
+    let tw = Math.min(66, (this.cssW - padX * 2 - gap * (perRow - 1)) / perRow);
+    const topPad = 34; // 떠오른 구슬 + 완성 배지 여유
+    const bottomPad = 16;
+    const rowGap = 52;
     const availH = this.cssH - topPad - bottomPad;
-    const bhMax = (availH - (rows - 1) * rowGap) / rows;
-    const bh = Math.min(bw * RATIO, bhMax);
-    bw = bh / RATIO;
-    // 병 무리를 캔버스 세로 중앙에 모아 배치
-    const contentH = rows * bh + (rows - 1) * rowGap;
+    const thMax = (availH - (rows - 1) * rowGap) / rows;
+    const th = Math.min(tw * ratio, thMax);
+    tw = th / ratio;
+
+    const contentH = rows * th + (rows - 1) * rowGap;
     const startY = topPad + Math.max(0, (availH - contentH) / 2);
     this.rects = [];
     for (let r = 0; r < rows; r++) {
       const start = r * perRow;
       const count = Math.min(perRow, n - start);
-      const totalW = count * bw + (count - 1) * gap;
+      const totalW = count * tw + (count - 1) * gap;
       const x0 = (this.cssW - totalW) / 2;
-      const y = startY + r * (bh + rowGap);
+      const y = startY + r * (th + rowGap);
       for (let k = 0; k < count; k++) {
-        this.rects.push({ x: x0 + k * (bw + gap), y, w: bw, h: bh });
+        this.rects.push({ x: x0 + k * (tw + gap), y, w: tw, h: th });
       }
     }
   }
 
-  bottleRect(i) {
-    return this.rects[i] || null;
-  }
-
-  bottleCenter(i) {
+  tubeCenter(i) {
     const r = this.rects[i];
     return r ? { x: r.x + r.w / 2, y: r.y + r.h / 2 } : null;
   }
@@ -2168,59 +2997,62 @@ class Renderer {
   hitTest(x, y) {
     for (let i = 0; i < this.rects.length; i++) {
       const r = this.rects[i];
-      if (x >= r.x - 8 && x <= r.x + r.w + 8 && y >= r.y - LIFT - 12 && y <= r.y + r.h + 10) return i;
+      // 위쪽은 떠오른 구슬까지 눌릴 수 있게 넉넉히 잡는다
+      if (x >= r.x - 7 && x <= r.x + r.w + 7 && y >= r.y - 46 && y <= r.y + r.h + 10) return i;
     }
     return null;
   }
 
-  shakeBottle(i) {
-    this.shake = { i, t0: performance.now() };
+  _metrics(rect) {
+    const pad = 4;
+    const slotH = (rect.h - pad * 2) / this.capacity;
+    const ballR = Math.min(rect.w - pad * 2, slotH) * 0.46;
+    return { pad, slotH, ballR };
   }
 
-  // 붓기 애니메이션. 색은 변하지 않고 덩어리가 옮겨갈 뿐이다.
-  animatePour({ prevState, result, onDone }) {
-    const srcRect = this.rects[result.from];
-    const dstRect = this.rects[result.to];
-    if (!srcRect || !dstRect) {
-      onDone && onDone();
-      return;
-    }
-    this.anim = {
-      kind: 'pour',
-      prev: prevState,
-      res: result,
-      t0: performance.now(),
-      MOVE: 230,
-      POUR: 240 + 100 * result.amount,
-      RETURN: 210,
-      dir: srcRect.x <= dstRect.x ? 1 : -1,
-      doneFired: false,
-      onDone,
+  // 튜브 안 k번째 칸(0=바닥) 구슬 중심
+  _slotPos(rect, k) {
+    const { pad, slotH } = this._metrics(rect);
+    return { x: rect.x + rect.w / 2, y: rect.y + rect.h - pad - slotH * (k + 0.5) };
+  }
+
+  // 떠오른 묶음의 j번째(0=아래) 구슬 중심. 자석처럼 딱 붙어 있다.
+  _heldPos(rect, j) {
+    const { ballR } = this._metrics(rect);
+    return {
+      x: rect.x + rect.w / 2,
+      y: rect.y - LIFT_GAP - ballR - j * (ballR * 2 + 0.5),
     };
   }
 
-  // 흔들기 애니메이션. 병이 부르르 떨리며 층들이 한 색으로 녹아든다.
-  animateShake({ prevState, result, onDone }) {
-    if (!this.rects[result.at]) {
+  // 구슬이 날아가는 애니메이션.
+  // amount개는 목적지로, 남은 것(공간 부족)은 원래 튜브로 되돌아간다.
+  animateMove({ result, heldCount, onDone }) {
+    const { from, to, amount } = result;
+    if (!this.rects[from] || !this.rects[to]) {
       onDone && onDone();
       return;
     }
-    this.anim = {
-      kind: 'shake',
-      prev: prevState,
-      res: result,
+    this.flight = {
+      from,
+      to,
+      color: result.color,
+      amount,
+      returning: Math.max(0, heldCount - amount),
       t0: performance.now(),
-      SHAKE: 520,
-      SETTLE: 180,
-      doneFired: false,
+      TRAVEL: 330,
+      STAGGER: 42,
       onDone,
+      doneFired: false,
+      landed: new Set(),
     };
+    this.held = null;
   }
 
-  burstAtBottle(i, hex, n = 16) {
+  burstAtTube(i, hex, n = 18) {
     const r = this.rects[i];
     if (!r) return;
-    this._burst(r.x + r.w / 2, r.y + 10, hex, n);
+    this._burst(r.x + r.w / 2, r.y + 8, hex, n);
   }
 
   _burst(x, y, hex, n = 14) {
@@ -2243,7 +3075,7 @@ class Renderer {
 
   celebrate() {
     const colors = Object.values(COLOR_HEX);
-    for (let i = 0; i < 110; i++) {
+    for (let i = 0; i < 120; i++) {
       this.particles.push({
         x: Math.random() * this.cssW,
         y: -20 - Math.random() * 60,
@@ -2273,279 +3105,173 @@ class Renderer {
     }
     ctx.clearRect(0, 0, this.cssW, this.cssH);
 
-    const A = this.anim;
-    const pourAnim = A && A.kind === 'pour' ? this._computePour(now, A) : null;
-    const shakeAnim = A && A.kind === 'shake' ? this._computeShake(now, A) : null;
+    const F = this.flight;
+    // 공중에 떠 있어서 튜브에 그리지 않을 구슬 수
+    const airborne = new Map();
+    if (F) {
+      airborne.set(F.to, F.amount);
+      if (F.returning) airborne.set(F.from, (airborne.get(F.from) || 0) + F.returning);
+    }
+    if (this.held) airborne.set(this.held.tube, this.held.count);
 
     for (let i = 0; i < this.state.bottles.length; i++) {
-      // 붓는 중인 원본 병은 기울여서 나중에 위에 그린다
-      if (pourAnim && i === A.res.from) continue;
-
-      let rect = { ...this.rects[i] };
-      if (this.shake && this.shake.i === i) {
-        const el = now - this.shake.t0;
+      const rect = { ...this.rects[i] };
+      if (this.nudge && this.nudge.i === i) {
+        const el = now - this.nudge.t0;
         if (el < 300) rect.x += Math.sin(el / 16) * 5 * (1 - el / 300);
-        else this.shake = null;
+        else this.nudge = null;
       }
+      const balls = this.state.bottles[i];
+      const hideTop = airborne.get(i) || 0;
+      const visible = balls.slice(0, Math.max(0, balls.length - hideTop));
+      const complete = balls.length === this.capacity && new Set(balls).size === 1;
+      // 안내 중에는 다른 튜브를 물러나게 하되, 색 구분이 이 게임의 핵심이라 살짝만 죽인다
+      const dim = this.guide !== null && i !== this.guide && !(this.held && this.held.tube === i);
 
-      let model;
-      if (pourAnim && i === A.res.to) {
-        model = pourAnim.dstModel;
-      } else if (shakeAnim && i === A.res.at) {
-        model = shakeAnim.model;
-        rect.x += shakeAnim.jitterX;
-        rect.y += shakeAnim.jitterY;
-      } else {
-        const b = this.state.bottles[i];
-        model = { colors: b.map((c) => COLOR_HEX[c]), fraction: 1, flash: 0 };
-      }
-
-      const selected = this.selected === i && !A;
-      if (selected) rect.y -= LIFT;
-      const complete =
-        this.state.bottles[i].length === this.capacity && isUniform(this.state.bottles[i]);
-      const dim = this.guide !== null && i !== this.guide && !selected;
-      if (dim) ctx.save(), (ctx.globalAlpha = 0.4);
-      this._drawBottle(rect, model, { selected, complete, shadow: true });
+      if (dim) ctx.save(), (ctx.globalAlpha = 0.62);
+      this._drawTube(rect, visible, {
+        selected: this.held?.tube === i,
+        complete,
+      });
       if (dim) ctx.restore();
     }
 
-    if (pourAnim) {
-      if (pourAnim.stream) this._drawStream(pourAnim.stream);
-      const r0 = this.rects[A.res.from];
-      ctx.save();
-      ctx.translate(pourAnim.mouth.x, pourAnim.mouth.y);
-      ctx.rotate(pourAnim.rot);
-      this._drawBottle({ x: -r0.w / 2, y: 0, w: r0.w, h: r0.h }, pourAnim.srcModel, {
-        selected: false,
-        complete: false,
-        shadow: false,
-      });
-      ctx.restore();
-    }
-
-    if (!A) this._drawGuide(now);
+    if (this.held) this._drawHeld(now);
+    if (F) this._drawFlight(now, F);
+    if (!this.held && !F) this._drawGuide(now);
     this._drawParticles(now);
   }
 
-  _finish(A) {
-    this.anim = null;
-    if (!A.doneFired) {
-      A.doneFired = true;
-      A.onDone && A.onDone();
-    }
-  }
+  // 떠오르는 중~떠 있는 묶음
+  _drawHeld(now) {
+    const H = this.held;
+    const rect = this.rects[H.tube];
+    if (!rect) return;
+    const balls = this.state.bottles[H.tube];
+    const base = balls.length - H.count; // 묶음 아래에 남는 구슬 수
+    const t = easeOutBack(clamp01((now - H.t0) / 190));
+    const hex = COLOR_HEX[H.color];
+    // 살짝 위아래로 떠 있는 느낌
+    const bob = Math.sin(now / 420) * 2;
 
-  _computePour(now, A) {
-    const res = A.res;
-    const prevSrc = A.prev.bottles[res.from];
-    const prevDst = A.prev.bottles[res.to];
-    const postSrc = res.state.bottles[res.from];
-    const postDst = res.state.bottles[res.to];
-    const pouredHex = COLOR_HEX[topRun(prevSrc).color];
-    const srcRect = this.rects[res.from];
-    const dstRect = this.rects[res.to];
-
-    const startMouth = { x: srcRect.x + srcRect.w / 2, y: srcRect.y };
-    const pourMouth = {
-      x: dstRect.x + dstRect.w / 2 - A.dir * dstRect.w * 0.62,
-      y: dstRect.y - 24,
-    };
-
-    const el = now - A.t0;
-    const { MOVE, POUR, RETURN } = A;
-    const dstPreColors = prevDst.map((c) => COLOR_HEX[c]);
-    const srcColorsFull = prevSrc.map((c) => COLOR_HEX[c]);
-
-    if (el < MOVE) {
-      const t = easeInOut(clamp01(el / MOVE));
-      return {
-        mouth: {
-          x: startMouth.x + (pourMouth.x - startMouth.x) * t,
-          y: startMouth.y + (pourMouth.y - startMouth.y) * t,
-        },
-        rot: TILT * A.dir * t,
-        srcModel: { colors: srcColorsFull, fraction: 1, flash: 0 },
-        dstModel: { colors: dstPreColors, fraction: 1, flash: 0 },
-        stream: null,
+    for (let j = 0; j < H.count; j++) {
+      const from = this._slotPos(rect, base + j);
+      const to = this._heldPos(rect, j);
+      const p = {
+        x: from.x + (to.x - from.x) * t,
+        y: from.y + (to.y - from.y) * t + bob * t,
       };
+      const { ballR } = this._metrics(rect);
+      this._drawBall(p.x, p.y, ballR, hex, { magnet: t > 0.6 });
     }
-
-    if (el < MOVE + POUR) {
-      const t = easeInOut(clamp01((el - MOVE) / POUR));
-      const moved = res.amount * t;
-      const remain = prevSrc.length - moved;
-      const dstColors = dstPreColors.slice();
-      for (let k = 0; k < Math.ceil(moved); k++) dstColors.push(pouredHex);
-      return {
-        mouth: pourMouth,
-        rot: TILT * A.dir,
-        srcModel: {
-          colors: srcColorsFull.slice(0, Math.ceil(remain)),
-          fraction: remain % 1 > 0 ? remain % 1 : 1,
-          flash: 0,
-        },
-        dstModel: { colors: dstColors, fraction: moved % 1 > 0 ? moved % 1 : 1, flash: 0 },
-        stream: this._streamGeom(pourMouth, dstRect, prevDst.length + moved, pouredHex, A.dir),
-      };
-    }
-
-    if (el < MOVE + POUR + RETURN) {
-      const t = easeInOut(clamp01((el - MOVE - POUR) / RETURN));
-      return {
-        mouth: {
-          x: pourMouth.x + (startMouth.x - pourMouth.x) * t,
-          y: pourMouth.y + (startMouth.y - pourMouth.y) * t,
-        },
-        rot: TILT * A.dir * (1 - t),
-        srcModel: { colors: postSrc.map((c) => COLOR_HEX[c]), fraction: 1, flash: 0 },
-        dstModel: { colors: postDst.map((c) => COLOR_HEX[c]), fraction: 1, flash: 0 },
-        stream: null,
-      };
-    }
-
-    this._finish(A);
-    return null;
   }
 
-  _computeShake(now, A) {
-    const el = now - A.t0;
-    const { SHAKE, SETTLE } = A;
-    const beforeHex = A.res.from.map((c) => COLOR_HEX[c]);
-    const afterHex = COLOR_HEX[A.res.color];
+  _drawFlight(now, F) {
+    const el = now - F.t0;
+    const srcRect = this.rects[F.from];
+    const dstRect = this.rects[F.to];
+    const hex = COLOR_HEX[F.color];
+    const { ballR } = this._metrics(dstRect);
+    const dstLen = this.state.bottles[F.to].length;
+    const srcLen = this.state.bottles[F.from].length;
+    let allDone = true;
 
-    if (el < SHAKE) {
-      const t = clamp01(el / SHAKE);
-      // 흔들림은 강하게 시작해 잦아들고, 색은 그동안 서서히 녹아든다
-      const power = (1 - t) * 11;
-      const blend = easeInOut(clamp01((t - 0.22) / 0.7));
-      return {
-        jitterX: Math.sin(el / 21) * power,
-        jitterY: Math.cos(el / 15) * power * 0.5,
-        model: {
-          colors: beforeHex.map((hex) => lerpColor(hex, afterHex, blend)),
-          fraction: 1,
-          flash: Math.sin(t * Math.PI) * 0.22,
-        },
-      };
+    // 목적지로 날아가는 구슬
+    for (let j = 0; j < F.amount; j++) {
+      // 묶음 위쪽 구슬이 먼저 떠난다 (자석에서 떨어지듯)
+      const order = F.amount - 1 - j;
+      const start = order * F.STAGGER;
+      const t = clamp01((el - start) / F.TRAVEL);
+      if (t < 1) allDone = false;
+      const p0 = this._heldPos(srcRect, F.returning + order);
+      const p1 = this._slotPos(dstRect, dstLen - F.amount + j);
+      const cp = { x: (p0.x + p1.x) / 2, y: Math.min(p0.y, p1.y) - 46 };
+      const e = easeInOut(t);
+      const p = qbez(p0, cp, p1, e);
+      if (t >= 1 && !F.landed.has(j)) F.landed.add(j);
+      // 착지 직전 살짝 눌리는 스쿼시
+      const squash = t > 0.86 ? 1 - Math.sin((t - 0.86) / 0.14 * Math.PI) * 0.16 : 1;
+      this._drawBall(p.x, p.y, ballR, hex, { squash });
     }
 
-    if (el < SHAKE + SETTLE) {
-      return {
-        jitterX: 0,
-        jitterY: 0,
-        model: { colors: beforeHex.map(() => afterHex), fraction: 1, flash: 0 },
-      };
+    // 공간이 없어 되돌아가는 구슬
+    for (let j = 0; j < F.returning; j++) {
+      const t = clamp01(el / (F.TRAVEL * 0.7));
+      if (t < 1) allDone = false;
+      const p0 = this._heldPos(srcRect, j);
+      const p1 = this._slotPos(srcRect, srcLen - F.returning + j);
+      const e = easeOutCubic(t);
+      this._drawBall(p0.x, p0.y + (p1.y - p0.y) * e, this._metrics(srcRect).ballR, hex, {});
     }
 
-    this._finish(A);
-    return null;
+    if (allDone) {
+      this.flight = null;
+      if (!F.doneFired) {
+        F.doneFired = true;
+        F.onDone && F.onDone();
+      }
+    }
   }
 
-  _surfaceY(rect, unitCount) {
-    const pad = 3.5;
-    const unitH = (rect.h - pad * 2) / this.capacity;
-    return rect.y + rect.h - pad - unitH * unitCount;
-  }
-
-  _streamGeom(mouth, dstRect, dstCount, hex, dir) {
-    return {
-      x0: mouth.x + dir * 7,
-      y0: mouth.y + 3,
-      x1: dstRect.x + dstRect.w / 2,
-      y1: this._surfaceY(dstRect, dstCount),
-      color: hex,
-    };
-  }
-
-  _drawStream(s) {
-    const ctx = this.ctx;
-    if (s.y1 <= s.y0) return;
-    ctx.save();
-    ctx.lineCap = 'round';
-    ctx.strokeStyle = s.color;
-    ctx.lineWidth = 6;
-    ctx.globalAlpha = 0.95;
-    ctx.beginPath();
-    ctx.moveTo(s.x0, s.y0);
-    ctx.quadraticCurveTo(s.x1, s.y0 + (s.y1 - s.y0) * 0.35, s.x1, s.y1);
-    ctx.stroke();
-    ctx.strokeStyle = 'rgba(255,255,255,0.35)';
-    ctx.lineWidth = 2;
-    ctx.stroke();
-    ctx.restore();
-  }
-
-  _drawBottle(rect, model, { selected, complete, shadow }) {
+  _drawTube(rect, balls, { selected, complete }) {
     const ctx = this.ctx;
     const { x, y, w, h } = rect;
-    const r = w * 0.27;
-    const pad = 3.5;
-    const unitH = (h - pad * 2) / this.capacity;
+    const r = w * 0.42;
+    const { ballR } = this._metrics(rect);
 
-    if (shadow) {
-      ctx.save();
-      ctx.fillStyle = 'rgba(0,0,0,0.30)';
-      ctx.beginPath();
-      ctx.ellipse(x + w / 2, y + h + 7 + (selected ? LIFT : 0), w * 0.42, 4.5, 0, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.restore();
-    }
+    // 바닥 그림자
+    ctx.save();
+    ctx.fillStyle = 'rgba(0,0,0,0.28)';
+    ctx.beginPath();
+    ctx.ellipse(x + w / 2, y + h + 6, w * 0.4, 4, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
 
     if (selected || complete) {
       ctx.save();
-      ctx.shadowColor = selected ? 'rgba(139,107,255,0.9)' : 'rgba(255,220,120,0.55)';
-      ctx.shadowBlur = selected ? 20 : 14;
+      ctx.shadowColor = selected ? 'rgba(120,200,255,0.85)' : 'rgba(255,214,110,0.6)';
+      ctx.shadowBlur = selected ? 20 : 15;
       rr(ctx, x, y, w, h, r);
       ctx.fillStyle = 'rgba(255,255,255,0.02)';
       ctx.fill();
       ctx.restore();
     }
 
+    // 유리관
     rr(ctx, x, y, w, h, r);
-    ctx.fillStyle = 'rgba(255,255,255,0.055)';
+    ctx.fillStyle = 'rgba(255,255,255,0.05)';
     ctx.fill();
 
+    // 구슬
+    for (let k = 0; k < balls.length; k++) {
+      const p = this._slotPos(rect, k);
+      this._drawBall(p.x, p.y, ballR, COLOR_HEX[balls[k]], {});
+    }
+
+    // 유리 광택 + 외곽선
     ctx.save();
     rr(ctx, x + 1, y + 1, w - 2, h - 2, r - 1);
     ctx.clip();
-    const n = model.colors.length;
-    let topY = null;
-    for (let k = 0; k < n; k++) {
-      const uh = (k === n - 1 ? model.fraction : 1) * unitH;
-      const yTop = y + h - pad - (k * unitH + uh);
-      ctx.fillStyle = model.colors[k];
-      ctx.fillRect(x + pad, yTop, w - pad * 2, uh + 0.6);
-      if (k === n - 1) topY = yTop;
-    }
-    if (topY !== null && n > 0) {
-      ctx.fillStyle = 'rgba(255,255,255,0.28)';
-      ctx.beginPath();
-      ctx.ellipse(x + w / 2, topY + 1.2, (w - pad * 2) / 2, 2.8, 0, 0, Math.PI * 2);
-      ctx.fill();
-    }
-    if (model.flash > 0) {
-      ctx.fillStyle = `rgba(255,255,255,${model.flash})`;
-      ctx.fillRect(x, y, w, h);
-    }
-    ctx.fillStyle = 'rgba(255,255,255,0.07)';
-    rr(ctx, x + w * 0.13, y + 7, w * 0.16, h - 14, w * 0.08);
+    ctx.fillStyle = 'rgba(255,255,255,0.06)';
+    rr(ctx, x + w * 0.14, y + 8, w * 0.15, h - 16, w * 0.075);
     ctx.fill();
     ctx.restore();
 
     rr(ctx, x, y, w, h, r);
-    ctx.strokeStyle = selected ? 'rgba(190,170,255,0.75)' : 'rgba(255,255,255,0.28)';
-    ctx.lineWidth = selected ? 2.2 : 1.6;
+    ctx.strokeStyle = selected ? 'rgba(160,215,255,0.8)' : 'rgba(255,255,255,0.26)';
+    ctx.lineWidth = selected ? 2.2 : 1.5;
     ctx.stroke();
+
+    // 입구
     ctx.beginPath();
-    ctx.ellipse(x + w / 2, y + 0.5, w / 2 - 2, 3.4, 0, 0, Math.PI * 2);
-    ctx.strokeStyle = 'rgba(255,255,255,0.35)';
+    ctx.ellipse(x + w / 2, y + 1, w / 2 - 2, 3.2, 0, 0, Math.PI * 2);
+    ctx.strokeStyle = 'rgba(255,255,255,0.32)';
     ctx.lineWidth = 1.4;
     ctx.stroke();
 
     if (complete) {
-      const bx = x + w - 3;
-      const by = y - 5;
+      const bx = x + w - 2;
+      const by = y - 6;
       ctx.save();
       ctx.fillStyle = '#ffd166';
       ctx.beginPath();
@@ -2563,7 +3289,43 @@ class Renderer {
     }
   }
 
-  // 튜토리얼: 눌러야 할 병 위에 맥동하는 링 + 손가락 커서
+  // 금속 느낌의 구슬. magnet=true면 자석에 붙은 듯 테두리가 빛난다.
+  _drawBall(cx, cy, r, hex, { magnet = false, squash = 1 }) {
+    const ctx = this.ctx;
+    ctx.save();
+    ctx.translate(cx, cy);
+    if (squash !== 1) ctx.scale(1 / squash, squash);
+
+    if (magnet) {
+      ctx.shadowColor = 'rgba(170,225,255,0.95)';
+      ctx.shadowBlur = 11;
+    }
+    // 검정을 섞으면 색이 탁해져 구분이 어려워진다. 같은 색의 명암만 쓴다.
+    const g = ctx.createRadialGradient(-r * 0.3, -r * 0.34, r * 0.08, 0, 0, r * 1.08);
+    g.addColorStop(0, shade(hex, 0.62));
+    g.addColorStop(0.34, hex);
+    g.addColorStop(1, shade(hex, -0.3));
+    ctx.fillStyle = g;
+    ctx.beginPath();
+    ctx.arc(0, 0, r, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.shadowBlur = 0;
+
+    // 위쪽 하이라이트
+    ctx.fillStyle = 'rgba(255,255,255,0.55)';
+    ctx.beginPath();
+    ctx.ellipse(-r * 0.28, -r * 0.4, r * 0.28, r * 0.18, -0.5, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.strokeStyle = magnet ? 'rgba(200,240,255,0.9)' : 'rgba(0,0,0,0.22)';
+    ctx.lineWidth = magnet ? 1.6 : 1;
+    ctx.beginPath();
+    ctx.arc(0, 0, r - 0.5, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  // 튜토리얼: 눌러야 할 튜브 위 맥동 링 + 손가락
   _drawGuide(now) {
     if (this.guide === null) return;
     const r = this.rects[this.guide];
@@ -2581,19 +3343,17 @@ class Renderer {
     ctx.stroke();
     ctx.restore();
 
-    // 검지 든 손. 검지 → 엄지 → 주먹 순서로 그려 주먹이 밑동을 덮게 한다.
     ctx.save();
     ctx.translate(cx + 2, cy - 6 + beat * 9);
-    ctx.rotate(0.28); // 오른쪽 아래에서 올라온 손처럼 살짝 기울인다
-    ctx.scale(1.3, 1.3);
+    ctx.rotate(0.28);
+    ctx.scale(1.25, 1.25);
     ctx.lineJoin = 'round';
     ctx.lineWidth = 3;
-    ctx.strokeStyle = 'rgba(26,22,52,0.92)';
+    ctx.strokeStyle = 'rgba(20,24,48,0.92)';
     ctx.fillStyle = '#ffffff';
     ctx.shadowColor = 'rgba(0,0,0,0.45)';
     ctx.shadowBlur = 12;
     ctx.shadowOffsetY = 4;
-
     rr(ctx, -5.5, 0, 11, 33, 5.5); // 검지
     ctx.fill();
     ctx.stroke();
@@ -2619,9 +3379,8 @@ class Renderer {
       p.x += p.vx * dt;
       p.y += p.vy * dt;
       if (p.vr) p.rot += p.vr * dt;
-      const fade = clamp01((p.ttl - p.age) / (p.ttl * 0.3));
       ctx.save();
-      ctx.globalAlpha = fade;
+      ctx.globalAlpha = clamp01((p.ttl - p.age) / (p.ttl * 0.3));
       ctx.fillStyle = p.color;
       if (p.shape === 'rect') {
         ctx.translate(p.x, p.y);
@@ -2639,11 +3398,11 @@ class Renderer {
   }
 }
 
-// ===== paint-mix-sort/audio.js =====
+// ===== magnet-ball-sort/audio.js =====
 // WebAudio 신시사이저 — 오디오 파일 없이 코드로만 효과음을 만든다.
 // 모바일 정책상 첫 사용자 제스처에서 컨텍스트가 열린다.
 
-const STORAGE_MUTED = 'pms.muted';
+const STORAGE_MUTED = 'mbs.muted';
 
 class Sound {
   constructor() {
@@ -2681,7 +3440,7 @@ class Sound {
       osc.frequency.setValueAtTime(freq, t0);
       if (slide) osc.frequency.exponentialRampToValueAtTime(Math.max(40, freq + slide), t0 + dur);
       g.gain.setValueAtTime(0, t0);
-      g.gain.linearRampToValueAtTime(gain, t0 + 0.012);
+      g.gain.linearRampToValueAtTime(gain, t0 + 0.008);
       g.gain.exponentialRampToValueAtTime(0.0008, t0 + dur);
       osc.connect(g).connect(ctx.destination);
       osc.start(t0);
@@ -2689,7 +3448,7 @@ class Sound {
     } catch {}
   }
 
-  _noise({ dur = 0.25, from = 900, to = 300, gain = 0.16, delay = 0 } = {}) {
+  _click({ dur = 0.05, freq = 2200, gain = 0.13, delay = 0 } = {}) {
     if (this.muted) return;
     const ctx = this.ctx;
     if (!ctx) return;
@@ -2698,39 +3457,39 @@ class Sound {
       const len = Math.max(1, Math.floor(ctx.sampleRate * dur));
       const buf = ctx.createBuffer(1, len, ctx.sampleRate);
       const data = buf.getChannelData(0);
-      for (let i = 0; i < len; i++) data[i] = Math.random() * 2 - 1;
+      for (let i = 0; i < len; i++) data[i] = (Math.random() * 2 - 1) * (1 - i / len);
       const src = ctx.createBufferSource();
       src.buffer = buf;
       const filter = ctx.createBiquadFilter();
-      filter.type = 'lowpass';
-      filter.frequency.setValueAtTime(from, t0);
-      filter.frequency.exponentialRampToValueAtTime(Math.max(60, to), t0 + dur);
+      filter.type = 'bandpass';
+      filter.frequency.value = freq;
+      filter.Q.value = 1.4;
       const g = ctx.createGain();
-      g.gain.setValueAtTime(0, t0);
-      g.gain.linearRampToValueAtTime(gain, t0 + 0.03);
+      g.gain.setValueAtTime(gain, t0);
       g.gain.exponentialRampToValueAtTime(0.0008, t0 + dur);
       src.connect(filter).connect(g).connect(ctx.destination);
       src.start(t0);
     } catch {}
   }
 
-  select() {
-    this._tone(540, { type: 'triangle', dur: 0.07, gain: 0.07 });
+  // 자석에 붙는 소리: 짧은 저음 툭 + 금속성 딸깍
+  pick(count) {
+    this._tone(180, { type: 'sine', dur: 0.09, gain: 0.08, slide: 90 });
+    for (let i = 0; i < Math.min(count, 4); i++) {
+      this._click({ freq: 2600 + i * 220, gain: 0.06, delay: 0.02 * i });
+    }
   }
 
-  pour(amount) {
-    this._noise({ dur: 0.2 + 0.08 * amount, from: 950, to: 280, gain: 0.15 });
-  }
-
-  mix() {
-    this._tone(523, { type: 'triangle', dur: 0.14, gain: 0.1 });
-    this._tone(659, { type: 'triangle', dur: 0.14, gain: 0.1, delay: 0.06 });
-    this._tone(784, { type: 'triangle', dur: 0.22, gain: 0.12, delay: 0.12 });
+  drop(count) {
+    for (let i = 0; i < Math.min(count, 5); i++) {
+      this._click({ freq: 1500 + Math.random() * 900, gain: 0.11, delay: 0.055 * i });
+      this._tone(320 + i * 40, { type: 'triangle', dur: 0.07, gain: 0.05, delay: 0.055 * i });
+    }
   }
 
   complete() {
     this._tone(880, { type: 'triangle', dur: 0.13, gain: 0.09 });
-    this._tone(1175, { type: 'triangle', dur: 0.2, gain: 0.08, delay: 0.07 });
+    this._tone(1320, { type: 'triangle', dur: 0.2, gain: 0.08, delay: 0.07 });
   }
 
   win() {
@@ -2740,25 +3499,24 @@ class Sound {
   }
 
   error() {
-    this._tone(150, { type: 'square', dur: 0.09, gain: 0.05 });
+    this._tone(140, { type: 'square', dur: 0.09, gain: 0.05 });
   }
 }
 
-// ===== paint-mix-sort/game.js =====
-// 게임 컨트롤러 — 입력을 엔진 호출로 바꾸고, HUD/오버레이/배너를 관리한다.
+// ===== magnet-ball-sort/game.js =====
+// 게임 컨트롤러 — 입력을 엔진 호출로 바꾸고, HUD/오버레이/목차를 관리한다.
+//
+// 규칙은 클래식 소트다: 같은 색 위 또는 빈 튜브에만 옮길 수 있다.
+// 목표는 화면만 봐도 안다 — 튜브마다 한 색으로 모으기. 그래서 설명 문구가 없다.
 
 
 
 
-const STORAGE_LEVEL = 'pms.level';
-const STORAGE_CLEARED = 'pms.cleared'; // 레벨당 '0'/'1' 한 글자
+const STORAGE_LEVEL = 'mbs.level';
+const STORAGE_CLEARED = 'mbs.cleared'; // 레벨당 '0'/'1' 한 글자
 
-// 손가락이 직접 짚어주는 레벨. 1은 흔들기를, 2는 붓기를 가르친다.
-const GUIDED_LEVELS = new Set([0, 1]);
-
-const HINTS = {
-  5: '🔴 빨강도 목표예요. 빨강 4칸을 그대로 남겨야 합니다.',
-};
+// 첫 판만 손가락으로 짚어준다. 두 번 누르면 옮겨진다는 것만 알면 끝이다.
+const GUIDED_LEVELS = new Set([0]);
 
 class Game {
   constructor({ renderer, sound, dom }) {
@@ -2771,6 +3529,7 @@ class Game {
     this.cleared = LEVEL_DATA.map((_, i) => marks[i] === '1');
     this.busy = false;
     this.won = false;
+    this.selected = null;
   }
 
   get level() {
@@ -2785,48 +3544,32 @@ class Game {
     this.levelIndex = Math.min(Math.max(i, 0), LEVEL_DATA.length - 1);
     safeStorage.setItem(STORAGE_LEVEL, String(this.levelIndex));
     const lv = this.level;
-    this.state = { capacity: CAPACITY, bottles: lv.bottles.map((b) => b.slice()) };
+    this.state = { capacity: lv.capacity, bottles: lv.tubes.map((t) => t.slice()) };
     this.targets = lv.targets.slice();
     this.history = [];
     this.selected = null;
     this.won = false;
     this.busy = false;
     this.guided = GUIDED_LEVELS.has(this.levelIndex);
-    this._goalFlags = null;
     clearTimeout(this._deadT);
     clearTimeout(this._bannerT);
-    // 승리 오버레이는 지연 후 뜨므로, 그 사이 레벨을 옮기면 취소해야 한다.
-    // (안 그러면 새 레벨 위에 이전 레벨의 클리어 화면이 튀어나온다)
     clearTimeout(this._winT);
 
     this.renderer.clearEffects();
     this.renderer.setState(this.state);
-    this.renderer.setSelected(null);
     this.dom.overlay.classList.add('hidden');
     this.closeLevels();
     this.hideBanner();
     this.updateHud();
-    this.updateGoals();
-    this.updateShakeButton();
     this.updateGuide();
-
-    const hint = HINTS[this.levelIndex];
-    if (hint) {
-      this.dom.hint.textContent = hint;
-      this.dom.hint.classList.remove('hidden');
-    } else {
-      this.dom.hint.classList.add('hidden');
-    }
   }
 
-  deselect() {
+  release() {
     this.selected = null;
-    this.renderer.setSelected(null);
-    this.updateShakeButton();
+    this.renderer.hold(null);
   }
 
-  // --- 튜토리얼 안내 ---
-  // 안내 레벨에서 지금 둬야 할 수. 입력을 이 수로만 제한한다.
+  // --- 튜토리얼 ---
   nextGuideMove() {
     if (!this.guided || this.won || this.busy) return null;
     return this.level.solution[this.history.length] || null;
@@ -2834,156 +3577,109 @@ class Game {
 
   updateGuide() {
     const g = this.nextGuideMove();
-    if (!g) {
-      this.renderer.setGuide(null);
-      this.dom.btnShake.classList.remove('pulse');
-      return;
-    }
-    if (g.type === 'shake') {
-      // 병을 먼저 고르게 하고, 고른 뒤에는 흔들기 버튼을 강조한다
-      const picked = this.selected === g.at;
-      this.renderer.setGuide(picked ? null : g.at);
-      this.dom.btnShake.classList.toggle('pulse', picked);
-    } else {
-      this.renderer.setGuide(this.selected === null ? g.from : g.to);
-      this.dom.btnShake.classList.remove('pulse');
-    }
-  }
-
-  // 선택 시도. 비었거나 완성돼 잠긴 병이면 거절한다.
-  trySelect(i) {
-    if (!this.state.bottles[i].length || isLocked(this.state, i, SHAKE_RULES)) {
-      this.renderer.shakeBottle(i);
-      this.sound.error();
-      return false;
-    }
-    this.selected = i;
-    this.renderer.setSelected(i);
-    this.sound.select();
-    this.updateShakeButton();
-    this.updateGuide();
-    return true;
+    this.renderer.setGuide(g ? (this.selected === null ? g.from : g.to) : null);
   }
 
   tap(i) {
     if (this.busy || this.won) return;
     if (!this.state.bottles[i]) return;
 
-    // 안내 중에는 짚어준 병만 반응한다
+    // 집은 걸 다시 놓는 건 안내 중에도 언제나 허용한다 (막으면 답답하다)
+    if (i === this.selected) {
+      this.release();
+      this.updateGuide();
+      return;
+    }
+
     const g = this.nextGuideMove();
     if (g) {
-      const want = g.type === 'shake' ? g.at : this.selected === null ? g.from : g.to;
+      const want = this.selected === null ? g.from : g.to;
       if (i !== want) {
-        this.renderer.shakeBottle(i);
+        this.renderer.nudgeTube(i);
         return;
       }
     }
 
     if (this.selected === null) {
-      this.trySelect(i);
+      this.pickUp(i);
       return;
     }
 
-    if (i === this.selected) {
-      this.deselect();
-      this.updateGuide();
-      return;
-    }
-
-    if (canPour(this.state, this.selected, i, SHAKE_RULES)) {
-      this.doPour(this.selected, i);
+    if (canPour(this.state, this.selected, i, CLASSIC_RULES)) {
+      this.doMove(this.selected, i);
     } else {
-      // 부을 수 없는 곳이면 선택을 옮겨준다. 옮길 수 없으면 기존 선택을 유지한다.
-      this.trySelect(i);
+      // 못 놓는 곳이면 그 튜브를 새로 집어본다. 그것도 안 되면 흔들어 알린다.
+      const before = this.selected;
+      if (!this.pickUp(i)) {
+        this.selected = before;
+        this.renderer.nudgeTube(i);
+      }
     }
   }
 
-  doPour(from, to) {
+  // 맨 위 같은 색 구슬 묶음을 자석으로 집는다.
+  pickUp(i) {
+    const balls = this.state.bottles[i];
+    if (!balls.length || isLocked(this.state, i, CLASSIC_RULES)) {
+      this.renderer.nudgeTube(i);
+      this.sound.error();
+      return false;
+    }
+    const run = topRun(balls);
+    this.selected = i;
+    this.renderer.hold(i, run.color, run.count);
+    this.sound.pick(run.count);
+    this.updateGuide();
+    return true;
+  }
+
+  doMove(from, to) {
     const prev = this.state;
-    const res = pour(prev, from, to, SHAKE_RULES);
+    const heldCount = topRun(prev.bottles[from]).count;
+    const res = pour(prev, from, to, CLASSIC_RULES);
     if (!res) return;
 
     this.history.push(prev);
     this.state = res.state;
-    this.deselect();
+    this.selected = null;
     this.busy = true;
     this.hideBanner();
-    this.sound.pour(res.amount);
     this.updateHud();
     this.renderer.setGuide(null);
-    this.dom.btnShake.classList.remove('pulse');
 
     const completedNow = isComplete(this.state, to) && !isComplete(prev, to);
 
-    this.renderer.animatePour({
-      prevState: prev,
+    this.renderer.animateMove({
       result: res,
-      onDone: () => this.afterMove(completedNow ? { at: to, color: res.color } : null),
+      heldCount,
+      onDone: () => {
+        this.busy = false;
+        this.renderer.setState(this.state);
+        this.updateHud();
+        if (completedNow) {
+          this.renderer.burstAtTube(to, COLOR_HEX[res.color]);
+          this.sound.complete();
+        }
+        if (isWin(this.state, this.targets)) this.win();
+        else {
+          this.updateGuide();
+          this.scheduleDeadCheck();
+        }
+      },
     });
-  }
-
-  doShake() {
-    if (this.busy || this.won || this.selected === null) return;
-    const at = this.selected;
-    const prev = this.state;
-    const res = shake(prev, at, SHAKE_RULES);
-    if (!res) {
-      this.renderer.shakeBottle(at);
-      this.sound.error();
-      return;
-    }
-
-    const g = this.nextGuideMove();
-    if (g && !(g.type === 'shake' && g.at === at)) {
-      this.renderer.shakeBottle(at);
-      return;
-    }
-
-    this.history.push(prev);
-    this.state = res.state;
-    this.deselect();
-    this.busy = true;
-    this.hideBanner();
-    this.sound.mix();
-    this.updateHud();
-    this.renderer.setGuide(null);
-    this.dom.btnShake.classList.remove('pulse');
-
-    this.renderer.animateShake({
-      prevState: prev,
-      result: res,
-      onDone: () => this.afterMove({ at, color: res.color }),
-    });
-  }
-
-  // 한 수가 끝난 뒤 공통 처리
-  afterMove(completed) {
-    this.busy = false;
-    this.renderer.setState(this.state);
-    this.updateGoals();
-    this.updateShakeButton();
-    if (completed) {
-      this.renderer.burstAtBottle(completed.at, COLOR_HEX[completed.color]);
-      this.sound.complete();
-    }
-    if (isWin(this.state, this.targets)) this.win();
-    else {
-      this.updateGuide();
-      this.scheduleDeadCheck();
-    }
+    // 구슬이 착지하는 타이밍에 맞춰 소리
+    setTimeout(() => this.sound.drop(res.amount), 210);
   }
 
   undo() {
     if (this.busy || this.won || !this.history.length) return;
     this.state = this.history.pop();
-    this.deselect();
+    this.release();
     this.renderer.setState(this.state);
     this.hideBanner();
     this.updateHud();
-    this.updateGoals();
-    this.updateShakeButton();
     this.updateGuide();
-    this.sound.select();
+    this.sound.pick(1);
   }
 
   restart() {
@@ -2996,24 +3692,23 @@ class Game {
     this.loadLevel(last ? 0 : this.levelIndex + 1);
   }
 
-  // 매 수 이후, 현재 상태가 확실히 못 푸는 상태인지 백그라운드로 확인
   scheduleDeadCheck() {
     clearTimeout(this._deadT);
     this._deadT = setTimeout(() => {
       if (this.won || this.busy) return;
-      const r = solve(this.state, this.targets, SHAKE_RULES, { maxNodes: 25000 });
+      const r = solve(this.state, this.targets, CLASSIC_RULES, { maxNodes: 25000 });
       if (!r.solved && r.exhausted) {
-        this.showBanner('🚫 더 이상 풀 수 없어요 — 되돌리기(↩︎)로 살려보세요!', true);
+        this.showBanner('🚫 더 이상 풀 수 없어요 — 되돌리기(↩︎)를 눌러보세요', true);
       }
     }, 160);
   }
 
   win() {
     this.won = true;
+    this.release();
     this.sound.win();
     this.renderer.setGuide(null);
     this.renderer.celebrate();
-    this.dom.btnShake.classList.add('hidden');
     this.cleared[this.levelIndex] = true;
     this.saveCleared();
     if (this.levelIndex + 1 < LEVEL_DATA.length) {
@@ -3023,60 +3718,18 @@ class Game {
     this.dom.overlayTitle.textContent = last ? '🎉 전 레벨 클리어!' : `레벨 ${this.levelIndex + 1} 클리어!`;
     this.dom.overlayInfo.textContent = `${this.history.length}수 · 참고 답안 ${this.level.solutionLength}수`;
     this.dom.btnNext.textContent = last ? '처음부터 다시 ↻' : '다음 레벨 ▶';
-    this._winT = setTimeout(() => this.dom.overlay.classList.remove('hidden'), 850);
+    this._winT = setTimeout(() => this.dom.overlay.classList.remove('hidden'), 800);
   }
 
   updateHud() {
+    const done = this.state.bottles.filter((_, i) => isComplete(this.state, i)).length;
     this.dom.levelLabel.textContent = `레벨 ${this.levelIndex + 1}`;
-    this.dom.moveLabel.textContent = `${this.history.length}수 · 총 ${LEVEL_DATA.length}레벨`;
+    this.dom.moveLabel.textContent = `완성 ${done}/${this.targets.length} · ${this.history.length}수`;
     this.dom.btnUndo.disabled = !this.history.length;
   }
 
-  // 고른 병을 흔들 수 있으면 버튼을 띄우고, 나올 색을 미리 보여준다.
-  updateShakeButton() {
-    const btn = this.dom.btnShake;
-    const at = this.selected;
-    const color = at === null || this.won ? null : shakePreview(this.state, at, SHAKE_RULES);
-    if (!color) {
-      btn.classList.add('hidden');
-      btn.classList.remove('pulse');
-      return;
-    }
-    btn.classList.remove('hidden');
-    btn.style.setProperty('--c', COLOR_HEX[color]);
-    btn.innerHTML = `흔들어 섞기 <span class="swatch"></span>`;
-    btn.setAttribute('aria-label', `흔들어 ${COLOR_NAME[color]} 만들기`);
-  }
-
-  // 하단 목표 선반: 빈 병 실루엣이 "만들어야 할 병", 완성되면 색이 찬다.
-  updateGoals() {
-    const remaining = {};
-    this.state.bottles.forEach((b, i) => {
-      if (isComplete(this.state, i)) remaining[b[0]] = (remaining[b[0]] || 0) + 1;
-    });
-    const flags = this.targets.map((t) => {
-      if (remaining[t] > 0) {
-        remaining[t]--;
-        return true;
-      }
-      return false;
-    });
-
-    const slots = this.dom.goalSlots;
-    slots.innerHTML = '';
-    flags.forEach((done, idx) => {
-      const el = document.createElement('span');
-      el.className = 'goal' + (done ? ' done' : '');
-      el.style.setProperty('--c', COLOR_HEX[this.targets[idx]]);
-      if (done && this._goalFlags && !this._goalFlags[idx]) el.classList.add('pop');
-      slots.appendChild(el);
-    });
-    this._goalFlags = flags;
-  }
-
   // --- 레벨 목차 ---
-  // 프로토타입이라 전부 열어둔다. 난이도 곡선을 아무 데나 찍어보며 확인할 수 있어야 하므로.
-  // 실제 출시 때는 클리어한 다음 레벨까지만 여는 게 맞다.
+  // 프로토타입이라 전부 열어둔다. 실제 출시 때는 클리어한 다음 레벨까지만 여는 게 맞다.
   openLevels() {
     this.buildLevelGrid();
     this.dom.levelSelect.classList.remove('hidden');
@@ -3101,7 +3754,7 @@ class Game {
         'lv' + (this.cleared[i] ? ' cleared' : '') + (i === this.levelIndex ? ' current' : '');
       btn.setAttribute(
         'aria-label',
-        `레벨 ${i + 1}${this.cleared[i] ? ' (클리어함)' : ''} — 목표 ${lv.targets.length}개`
+        `레벨 ${i + 1}${this.cleared[i] ? ' (클리어함)' : ''} — 색 ${lv.targets.length}가지`
       );
 
       const num = document.createElement('span');
@@ -3125,40 +3778,34 @@ class Game {
     clearTimeout(this._bannerT);
     this.dom.banner.textContent = text;
     this.dom.banner.classList.remove('hidden');
-    if (!sticky) {
-      this._bannerT = setTimeout(() => this.hideBanner(), 2300);
-    }
+    if (!sticky) this._bannerT = setTimeout(() => this.hideBanner(), 2300);
   }
 
   hideBanner() {
     this.dom.banner.classList.add('hidden');
   }
 
-  // 디버그/검증용: 현재 상태를 즉시 클리어 상태로 만든다
+  // 디버그/검증용
   autoWin() {
     if (this.won) return true;
     let moves;
     if (this.history.length === 0) {
       moves = this.level.solution;
     } else {
-      const r = solve(this.state, this.targets, SHAKE_RULES, { maxNodes: 600000 });
+      const r = solve(this.state, this.targets, CLASSIC_RULES, { maxNodes: 800000 });
       if (!r.solved) return false;
       moves = r.moves;
     }
     for (const mv of moves) {
-      const res =
-        mv.type === 'shake'
-          ? shake(this.state, mv.at, SHAKE_RULES)
-          : pour(this.state, mv.from, mv.to, SHAKE_RULES);
+      const res = pour(this.state, mv.from, mv.to, CLASSIC_RULES);
       if (!res) return false;
       this.history.push(this.state);
       this.state = res.state;
     }
+    this.release();
     this.renderer.setState(this.state);
     this.renderer.setGuide(null);
-    this.deselect();
     this.updateHud();
-    this.updateGoals();
     if (isWin(this.state, this.targets)) {
       this.win();
       return true;
@@ -3168,9 +3815,8 @@ class Game {
 }
 
 
-// ===== paint-mix-sort/main.js =====
+// ===== magnet-ball-sort/main.js =====
 // 부트스트랩 — DOM 연결, 입력, 리사이즈, 디버그 API.
-
 
 
 
@@ -3184,12 +3830,8 @@ const dom = {
   btnRestart: $('btnRestart'),
   btnMute: $('btnMute'),
   btnNext: $('btnNext'),
-  btnShake: $('btnShake'),
   levelSelect: $('levelSelect'),
   levelGrid: $('levelGrid'),
-  goalSlots: $('goalSlots'),
-  legend: $('legend'),
-  hint: $('hint'),
   banner: $('banner'),
   overlay: $('overlay'),
   overlayTitle: $('overlayTitle'),
@@ -3200,23 +3842,6 @@ const renderer = new Renderer(dom.board);
 const sound = new Sound();
 const game = new Game({ renderer, sound, dom });
 
-// 혼합 공식 범례. "반반씩 채워서 흔들어야 나온다"를 2칸씩 보여준다.
-// 이모지는 기기마다 렌더링이 제각각이라 화살표만 쓴다.
-function buildLegend() {
-  const dot = (c) => `<span class="dot" style="--c:${COLOR_HEX[c]}"></span>`;
-  const pairs = [
-    ['R', 'Y'],
-    ['Y', 'B'],
-    ['R', 'B'],
-  ];
-  dom.legend.innerHTML = pairs
-    .map(
-      ([a, b]) =>
-        `<span class="formula">${dot(a)}${dot(a)}${dot(b)}${dot(b)}<em>→</em>${dot(mixOf(a, b))}</span>`
-    )
-    .join('');
-}
-
 function updateMuteIcon() {
   dom.btnMute.textContent = sound.muted ? '🔇' : '🔊';
 }
@@ -3226,7 +3851,7 @@ dom.board.addEventListener('pointerdown', (e) => {
   const r = dom.board.getBoundingClientRect();
   const i = renderer.hitTest(e.clientX - r.left, e.clientY - r.top);
   if (i !== null) game.tap(i);
-  else game.deselect();
+  else game.release();
 });
 dom.board.addEventListener('contextmenu', (e) => e.preventDefault());
 
@@ -3238,11 +3863,9 @@ dom.btnMute.addEventListener('click', () => {
   updateMuteIcon();
 });
 
-dom.btnShake.addEventListener('click', () => game.doShake());
 $('btnLevels').addEventListener('click', () => game.toggleLevels());
 $('btnCloseLevels').addEventListener('click', () => game.closeLevels());
 $('btnLevelsFromWin').addEventListener('click', () => game.openLevels());
-// 배경을 누르면 닫기 (카드 안쪽 클릭은 통과시키지 않는다)
 dom.levelSelect.addEventListener('click', (e) => {
   if (e.target === dom.levelSelect) game.closeLevels();
 });
@@ -3253,14 +3876,13 @@ window.addEventListener('keydown', (e) => {
 new ResizeObserver(() => renderer.resize()).observe(dom.board);
 window.addEventListener('resize', () => renderer.resize());
 
-buildLegend();
 updateMuteIcon();
 renderer.resize();
 game.loadLevel(game.levelIndex);
 
 // ?debug — 자동화 테스트/개발용 훅
 if (new URLSearchParams(location.search).has('debug')) {
-  window.__pms = {
+  window.__mbs = {
     game,
     renderer,
     sound,
@@ -3271,7 +3893,7 @@ if (new URLSearchParams(location.search).has('debug')) {
     autoWin: () => game.autoWin(),
     center: (i) => {
       const r = dom.board.getBoundingClientRect();
-      const c = renderer.bottleCenter(i);
+      const c = renderer.tubeCenter(i);
       return c ? { x: r.left + c.x, y: r.top + c.y } : null;
     },
   };
