@@ -16,6 +16,17 @@ import {
 import { LEVEL_DATA } from './levels-data.js';
 import { COLOR_HEX } from './render.js';
 
+// 압축 저장된 레벨 데이터를 푼다 (형식 설명은 levels-data.js 머리말 참고)
+const decodeTubes = (tubes) => tubes.map((s) => s.split(''));
+function decodeSolution(sol) {
+  const moves = [];
+  for (let i = 0; i + 1 < sol.length; i += 2) {
+    moves.push({ from: Number(sol[i]), to: Number(sol[i + 1]) });
+  }
+  return moves;
+}
+const colorsOf = (tubes) => [...new Set(tubes.join(''))];
+
 const STORAGE_LEVEL = 'mbs.level';
 const STORAGE_CLEARED = 'mbs.cleared'; // 레벨당 '0'/'1' 한 글자
 const STORAGE_STARS = 'mbs.stars'; // 레벨당 '0'~'3' 한 글자
@@ -23,9 +34,9 @@ const STORAGE_STARS = 'mbs.stars'; // 레벨당 '0'~'3' 한 글자
 // 첫 판만 손가락으로 짚어준다. 두 번 누르면 옮겨진다는 것만 알면 끝이다.
 const GUIDED_LEVELS = new Set([0]);
 
-// 여정: 4레벨마다 갇힌 친구 하나를 구한다. 마지막 친구는 왕관을 쓴다.
-const CHAPTER = 4;
-const FRIEND_COLORS = ['C', 'G', 'K', 'Y'];
+// 여정: 5레벨마다 갇힌 친구 하나를 구한다. 마지막 친구는 왕관을 쓴다.
+const CHAPTER = 5;
+const FRIEND_COLORS = ['C', 'G', 'K', 'Y', 'B', 'P', 'O', 'R'];
 
 // 별점 기준. 참고 답안(par) 안에 풀면 3개.
 function starsFor(moves, par) {
@@ -91,8 +102,9 @@ export class Game {
     this.levelIndex = Math.min(Math.max(i, 0), LEVEL_DATA.length - 1);
     localStorage.setItem(STORAGE_LEVEL, String(this.levelIndex));
     const lv = this.level;
-    this.state = { capacity: lv.capacity, bottles: lv.tubes.map((t) => t.slice()) };
-    this.targets = lv.targets.slice();
+    this.state = { capacity: lv.cap, bottles: decodeTubes(lv.tubes) };
+    this.targets = colorsOf(lv.tubes);
+    this.solution = decodeSolution(lv.sol);
     this.history = [];
     this.selected = null;
     this.won = false;
@@ -119,7 +131,7 @@ export class Game {
   // --- 튜토리얼 ---
   nextGuideMove() {
     if (!this.guided || this.won || this.busy) return null;
-    return this.level.solution[this.history.length] || null;
+    return this.solution[this.history.length] || null;
   }
 
   updateGuide() {
@@ -262,7 +274,7 @@ export class Game {
 
     const chapter = Math.floor(this.levelIndex / CHAPTER);
     const wasFreed = this.friendFreed(chapter);
-    const earned = starsFor(this.history.length, this.level.solutionLength);
+    const earned = starsFor(this.history.length, this.level.par);
     this.cleared[this.levelIndex] = true;
     this.stars[this.levelIndex] = Math.max(this.stars[this.levelIndex], earned);
     this.saveProgress();
@@ -274,7 +286,7 @@ export class Game {
 
     const last = this.levelIndex >= LEVEL_DATA.length - 1;
     this.dom.overlayTitle.textContent = last ? '🎉 모두 구했어요!' : `레벨 ${this.levelIndex + 1} 클리어!`;
-    this.dom.overlayInfo.textContent = `${this.history.length}수 · 참고 답안 ${this.level.solutionLength}수`;
+    this.dom.overlayInfo.textContent = `${this.history.length}수 · 참고 답안 ${this.level.par}수`;
     this.dom.btnNext.textContent = last ? '처음부터 다시 ↻' : '다음 레벨 ▶';
 
     // 별은 오버레이가 뜰 때 하나씩 튀어나오게 (클래스를 다시 붙여 애니메이션 재생)
@@ -339,7 +351,7 @@ export class Game {
       btn.textContent = String(i + 1);
       btn.setAttribute(
         'aria-label',
-        `레벨 ${i + 1} — 색 ${lv.targets.length}가지, 별 ${this.stars[i]}개`
+        `레벨 ${i + 1} — 색 ${colorsOf(lv.tubes).length}가지, 별 ${this.stars[i]}개`
       );
 
       if (this.stars[i] > 0) {
@@ -398,7 +410,7 @@ export class Game {
     if (this.won) return true;
     let moves;
     if (this.history.length === 0) {
-      moves = this.level.solution;
+      moves = this.solution;
     } else {
       const r = solve(this.state, this.targets, CLASSIC_RULES, { maxNodes: 800000 });
       if (!r.solved) return false;

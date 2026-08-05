@@ -1,45 +1,62 @@
-// 레벨 정의. 실제 배치는 sort-engine의 generateLevel(seed 고정)로 만들어져
+// 레벨 스펙. 실제 배치는 sort-engine의 generateLevel(seed 고정)로 만들어져
 // 언제나 같은 레벨이 나오고, 생성 시점에 솔버로 "풀 수 있음"이 보장된다.
 //
 // 규칙은 클래식이다: 같은 색 위 또는 빈 튜브에만 옮길 수 있고, 색은 절대 변하지 않는다.
 // 그래서 색 이름은 그냥 이름표다 — 몇 가지든 쓸 수 있다.
 //
-// colors     = 이 레벨에 등장하는 색 수 (많을수록 어렵다)
-// extraEmpty = 빈 튜브 수 (적을수록 옮길 자리가 없어 어렵다)
-// min/maxMoves = 참고해 길이 허용 구간. 난이도가 들쭉날쭉해지지 않게 한다.
+// 난이도는 짐작하지 않고 **측정했다.** 아래 CONFIGS의 median은 각 설정으로 레벨을
+// 여러 개 뽑아 솔버가 찾은 최소 수의 중앙값이다 (tools/probe 참고).
+// 굽는 단계에서 전체를 이 최소 수 기준으로 정렬하므로 곡선이 단조 증가한다.
 
-// 기본 튜브 용량. 마지막 두 레벨만 5칸으로 키워 마무리 난이도를 올린다.
-export const CAPACITY = 4;
+export const CAPACITY = 4; // 기본값. 레벨마다 다를 수 있다.
 
 // 색 순서는 고정. 앞에서부터 필요한 만큼 쓴다.
 export const PALETTE = ['R', 'O', 'Y', 'G', 'C', 'B', 'P', 'K'];
 
-const L = (colors, extraEmpty, minMoves, maxMoves, seed, capacity = CAPACITY) => ({
-  targets: PALETTE.slice(0, colors),
-  extraEmpty,
-  minMoves,
-  maxMoves,
-  seed,
-  capacity,
-});
-
-export const LEVELS = [
-  // 색 2개로 시작. 설명 없이 눌러보면 바로 이해되는 크기.
-  L(2, 2, 3, 5, 301),
-  L(2, 1, 4, 7, 302),
-  L(3, 2, 6, 9, 303),
-  L(3, 1, 8, 11, 304),
-  L(4, 2, 11, 14, 305),
-  L(4, 1, 12, 15, 306),
-  L(5, 2, 14, 17, 307),
-  L(5, 1, 15, 18, 308),
-  L(6, 2, 17, 20, 309),
-  L(6, 1, 18, 21, 310),
-  L(7, 2, 20, 24, 311),
-  L(7, 1, 21, 25, 312),
-  L(8, 2, 21, 23, 313),
-  L(8, 1, 24, 26, 314),
-  // 마지막 두 판은 튜브가 5칸이다. 색 수로는 더 올릴 데가 없어서 용량으로 올린다.
-  L(7, 2, 27, 30, 315, 5),
-  L(8, 1, 31, 36, 316, 5),
+// [용량, 색 수, 빈 튜브 수, 측정된 최소 수 중앙값]
+const CONFIGS = [
+  [4, 2, 2, 4], [4, 2, 1, 5], [5, 2, 1, 5], [4, 3, 1, 6], [5, 2, 2, 6], [4, 3, 2, 7],
+  [5, 3, 1, 9], [4, 4, 1, 11], [5, 3, 2, 11], [4, 5, 1, 13], [4, 4, 2, 14], [5, 4, 1, 14],
+  [4, 5, 2, 17], [5, 4, 2, 17], [4, 6, 2, 18], [4, 6, 1, 18], [5, 5, 2, 21], [5, 5, 1, 21],
+  [4, 7, 1, 22], [4, 7, 2, 23], [4, 8, 1, 24], [5, 6, 1, 24], [5, 6, 2, 25], [4, 8, 2, 27],
+  [5, 7, 1, 28], [5, 7, 2, 30], [5, 8, 2, 33], [5, 8, 1, 33],
 ];
+
+// 쉬운 설정은 적게, 어려운 설정은 많이 준다.
+// 초반에 비슷한 난이도가 길게 늘어지면 지루해지고, 후반은 오래 붙잡아야 하므로.
+function countFor(median) {
+  if (median <= 7) return 3;
+  if (median <= 25) return 5;
+  // 최상단 난이도는 빈 튜브가 하나뿐이라 풀 수 있는 배치 자체가 드물다.
+  // 생성 실패를 감안해 시드를 넉넉히 준다 (실패한 건 굽는 단계에서 걸러진다).
+  if (median >= 33) return 9;
+  return 6;
+}
+
+// 측정된 중앙값 주변으로 허용 구간을 준다. 너무 좁으면 생성이 실패하고,
+// 너무 넓으면 같은 설정 안에서 난이도가 튄다.
+function bandFor(median) {
+  const slack = median <= 7 ? 2 : Math.max(3, Math.round(median * 0.18));
+  return [Math.max(3, median - slack), median + slack];
+}
+
+// 굽는 도구와 테스트가 같은 스펙 목록을 보도록 한 곳에서 만든다.
+export function buildSpecs() {
+  const specs = [];
+  CONFIGS.forEach(([capacity, colors, extraEmpty, median], ci) => {
+    const [minMoves, maxMoves] = bandFor(median);
+    for (let j = 0; j < countFor(median); j++) {
+      specs.push({
+        targets: PALETTE.slice(0, colors),
+        capacity,
+        extraEmpty,
+        minMoves,
+        maxMoves,
+        seed: 5000 + ci * 100 + j,
+      });
+    }
+  });
+  return specs;
+}
+
+export const LEVEL_SPECS = buildSpecs();

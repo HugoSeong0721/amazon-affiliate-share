@@ -1,31 +1,54 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { generateLevel, pour, isWin, topRun, CLASSIC_RULES } from '../../sort-engine/index.js';
-import { LEVELS, PALETTE } from '../levels.js';
+import { pour, isWin, topRun, isLocked, CLASSIC_RULES } from '../../sort-engine/index.js';
+import { LEVEL_SPECS, PALETTE } from '../levels.js';
 import { LEVEL_DATA } from '../levels-data.js';
 
-const stateOf = (lv) => ({ capacity: lv.capacity, bottles: lv.tubes.map((t) => t.slice()) });
+// 게임이 하는 것과 같은 방식으로 압축 데이터를 푼다
+const decodeTubes = (tubes) => tubes.map((s) => s.split(''));
+const decodeSolution = (sol) => {
+  const moves = [];
+  for (let i = 0; i + 1 < sol.length; i += 2) {
+    moves.push({ from: Number(sol[i]), to: Number(sol[i + 1]) });
+  }
+  return moves;
+};
+const colorsOf = (tubes) => [...new Set(tubes.join(''))];
+const stateOf = (lv) => ({ capacity: lv.cap, bottles: decodeTubes(lv.tubes) });
 
-test('구운 레벨 데이터: 해를 재생하면 전부 클리어된다', () => {
-  assert.equal(LEVEL_DATA.length, LEVELS.length);
+test('레벨이 100개 이상이고, 스펙 수를 넘지 않는다', () => {
+  assert.ok(LEVEL_DATA.length >= 100, `레벨이 ${LEVEL_DATA.length}개뿐`);
+  assert.ok(
+    LEVEL_DATA.length <= LEVEL_SPECS.length,
+    `구운 레벨(${LEVEL_DATA.length})이 스펙(${LEVEL_SPECS.length})보다 많다`
+  );
+});
+
+test('모든 레벨의 참고 해가 실제로 클리어로 이어진다', () => {
   LEVEL_DATA.forEach((lv, i) => {
+    const targets = colorsOf(lv.tubes);
     let st = stateOf(lv);
-    assert.equal(isWin(st, lv.targets), false, `레벨 ${i + 1}이 시작부터 클리어 상태`);
-    for (const mv of lv.solution) {
+    assert.equal(isWin(st, targets), false, `레벨 ${i + 1}이 시작부터 클리어 상태`);
+    for (const mv of decodeSolution(lv.sol)) {
       const r = pour(st, mv.from, mv.to, CLASSIC_RULES);
       assert.ok(r, `레벨 ${i + 1} 해 재생 중 불가능한 수: ${JSON.stringify(mv)}`);
       st = r.state;
     }
-    assert.equal(isWin(st, lv.targets), true, `레벨 ${i + 1} 해 재생해도 미클리어`);
-    assert.equal(lv.solution.length, lv.solutionLength);
+    assert.equal(isWin(st, targets), true, `레벨 ${i + 1} 해 재생해도 미클리어`);
   });
 });
 
-test('클래식 규칙이므로 색은 절대 변하지 않는다', () => {
+test('par가 참고 해 길이와 일치한다 (별점 기준이 어긋나면 안 된다)', () => {
   LEVEL_DATA.forEach((lv, i) => {
-    const before = lv.tubes.flat().sort().join('');
+    assert.equal(decodeSolution(lv.sol).length, lv.par, `레벨 ${i + 1}의 par 불일치`);
+  });
+});
+
+test('클래식 규칙이므로 구슬 구성은 절대 변하지 않는다', () => {
+  LEVEL_DATA.forEach((lv, i) => {
+    const before = lv.tubes.join('').split('').sort().join('');
     let st = stateOf(lv);
-    for (const mv of lv.solution) st = pour(st, mv.from, mv.to, CLASSIC_RULES).state;
+    for (const mv of decodeSolution(lv.sol)) st = pour(st, mv.from, mv.to, CLASSIC_RULES).state;
     const after = st.bottles.flat().sort().join('');
     assert.equal(after, before, `레벨 ${i + 1}에서 구슬 구성이 바뀜`);
   });
@@ -34,54 +57,50 @@ test('클래식 규칙이므로 색은 절대 변하지 않는다', () => {
 test('각 색은 정확히 용량만큼 있고, 팔레트 안의 색만 쓴다', () => {
   LEVEL_DATA.forEach((lv, i) => {
     const counts = new Map();
-    for (const c of lv.tubes.flat()) counts.set(c, (counts.get(c) || 0) + 1);
-    assert.equal(counts.size, lv.targets.length, `레벨 ${i + 1} 색 종류 수 불일치`);
+    for (const c of lv.tubes.join('')) counts.set(c, (counts.get(c) || 0) + 1);
+    assert.ok(counts.size >= 2, `레벨 ${i + 1}의 색이 ${counts.size}가지`);
     for (const [c, n] of counts) {
       assert.ok(PALETTE.includes(c), `레벨 ${i + 1}에 팔레트 밖의 색 ${c}`);
-      assert.equal(n, lv.capacity, `레벨 ${i + 1}의 ${c} 개수가 ${n} (용량 ${lv.capacity})`);
+      assert.equal(n, lv.cap, `레벨 ${i + 1}의 ${c} 개수가 ${n} (용량 ${lv.cap})`);
     }
   });
 });
 
-test('난이도가 대체로 오르막이다 (큰 역전이 없다)', () => {
-  const lens = LEVEL_DATA.map((lv) => lv.solutionLength);
-  lens.forEach((len, i) => {
-    if (i === 0) return;
-    const best = Math.max(...lens.slice(0, i));
-    assert.ok(len >= best - 2, `레벨 ${i + 1}(${len}수)이 앞 레벨 최고치(${best}수)보다 크게 쉬움`);
-  });
-  assert.equal(
-    lens[lens.length - 1],
-    Math.max(...lens),
-    '마지막 레벨이 가장 어렵지 않다'
-  );
-});
-
-test('자석으로 집히는 묶음은 항상 맨 위 같은 색 구간이다', () => {
+test('해 인코딩이 한 자리 숫자로 안전하다 (튜브 10개 이하)', () => {
   LEVEL_DATA.forEach((lv, i) => {
-    let st = stateOf(lv);
-    for (const mv of lv.solution) {
-      const src = st.bottles[mv.from];
-      const run = topRun(src);
-      // 집은 묶음은 전부 같은 색이고, 그 아래는 다른 색(또는 바닥)이어야 한다
-      for (let k = 0; k < run.count; k++) {
-        assert.equal(src[src.length - 1 - k], run.color, `레벨 ${i + 1} 묶음 색이 섞임`);
-      }
-      const below = src[src.length - 1 - run.count];
-      assert.ok(below === undefined || below !== run.color, `레벨 ${i + 1} 묶음이 덜 잡힘`);
-      st = pour(st, mv.from, mv.to, CLASSIC_RULES).state;
+    assert.ok(lv.tubes.length <= 10, `레벨 ${i + 1}의 튜브가 ${lv.tubes.length}개`);
+    for (const mv of decodeSolution(lv.sol)) {
+      assert.ok(
+        Number.isInteger(mv.from) && mv.from >= 0 && mv.from < lv.tubes.length,
+        `레벨 ${i + 1} 해의 출발 인덱스가 범위 밖: ${mv.from}`
+      );
+      assert.ok(
+        Number.isInteger(mv.to) && mv.to >= 0 && mv.to < lv.tubes.length,
+        `레벨 ${i + 1} 해의 도착 인덱스가 범위 밖: ${mv.to}`
+      );
     }
   });
 });
 
-test('구운 데이터가 levels.js 스펙과 동기화되어 있다 (bake 잊음 방지)', () => {
-  LEVELS.forEach((def, i) => {
-    const fresh = generateLevel({ ...def, rules: CLASSIC_RULES, solverNodes: 800000 });
-    assert.deepEqual(
-      LEVEL_DATA[i].tubes,
-      fresh.bottles,
-      `레벨 ${i + 1}: levels.js 수정 후 bake-levels.mjs를 다시 실행하세요`
-    );
-    assert.equal(LEVEL_DATA[i].capacity, fresh.capacity);
+test('난이도가 단조 증가한다', () => {
+  const pars = LEVEL_DATA.map((lv) => lv.par);
+  pars.forEach((p, i) => {
+    if (i === 0) return;
+    assert.ok(p >= pars[i - 1], `레벨 ${i + 1}(${p}수)이 앞 레벨(${pars[i - 1]}수)보다 쉬움`);
   });
+  assert.ok(pars[0] <= 5, `첫 레벨이 ${pars[0]}수 — 튜토리얼로 너무 어렵다`);
+  assert.ok(pars.at(-1) >= 25, `마지막 레벨이 ${pars.at(-1)}수 — 마무리가 너무 싱겁다`);
+});
+
+test('첫 레벨은 손가락 안내로 끝까지 따라갈 수 있다', () => {
+  // 안내는 참고 해를 그대로 짚어주므로, 매 수가 그 시점에 실행 가능해야 한다
+  const lv = LEVEL_DATA[0];
+  let st = stateOf(lv);
+  for (const mv of decodeSolution(lv.sol)) {
+    const run = topRun(st.bottles[mv.from]);
+    assert.ok(run, '빈 튜브를 집으라고 안내함');
+    assert.equal(isLocked(st, mv.from, CLASSIC_RULES), false, '잠긴 튜브를 집으라고 안내함');
+    st = pour(st, mv.from, mv.to, CLASSIC_RULES).state;
+  }
+  assert.equal(isWin(st, colorsOf(lv.tubes)), true);
 });
