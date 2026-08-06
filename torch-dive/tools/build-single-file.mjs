@@ -21,6 +21,7 @@ buildSingleFile({
     'torch-dive/render.js',
     'torch-dive/audio.js',
     'torch-dive/ads.js',
+    'torch-dive/signup.js',
     'torch-dive/game.js',
     'torch-dive/main.js',
   ],

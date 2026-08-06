@@ -55,6 +55,42 @@
 
 죽음은 언제나 배짱의 결과지, 던전의 횡포가 아니다.
 
+## 가입 게이트 — 이메일부터 모은다
+
+첫 실행 때 게임 위로 가입 카드가 얹힌다 (문 너머가 살짝 보여야 가입할 이유가 생긴다).
+강요하지 않는다 — `play as guest`로 건너뛸 수 있고, 건너뛴 사람에게는 HUD에 ✉️가
+남아 언제든 돌아올 수 있다. 한 번 답한 사람(가입이든 게스트든)에게는 다시 묻지 않는다.
+
+서버 없이 굴러가는 3단 구조 ([signup.js](./signup.js)의 `SIGNUP_CONFIG` 두 줄이 전부):
+
+1. **이메일 직접 입력** — 항상 켜져 있고 어디서든 동작한다
+2. **Google로 계속하기** — `googleClientId`를 넣으면 버튼이 나타난다.
+   [Google Cloud Console](https://console.cloud.google.com/apis/credentials)에서
+   OAuth 클라이언트 ID(웹)를 만들고, 게임을 올린 도메인을 승인된 출처에 등록하면 끝.
+   구글이 검증한 이메일이 오므로 오타·가짜가 없다
+3. **수집** — `collectUrl`(Apps Script 웹앱)로 보낸다. URL이 없거나 오프라인이면
+   로컬 큐(`tdv.signupQueue`)에 쌓아 두고 다음 실행 때 재시도한다
+
+구글 시트로 받는 Apps Script는 5분짜리다 — 새 시트 → 확장 프로그램 → Apps Script:
+
+```js
+function doPost(e) {
+  const r = JSON.parse(e.postData.contents);
+  SpreadsheetApp.getActiveSpreadsheet().getSheets()[0]
+    .appendRow([new Date(), r.email, r.via, r.day, r.game]);
+  return ContentService.createTextOutput('ok');
+}
+```
+
+배포 → 웹 앱 → 액세스 권한 '모든 사용자' → 그 URL을 `collectUrl`에 붙여넣는다.
+
+알아둘 것:
+- Google 버튼은 **https로 호스팅된 등록 도메인**에서만 뜬다 (`file://`·미등록 출처에서는
+  자동으로 숨고 이메일 폼만 남는다). Capacitor 안드로이드 웹뷰에서는 구글이 웹뷰
+  OAuth를 막으므로 네이티브 플러그인(`@codetrix-studio/capacitor-google-auth` 등)이 필요하다
+- 이메일을 수집하는 순간부터 스토어 등록에 개인정보처리방침이 필수다.
+  카드의 "Launch news only. No spam, ever." 약속은 지키라고 써 둔 것이다
+
 ## 광고
 
 다이브 도중에는 절대 안 뜬다. 죽거나 챙겨 나온 뒤의 전환 순간에만, 처음 5다이브는
@@ -64,12 +100,14 @@
 ## 저장 키
 
 `tdv.day`(오늘의 횃불·합계) · `tdv.best`(최고 하루 기록) · `tdv.taught` · `tdv.muted` · `tdv.ads`
+· `tdv.user`(가입/게스트) · `tdv.signupQueue`(미전송 이메일)
 
 ## 개발
 
 ```
-node --test torch-dive/tests/*.mjs            # 결정론 + 공정함 불변식 + 곡선 검증 (14 tests)
+node --test torch-dive/tests/*.mjs            # 결정론 + 공정함 불변식 + 가입 헬퍼 (18 tests)
 node torch-dive/tools/build-single-file.mjs   # 자립형 HTML 한 파일 (dist/)
 ```
 
 테스트용 쿼리: `?seed=123`(던전 고정) · `?day=2026-08-07`(날짜 흉내) · `?noads`
+· `?signup`(게이트 강제 표시) · `?gclient=` / `?collect=`(가입 설정 임시 주입)

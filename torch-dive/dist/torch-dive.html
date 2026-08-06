@@ -494,6 +494,131 @@ body {
   50% { opacity: 1; }
 }
 
+/* ----- 가입 게이트 ----- */
+
+#gate {
+  position: absolute;
+  inset: 0;
+  z-index: 15; /* 다이브 오버레이보다 위, 광고보다 아래 */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(4, 2, 1, 0.82);
+  backdrop-filter: blur(4px);
+}
+
+.gate-card {
+  width: min(86vw, 330px);
+  text-align: center;
+  padding: 30px 26px 22px;
+  border-radius: 20px;
+  background: rgba(20, 12, 7, 0.96);
+  border: 1px solid rgba(255, 154, 60, 0.22);
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.6);
+  animation: card-in 0.35s backwards cubic-bezier(0.2, 0.9, 0.3, 1.15);
+}
+
+.gate-flame {
+  font-size: 40px;
+  filter: drop-shadow(0 0 16px rgba(255, 154, 60, 0.6));
+  animation: flicker 2.2s infinite;
+}
+
+.gate-title {
+  margin-top: 6px;
+  font-size: 22px;
+  font-weight: 800;
+  letter-spacing: 0.18em;
+  color: var(--ember);
+  text-shadow: 0 0 18px rgba(255, 154, 60, 0.4);
+}
+
+.gate-sub {
+  margin-top: 4px;
+  font-size: 13px;
+  color: var(--ash);
+}
+
+#googleBtn {
+  margin-top: 18px;
+  display: flex;
+  justify-content: center;
+  min-height: 44px;
+}
+
+.gate-or {
+  margin: 10px 0 2px;
+  font-size: 11px;
+  letter-spacing: 0.2em;
+  color: var(--ash);
+}
+
+#emailForm {
+  margin-top: 14px;
+  display: flex;
+  gap: 8px;
+}
+
+#emailInput {
+  flex: 1;
+  min-width: 0;
+  user-select: text;
+  -webkit-user-select: text;
+  padding: 12px 14px;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 211, 77, 0.25);
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--bone);
+  font-size: 15px;
+  outline: none;
+}
+
+#emailInput:focus {
+  border-color: var(--ember);
+  box-shadow: 0 0 12px rgba(255, 154, 60, 0.25);
+}
+
+#emailInput::placeholder {
+  color: var(--ash);
+  opacity: 0.7;
+}
+
+#btnJoin {
+  flex: 0 0 auto;
+  padding: 12px 18px;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 211, 77, 0.45);
+  background: linear-gradient(180deg, #3a2a10, #241806);
+  color: var(--gold);
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  cursor: pointer;
+}
+
+#btnJoin:active {
+  transform: scale(0.96);
+}
+
+.gate-note {
+  margin-top: 12px;
+  font-size: 11px;
+  color: var(--ash);
+}
+
+.gate-skip {
+  margin-top: 14px;
+  background: none;
+  border: none;
+  color: var(--ash);
+  font-size: 13px;
+  cursor: pointer;
+  opacity: 0.8;
+}
+
+.gate-skip:active {
+  opacity: 1;
+}
+
 /* ----- 광고 자리 ----- */
 
 #adSlot {
@@ -569,6 +694,7 @@ body {
       <div id="depthLabel" class="hud-mid">FLOOR 1</div>
       <div class="hud-cell hud-right">
         <div id="todayLabel">TODAY 0</div>
+        <button id="btnSignup" class="hud-btn hidden" title="Join with email" aria-label="Join with email">✉️</button>
         <button id="btnMute" class="hud-btn" title="Sound on/off" aria-label="Sound">🔊</button>
       </div>
     </header>
@@ -590,6 +716,23 @@ body {
         <div id="ovSub"></div>
         <div id="ovTorches"></div>
         <p class="retry-note" id="ovNote">tap to dive again</p>
+      </div>
+    </div>
+
+    <div id="gate" class="hidden">
+      <div class="gate-card">
+        <div class="gate-flame">🔥</div>
+        <div class="gate-title">TORCH DIVE</div>
+        <p class="gate-sub">3 torches a day · keep your loot</p>
+        <div id="googleBtn" class="hidden"></div>
+        <div id="gateOr" class="gate-or hidden">or</div>
+        <form id="emailForm" novalidate>
+          <input id="emailInput" type="email" autocomplete="email" inputmode="email"
+                 placeholder="you@email.com" aria-label="Email">
+          <button id="btnJoin" type="submit">JOIN</button>
+        </form>
+        <p class="gate-note">Launch news only. No spam, ever.</p>
+        <button id="btnSkip" type="button" class="gate-skip">play as guest →</button>
       </div>
     </div>
 
@@ -1178,6 +1321,241 @@ class AdManager {
   }
 }
 
+// ===== torch-dive/signup.js =====
+// 가입 게이트 — 게임 시작 전에 이메일을 모은다. 서버 없이도 굴러가는 3단 구조:
+//
+//   1) 이메일 직접 입력 — 항상 켜져 있다. 어디서든(file:// 포함) 동작한다
+//   2) Google 원탭 버튼 — SIGNUP_CONFIG.googleClientId를 넣으면 켜진다.
+//      구글이 검증한 이메일이 토큰으로 오므로 오타·가짜 메일이 없다
+//   3) 수집 — SIGNUP_CONFIG.collectUrl(Apps Script → 구글 시트)로 보낸다.
+//      아직 URL이 없거나 오프라인이면 로컬 큐에 쌓아 두고 다음 실행 때 재시도한다
+//
+// 게이트는 건너뛸 수 있다(play as guest) — 가입 벽에 첫 손맛을 막히게 하지 않는다.
+// 건너뛴 사람에게는 HUD에 ✉️ 버튼이 남아 언제든 다시 가입할 수 있다.
+
+const SIGNUP_CONFIG = {
+  // Google Cloud Console → APIs & Services → Credentials → OAuth client ID (Web)
+  // 예: '1234567890-abc.apps.googleusercontent.com'  (비우면 Google 버튼이 숨는다)
+  googleClientId: '',
+  // 이메일을 받아 시트에 적는 Apps Script 웹앱 URL (README의 스니펫 참고. 비우면 로컬 큐에만 쌓인다)
+  collectUrl: '',
+};
+
+const STORAGE_USER = 'tdv.user';
+const STORAGE_QUEUE = 'tdv.signupQueue';
+const GIS_SRC = 'https://accounts.google.com/gsi/client';
+
+// ----- 순수 헬퍼 (테스트 대상) -----
+
+function validateEmail(s) {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(String(s || '').trim());
+}
+
+// Google ID 토큰(JWT)의 payload를 읽는다 — 서명 검증은 하지 않는다.
+// 여기서는 인증이 아니라 이메일 수집이 목적이라 payload의 email만 쓰면 충분하다.
+function decodeJwtPayload(jwt) {
+  try {
+    const part = String(jwt).split('.')[1];
+    if (!part) return null;
+    const b64 = part.replace(/-/g, '+').replace(/_/g, '/');
+    const pad = b64 + '='.repeat((4 - (b64.length % 4)) % 4);
+    const bin = atob(pad);
+    const json = decodeURIComponent(
+      Array.from(bin, (c) => '%' + c.charCodeAt(0).toString(16).padStart(2, '0')).join('')
+    );
+    return JSON.parse(json);
+  } catch {
+    return null;
+  }
+}
+
+function makeRecord(email, via, dayKey) {
+  return { game: 'torch-dive', email: String(email).trim().toLowerCase(), via, day: dayKey, at: new Date().toISOString() };
+}
+
+// ----- 게이트 -----
+
+class Signup {
+  constructor({ dom, sound, dayKey, config = SIGNUP_CONFIG, onDone }) {
+    this.dom = dom;
+    this.sound = sound;
+    this.dayKey = dayKey;
+    this.config = config;
+    this.onDone = onDone;
+    this._gisLoaded = false;
+
+    dom.emailForm.addEventListener('submit', (e) => {
+      e.preventDefault();
+      this._joinWithEmail();
+    });
+    dom.btnSkip.addEventListener('click', () => this.skip());
+    dom.btnSignup.addEventListener('click', (e) => {
+      e.stopPropagation();
+      this.show();
+    });
+  }
+
+  get user() {
+    try {
+      return JSON.parse(safeStorage.getItem(STORAGE_USER) || 'null');
+    } catch {
+      return null;
+    }
+  }
+
+  _saveUser(u) {
+    try {
+      safeStorage.setItem(STORAGE_USER, JSON.stringify(u));
+    } catch {}
+  }
+
+  // 아직 가입도 거절도 안 했으면 게이트를 보여준다
+  needsGate() {
+    return !this.user;
+  }
+
+  show() {
+    this.dom.gate.classList.remove('hidden');
+    this.dom.emailInput.setCustomValidity('');
+    this._mountGoogleButton();
+    this._updateBadge();
+  }
+
+  hide() {
+    this.dom.gate.classList.add('hidden');
+    this._updateBadge();
+    this.onDone?.(this.user);
+  }
+
+  // 게스트로 계속 — 강요하지 않는다. HUD의 ✉️로 언제든 돌아올 수 있다
+  skip() {
+    if (!this.user) this._saveUser({ guest: true });
+    this.sound?.ui();
+    this.hide();
+  }
+
+  _updateBadge() {
+    const u = this.user;
+    this.dom.btnSignup.classList.toggle('hidden', !!(u && u.email));
+  }
+
+  _joinWithEmail() {
+    const email = this.dom.emailInput.value;
+    if (!validateEmail(email)) {
+      this.dom.emailInput.setCustomValidity('Please enter a valid email');
+      this.dom.emailInput.reportValidity();
+      return;
+    }
+    this._finish(email, 'email');
+  }
+
+  _finish(email, via) {
+    this._saveUser({ email: String(email).trim().toLowerCase(), via });
+    this._enqueue(makeRecord(email, via, this.dayKey));
+    this.flushQueue();
+    this.sound?.bank();
+    this.hide();
+  }
+
+  // ----- Google Identity Services (설정했을 때만) -----
+
+  async _mountGoogleButton() {
+    const { googleClientId } = this.config;
+    const slot = this.dom.googleBtn;
+    const or = this.dom.gateOr;
+    if (!googleClientId) {
+      slot.classList.add('hidden');
+      or.classList.add('hidden');
+      return;
+    }
+    slot.classList.remove('hidden');
+    or.classList.remove('hidden');
+    try {
+      await this._loadGis();
+      window.google.accounts.id.initialize({
+        client_id: googleClientId,
+        callback: (resp) => {
+          const payload = decodeJwtPayload(resp && resp.credential);
+          if (payload && payload.email) this._finish(payload.email, 'google');
+        },
+      });
+      slot.replaceChildren();
+      window.google.accounts.id.renderButton(slot, {
+        theme: 'filled_black',
+        size: 'large',
+        shape: 'pill',
+        text: 'continue_with',
+        width: 260,
+      });
+    } catch {
+      // GIS를 못 불러오는 환경(오프라인, file://, 웹뷰) — 이메일 폼만으로 계속
+      slot.classList.add('hidden');
+      or.classList.add('hidden');
+    }
+  }
+
+  _loadGis() {
+    if (this._gisLoaded && window.google?.accounts?.id) return Promise.resolve();
+    return new Promise((resolve, reject) => {
+      const s = document.createElement('script');
+      s.src = GIS_SRC;
+      s.async = true;
+      s.onload = () => {
+        this._gisLoaded = true;
+        resolve();
+      };
+      s.onerror = reject;
+      document.head.appendChild(s);
+    });
+  }
+
+  // ----- 수집 큐 -----
+
+  _queue() {
+    try {
+      const q = JSON.parse(safeStorage.getItem(STORAGE_QUEUE) || '[]');
+      return Array.isArray(q) ? q : [];
+    } catch {
+      return [];
+    }
+  }
+
+  _setQueue(q) {
+    try {
+      safeStorage.setItem(STORAGE_QUEUE, JSON.stringify(q));
+    } catch {}
+  }
+
+  _enqueue(record) {
+    const q = this._queue();
+    q.push(record);
+    this._setQueue(q);
+  }
+
+  // 쌓인 기록을 시트로 보낸다. 성공한 것만 큐에서 뺀다 (앱을 켤 때마다 재시도)
+  async flushQueue() {
+    const { collectUrl } = this.config;
+    if (!collectUrl) return;
+    const q = this._queue();
+    if (!q.length) return;
+    const remaining = [];
+    for (const record of q) {
+      try {
+        // text/plain + no-cors — Apps Script가 preflight 없이 받을 수 있는 조합
+        await fetch(collectUrl, {
+          method: 'POST',
+          mode: 'no-cors',
+          headers: { 'Content-Type': 'text/plain' },
+          body: JSON.stringify(record),
+        });
+      } catch {
+        remaining.push(record);
+      }
+    }
+    this._setQueue(remaining);
+  }
+}
+
 // ===== torch-dive/game.js =====
 // 게임 흐름 — 하루(횃불 3개·오늘의 합계·최고 기록)와 다이브 하나하나를 잇는 상태 기계.
 // 규칙 판정은 전부 engine.js에 있고, 여기는 타이밍·연출·저장만 오케스트레이션한다.
@@ -1397,6 +1775,7 @@ class Game {
 
 
 
+
 const $ = (id) => document.getElementById(id);
 const dom = {
   app: $('app'),
@@ -1415,6 +1794,13 @@ const dom = {
   ovSub: $('ovSub'),
   ovTorches: $('ovTorches'),
   ovNote: $('ovNote'),
+  gate: $('gate'),
+  googleBtn: $('googleBtn'),
+  gateOr: $('gateOr'),
+  emailForm: $('emailForm'),
+  emailInput: $('emailInput'),
+  btnSkip: $('btnSkip'),
+  btnSignup: $('btnSignup'),
 };
 
 const params = new URLSearchParams(location.search);
@@ -1455,6 +1841,15 @@ const game = new Game({
 // ?seed=123 으로 던전을 고정할 수 있다 (리플레이/테스트용)
 if (params.has('seed')) game._forcedSeed = Number(params.get('seed')) >>> 0;
 
+// 가입 게이트 — 게임 위에 얹히는 막이라 게임 흐름은 전혀 모른다.
+// ?gclient= / ?collect= 로 설정을 임시 주입할 수 있다 (개발·테스트용)
+const signupConfig = {
+  ...SIGNUP_CONFIG,
+  googleClientId: params.get('gclient') || SIGNUP_CONFIG.googleClientId,
+  collectUrl: params.get('collect') || SIGNUP_CONFIG.collectUrl,
+};
+const signup = new Signup({ dom, sound, dayKey: localDayKey(), config: signupConfig });
+
 // ----- 입력 -----
 
 // 문 — 손가락이 닿는 순간 반응한다
@@ -1488,8 +1883,14 @@ document.addEventListener('dblclick', (e) => e.preventDefault());
 
 game.startDive();
 
+// 게임이 먼저 그려지고, 그 위에 게이트가 얹힌다 — 문 너머가 살짝 보여야 가입할 이유가 생긴다.
+// 이미 가입했거나 게스트를 택한 사람에게는 다시 묻지 않는다 (?signup 으로 강제 표시)
+if (params.has('signup') || signup.needsGate()) signup.show();
+else signup._updateBadge();
+signup.flushQueue(); // 지난번에 못 보낸 이메일이 있으면 재시도
+
 // 디버그/자동화용 — 콘솔에서 상태를 들여다볼 수 있다
-window.__tdv = { game, ads, engine: { CONFIG, hashSeed, newDive } };
+window.__tdv = { game, ads, signup, engine: { CONFIG, hashSeed, newDive } };
 
 </script>
 </body>

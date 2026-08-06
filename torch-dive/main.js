@@ -4,6 +4,7 @@ import { Renderer } from './render.js';
 import { Sound } from './audio.js';
 import { AdManager, AD_CONFIG, createPlaceholderProvider } from './ads.js';
 import { Game } from './game.js';
+import { Signup, SIGNUP_CONFIG } from './signup.js';
 import { CONFIG, hashSeed, newDive } from './engine.js';
 
 const $ = (id) => document.getElementById(id);
@@ -24,6 +25,13 @@ const dom = {
   ovSub: $('ovSub'),
   ovTorches: $('ovTorches'),
   ovNote: $('ovNote'),
+  gate: $('gate'),
+  googleBtn: $('googleBtn'),
+  gateOr: $('gateOr'),
+  emailForm: $('emailForm'),
+  emailInput: $('emailInput'),
+  btnSkip: $('btnSkip'),
+  btnSignup: $('btnSignup'),
 };
 
 const params = new URLSearchParams(location.search);
@@ -64,6 +72,15 @@ const game = new Game({
 // ?seed=123 으로 던전을 고정할 수 있다 (리플레이/테스트용)
 if (params.has('seed')) game._forcedSeed = Number(params.get('seed')) >>> 0;
 
+// 가입 게이트 — 게임 위에 얹히는 막이라 게임 흐름은 전혀 모른다.
+// ?gclient= / ?collect= 로 설정을 임시 주입할 수 있다 (개발·테스트용)
+const signupConfig = {
+  ...SIGNUP_CONFIG,
+  googleClientId: params.get('gclient') || SIGNUP_CONFIG.googleClientId,
+  collectUrl: params.get('collect') || SIGNUP_CONFIG.collectUrl,
+};
+const signup = new Signup({ dom, sound, dayKey: localDayKey(), config: signupConfig });
+
 // ----- 입력 -----
 
 // 문 — 손가락이 닿는 순간 반응한다
@@ -97,5 +114,11 @@ document.addEventListener('dblclick', (e) => e.preventDefault());
 
 game.startDive();
 
+// 게임이 먼저 그려지고, 그 위에 게이트가 얹힌다 — 문 너머가 살짝 보여야 가입할 이유가 생긴다.
+// 이미 가입했거나 게스트를 택한 사람에게는 다시 묻지 않는다 (?signup 으로 강제 표시)
+if (params.has('signup') || signup.needsGate()) signup.show();
+else signup._updateBadge();
+signup.flushQueue(); // 지난번에 못 보낸 이메일이 있으면 재시도
+
 // 디버그/자동화용 — 콘솔에서 상태를 들여다볼 수 있다
-window.__tdv = { game, ads, engine: { CONFIG, hashSeed, newDive } };
+window.__tdv = { game, ads, signup, engine: { CONFIG, hashSeed, newDive } };
