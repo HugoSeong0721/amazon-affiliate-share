@@ -174,6 +174,138 @@ body {
   50% { opacity: 1; }
 }
 
+/* ----- 이메일 가입 게이트 (첫 실행 한 번만) ----- */
+
+#signup {
+  position: absolute;
+  inset: 0;
+  z-index: 30;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: radial-gradient(90% 70% at 50% 40%, rgba(10, 6, 24, 0.7) 0%, rgba(3, 3, 10, 0.96) 100%);
+  backdrop-filter: blur(3px);
+}
+
+#signup.hidden { display: none; }
+
+.signup-card {
+  width: min(88vw, 340px);
+  text-align: center;
+  padding: 30px 24px 20px;
+  border: 1px solid rgba(142, 246, 255, 0.22);
+  border-radius: 22px;
+  background: var(--panel);
+  box-shadow: 0 0 42px rgba(142, 246, 255, 0.1), 0 18px 50px rgba(0, 0, 0, 0.55);
+  animation: cardIn 0.32s cubic-bezier(0.2, 1.4, 0.4, 1);
+}
+
+.signup-logo { font-size: 44px; line-height: 1; }
+
+.signup-title {
+  margin-top: 8px;
+  font-size: 26px;
+  font-weight: 900;
+  letter-spacing: 0.02em;
+  color: var(--neon);
+  text-shadow: 0 0 22px var(--neon-dim);
+}
+
+.signup-sub {
+  margin-top: 4px;
+  font-size: 13px;
+  color: var(--muted);
+}
+
+#googleBtn {
+  margin: 18px auto 0;
+  display: flex;
+  justify-content: center;
+  min-height: 40px;
+}
+
+#googleBtn.hidden { display: none; }
+
+.or-divider {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 14px 0 0;
+  color: var(--muted);
+  font-size: 11px;
+  letter-spacing: 0.2em;
+}
+
+.or-divider.hidden { display: none; }
+
+.or-divider::before,
+.or-divider::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: rgba(255, 255, 255, 0.12);
+}
+
+#emailForm {
+  display: flex;
+  gap: 8px;
+  margin-top: 16px;
+}
+
+#emailInput {
+  flex: 1;
+  min-width: 0;
+  padding: 12px 14px;
+  border-radius: 12px;
+  border: 1px solid rgba(142, 246, 255, 0.25);
+  background: rgba(3, 3, 10, 0.6);
+  color: var(--text);
+  font-size: 15px;
+  outline: none;
+}
+
+#emailInput:focus { border-color: var(--neon); }
+
+#emailInput.shake { animation: shakeX 0.35s; border-color: #ff5a3c; }
+
+@keyframes shakeX {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-6px); }
+  75% { transform: translateX(6px); }
+}
+
+#emailSubmit {
+  padding: 12px 16px;
+  border: none;
+  border-radius: 12px;
+  background: var(--neon);
+  color: #04121a;
+  font-size: 14px;
+  font-weight: 900;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+#emailSubmit:active { transform: scale(0.96); }
+
+.skip-btn {
+  margin-top: 14px;
+  background: none;
+  border: none;
+  color: var(--muted);
+  font-size: 12.5px;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.signup-privacy {
+  margin-top: 14px;
+  font-size: 10.5px;
+  color: rgba(111, 123, 163, 0.75);
+  line-height: 1.4;
+}
+
 /* ----- 광고 자리 (형제 게임들과 같은 구조) ----- */
 
 #adSlot {

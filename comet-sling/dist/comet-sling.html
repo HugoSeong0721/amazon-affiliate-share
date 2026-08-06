@@ -183,6 +183,138 @@ body {
   50% { opacity: 1; }
 }
 
+/* ----- 이메일 가입 게이트 (첫 실행 한 번만) ----- */
+
+#signup {
+  position: absolute;
+  inset: 0;
+  z-index: 30;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: radial-gradient(90% 70% at 50% 40%, rgba(10, 6, 24, 0.7) 0%, rgba(3, 3, 10, 0.96) 100%);
+  backdrop-filter: blur(3px);
+}
+
+#signup.hidden { display: none; }
+
+.signup-card {
+  width: min(88vw, 340px);
+  text-align: center;
+  padding: 30px 24px 20px;
+  border: 1px solid rgba(142, 246, 255, 0.22);
+  border-radius: 22px;
+  background: var(--panel);
+  box-shadow: 0 0 42px rgba(142, 246, 255, 0.1), 0 18px 50px rgba(0, 0, 0, 0.55);
+  animation: cardIn 0.32s cubic-bezier(0.2, 1.4, 0.4, 1);
+}
+
+.signup-logo { font-size: 44px; line-height: 1; }
+
+.signup-title {
+  margin-top: 8px;
+  font-size: 26px;
+  font-weight: 900;
+  letter-spacing: 0.02em;
+  color: var(--neon);
+  text-shadow: 0 0 22px var(--neon-dim);
+}
+
+.signup-sub {
+  margin-top: 4px;
+  font-size: 13px;
+  color: var(--muted);
+}
+
+#googleBtn {
+  margin: 18px auto 0;
+  display: flex;
+  justify-content: center;
+  min-height: 40px;
+}
+
+#googleBtn.hidden { display: none; }
+
+.or-divider {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 14px 0 0;
+  color: var(--muted);
+  font-size: 11px;
+  letter-spacing: 0.2em;
+}
+
+.or-divider.hidden { display: none; }
+
+.or-divider::before,
+.or-divider::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: rgba(255, 255, 255, 0.12);
+}
+
+#emailForm {
+  display: flex;
+  gap: 8px;
+  margin-top: 16px;
+}
+
+#emailInput {
+  flex: 1;
+  min-width: 0;
+  padding: 12px 14px;
+  border-radius: 12px;
+  border: 1px solid rgba(142, 246, 255, 0.25);
+  background: rgba(3, 3, 10, 0.6);
+  color: var(--text);
+  font-size: 15px;
+  outline: none;
+}
+
+#emailInput:focus { border-color: var(--neon); }
+
+#emailInput.shake { animation: shakeX 0.35s; border-color: #ff5a3c; }
+
+@keyframes shakeX {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-6px); }
+  75% { transform: translateX(6px); }
+}
+
+#emailSubmit {
+  padding: 12px 16px;
+  border: none;
+  border-radius: 12px;
+  background: var(--neon);
+  color: #04121a;
+  font-size: 14px;
+  font-weight: 900;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+#emailSubmit:active { transform: scale(0.96); }
+
+.skip-btn {
+  margin-top: 14px;
+  background: none;
+  border: none;
+  color: var(--muted);
+  font-size: 12.5px;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.signup-privacy {
+  margin-top: 14px;
+  font-size: 10.5px;
+  color: rgba(111, 123, 163, 0.75);
+  line-height: 1.4;
+}
+
 /* ----- 광고 자리 (형제 게임들과 같은 구조) ----- */
 
 #adSlot {
@@ -264,6 +396,23 @@ body {
         <div id="overlayScore">0</div>
         <div id="overlayBest">BEST 0</div>
         <p class="retry-note">tap to fly again</p>
+      </div>
+    </div>
+
+    <div id="signup" class="hidden">
+      <div class="signup-card">
+        <div class="signup-logo">☄️</div>
+        <h1 class="signup-title">Comet Sling</h1>
+        <p class="signup-sub">Save your best score &amp; get updates</p>
+        <div id="googleBtn" class="hidden"></div>
+        <div id="orDivider" class="or-divider hidden"><span>or</span></div>
+        <form id="emailForm" novalidate>
+          <input id="emailInput" type="email" inputmode="email" autocomplete="email"
+                 placeholder="your@email.com" aria-label="Email">
+          <button id="emailSubmit" type="submit">Play ▶</button>
+        </form>
+        <button id="skipBtn" type="button" class="skip-btn">just play</button>
+        <p class="signup-privacy">Your email is only used for game updates.</p>
       </div>
     </div>
 
@@ -1204,6 +1353,174 @@ class AdManager {
   }
 }
 
+// ===== comet-sling/signup.js =====
+// 이메일 가입 게이트 — 첫 실행 때 한 번만 뜬다.
+//
+// 두 가지 경로로 이메일을 받는다:
+//   1) 직접 입력 → 시작하기
+//   2) 구글 로그인 버튼 (SIGNUP_CONFIG.googleClientId 를 채우면 켜진다)
+//
+// 받은 이메일은 기기에 저장하고, SIGNUP_CONFIG.endpoint(Apps Script 웹앱 URL)가
+// 설정돼 있으면 구글 시트로도 보낸다. 전송 실패분은 큐에 쌓았다가 다음 실행 때 재시도한다.
+// 설정 방법은 EMAIL-SETUP.md 참고.
+//
+// 강제 가입은 이탈을 부르므로 "그냥 플레이" 를 반드시 남겨 둔다 — 이메일 몇 개보다
+// 플레이어 전부를 잃는 쪽이 훨씬 비싸다.
+
+const SIGNUP_CONFIG = {
+  // 구글 클라우드 콘솔에서 발급한 웹 OAuth 클라이언트 ID (비어 있으면 구글 버튼 숨김)
+  googleClientId: '',
+  // 이메일이 쌓일 Apps Script 웹앱 URL (비어 있으면 기기 저장만)
+  endpoint: '',
+};
+
+const STORE = {
+  email: 'cms.email',
+  skipped: 'cms.emailSkipped',
+  queue: 'cms.emailQueue',
+};
+
+function validEmail(v) {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(v);
+}
+
+function loadQueue() {
+  try {
+    return JSON.parse(safeStorage.getItem(STORE.queue) || '[]');
+  } catch {
+    return [];
+  }
+}
+
+function saveQueue(q) {
+  try {
+    safeStorage.setItem(STORE.queue, JSON.stringify(q.slice(-20)));
+  } catch {}
+}
+
+// Apps Script는 no-cors 로 쏜다 — 응답은 못 읽지만 도착은 한다.
+// 도착 확인이 불가능하므로 큐에서 지우는 건 fetch 가 예외 없이 끝났을 때다.
+async function send(entry, config) {
+  if (!config.endpoint) return false;
+  try {
+    await fetch(config.endpoint, {
+      method: 'POST',
+      mode: 'no-cors',
+      headers: { 'Content-Type': 'text/plain' },
+      body: JSON.stringify(entry),
+    });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+async function flushQueue(config) {
+  const q = loadQueue();
+  if (!q.length || !config.endpoint) return;
+  const remain = [];
+  for (const entry of q) {
+    if (!(await send(entry, config))) remain.push(entry);
+  }
+  saveQueue(remain);
+}
+
+function decodeJwtEmail(credential) {
+  try {
+    const payload = JSON.parse(
+      atob(credential.split('.')[1].replace(/-/g, '+').replace(/_/g, '/'))
+    );
+    return payload.email || null;
+  } catch {
+    return null;
+  }
+}
+
+// 구글 로그인 버튼 — 클라이언트 ID가 있을 때만 스크립트를 불러와 렌더한다.
+// 스크립트 로드에 실패해도 이메일 입력은 그대로 살아 있다.
+function initGoogleButton(dom, config, onEmail) {
+  if (!config.googleClientId) return;
+  const s = document.createElement('script');
+  s.src = 'https://accounts.google.com/gsi/client';
+  s.async = true;
+  s.onload = () => {
+    try {
+      window.google.accounts.id.initialize({
+        client_id: config.googleClientId,
+        callback: (resp) => {
+          const email = decodeJwtEmail(resp.credential);
+          if (email) onEmail(email, 'google');
+        },
+      });
+      window.google.accounts.id.renderButton(dom.googleBtn, {
+        theme: 'filled_black',
+        size: 'large',
+        text: 'continue_with',
+        width: 280,
+      });
+      dom.googleBtn.classList.remove('hidden');
+      dom.orDivider.classList.remove('hidden');
+    } catch {}
+  };
+  document.head.appendChild(s);
+}
+
+class SignupGate {
+  constructor({ dom, config = SIGNUP_CONFIG, onDone }) {
+    this.dom = dom;
+    this.config = config;
+    this.onDone = onDone || (() => {});
+
+    // 이미 가입했거나 건너뛴 사람에게는 다시 묻지 않는다
+    if (safeStorage.getItem(STORE.email) || safeStorage.getItem(STORE.skipped) === '1') {
+      this.dom.signup.classList.add('hidden');
+      flushQueue(this.config); // 미전송분 재시도
+      this.onDone();
+      return;
+    }
+
+    this.dom.signup.classList.remove('hidden');
+
+    const accept = (email, via) => this._accept(email, via);
+
+    this.dom.emailForm.addEventListener('submit', (e) => {
+      e.preventDefault();
+      const v = this.dom.emailInput.value.trim();
+      if (!validEmail(v)) {
+        this.dom.emailInput.classList.add('shake');
+        setTimeout(() => this.dom.emailInput.classList.remove('shake'), 400);
+        return;
+      }
+      accept(v, 'form');
+    });
+
+    this.dom.skipBtn.addEventListener('click', () => {
+      safeStorage.setItem(STORE.skipped, '1');
+      this._close();
+    });
+
+    initGoogleButton(this.dom, this.config, accept);
+  }
+
+  _accept(email, via) {
+    safeStorage.setItem(STORE.email, email);
+    const entry = { email, via, game: 'comet-sling', at: new Date().toISOString() };
+    send(entry, this.config).then((ok) => {
+      if (!ok) {
+        const q = loadQueue();
+        q.push(entry);
+        saveQueue(q);
+      }
+    });
+    this._close();
+  }
+
+  _close() {
+    this.dom.signup.classList.add('hidden');
+    this.onDone();
+  }
+}
+
 // ===== comet-sling/game.js =====
 // 게임 껍데기 — 엔진(순수 물리)을 화면·소리·저장과 잇는다.
 // 모드: ready(출발대) → running(런) → dead(결과) → ready…
@@ -1377,6 +1694,7 @@ class Game {
 
 
 
+
 const $ = (id) => document.getElementById(id);
 const dom = {
   board: $('board'),
@@ -1386,6 +1704,12 @@ const dom = {
   overlay: $('overlay'),
   overlayScore: $('overlayScore'),
   overlayBest: $('overlayBest'),
+  signup: $('signup'),
+  emailForm: $('emailForm'),
+  emailInput: $('emailInput'),
+  skipBtn: $('skipBtn'),
+  googleBtn: $('googleBtn'),
+  orDivider: $('orDivider'),
 };
 
 const params = new URLSearchParams(location.search);
@@ -1414,6 +1738,17 @@ const game = new Game({
   },
 });
 
+// 첫 실행 이메일 게이트 — 가입/건너뛰기 전에는 키 입력을 게임에 흘리지 않는다
+// (포인터는 게이트가 화면을 덮고 있어 자동으로 막힌다)
+let gateOpen = true;
+new SignupGate({
+  dom,
+  config: SIGNUP_CONFIG,
+  onDone: () => {
+    gateOpen = false;
+  },
+});
+
 // ?seed=123 으로 트랙을 고정할 수 있다 (리플레이/테스트용)
 if (params.has('seed')) {
   game._forcedSeed = Number(params.get('seed')) >>> 0;
@@ -1437,7 +1772,7 @@ dom.board.addEventListener('contextmenu', (e) => e.preventDefault());
 
 // 데스크톱 테스트용: 스페이스/아무 키나 홀드
 window.addEventListener('keydown', (e) => {
-  if (e.repeat) return;
+  if (e.repeat || gateOpen) return;
   if (e.key === ' ' || e.key === 'ArrowUp') game.press();
 });
 window.addEventListener('keyup', (e) => {

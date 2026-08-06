@@ -4,6 +4,7 @@ import { Renderer } from './render.js';
 import { Sound } from './audio.js';
 import { AdManager, AD_CONFIG, createPlaceholderProvider } from './ads.js';
 import { Game } from './game.js';
+import { SignupGate, SIGNUP_CONFIG } from './signup.js';
 import { newRun, WORLD, paramsAt } from './engine.js';
 
 const $ = (id) => document.getElementById(id);
@@ -15,6 +16,12 @@ const dom = {
   overlay: $('overlay'),
   overlayScore: $('overlayScore'),
   overlayBest: $('overlayBest'),
+  signup: $('signup'),
+  emailForm: $('emailForm'),
+  emailInput: $('emailInput'),
+  skipBtn: $('skipBtn'),
+  googleBtn: $('googleBtn'),
+  orDivider: $('orDivider'),
 };
 
 const params = new URLSearchParams(location.search);
@@ -43,6 +50,17 @@ const game = new Game({
   },
 });
 
+// 첫 실행 이메일 게이트 — 가입/건너뛰기 전에는 키 입력을 게임에 흘리지 않는다
+// (포인터는 게이트가 화면을 덮고 있어 자동으로 막힌다)
+let gateOpen = true;
+new SignupGate({
+  dom,
+  config: SIGNUP_CONFIG,
+  onDone: () => {
+    gateOpen = false;
+  },
+});
+
 // ?seed=123 으로 트랙을 고정할 수 있다 (리플레이/테스트용)
 if (params.has('seed')) {
   game._forcedSeed = Number(params.get('seed')) >>> 0;
@@ -66,7 +84,7 @@ dom.board.addEventListener('contextmenu', (e) => e.preventDefault());
 
 // 데스크톱 테스트용: 스페이스/아무 키나 홀드
 window.addEventListener('keydown', (e) => {
-  if (e.repeat) return;
+  if (e.repeat || gateOpen) return;
   if (e.key === ' ' || e.key === 'ArrowUp') game.press();
 });
 window.addEventListener('keyup', (e) => {

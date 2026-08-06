@@ -21,6 +21,7 @@ buildSingleFile({
     'comet-sling/render.js',
     'comet-sling/audio.js',
     'comet-sling/ads.js',
+    'comet-sling/signup.js',
     'comet-sling/game.js',
     'comet-sling/main.js',
   ],
