@@ -7,7 +7,7 @@
 
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { DT, WORLD, newRun, step, score, paramsAt, ensureTrack, makeRng } from '../engine.js';
+import { DT, WORLD, newRun, step, score, paramsAt, assistAt, ensureTrack, makeRng } from '../engine.js';
 
 function runScript(seed, script, steps) {
   // script(i) → hold 여부
@@ -101,7 +101,19 @@ test('난이도 곡선은 단조 증가한다', () => {
     assert.ok(p.hazardChance >= prev.hazardChance, `hazardChance가 ${h}에서 줄었다`);
     prev = p;
   }
-  assert.ok(paramsAt(0).speed >= 40 && paramsAt(1e6).speed <= 100.001);
+  assert.ok(paramsAt(0).speed >= 25 && paramsAt(1e6).speed <= 100.001);
+});
+
+test('에임 어시스트는 초반에만 있고 단조 감소하며 800에서 사라진다', () => {
+  assert.ok(assistAt(0) > 0.3);
+  let prev = assistAt(0);
+  for (let h = 50; h <= 900; h += 50) {
+    const a = assistAt(h);
+    assert.ok(a <= prev, `assist가 ${h}에서 늘었다`);
+    prev = a;
+  }
+  assert.equal(assistAt(800), 0);
+  assert.equal(assistAt(5000), 0);
 });
 
 test('계속 잡고 있으면 첫 앵커 궤도에 들어가고, 영원히 죽지 않는다', () => {
@@ -111,18 +123,19 @@ test('계속 잡고 있으면 첫 앵커 궤도에 들어가고, 영원히 죽�
   assert.equal(s.mode, 'orbit');
 });
 
-test('놓으면 접선 방향으로 날아간다 (진행 방향이 이어진다)', () => {
+test('놓으면 접선 + 초반 위쪽 어시스트 방향으로 날아간다', () => {
   const s = newRun(42);
   // 궤도에 들어갈 때까지 홀드
   let i = 0;
   while (s.mode !== 'orbit' && i++ < 2000) step(s, { hold: true });
   assert.equal(s.mode, 'orbit');
   const o = s.orbit;
-  const expectX = -Math.sin(o.theta) * o.dir;
-  const expectY = Math.cos(o.theta) * o.dir;
+  const tx = -Math.sin(o.theta) * o.dir;
+  const ty = Math.cos(o.theta) * o.dir + assistAt(s.height);
+  const len = Math.hypot(tx, ty);
   step(s, { hold: false });
-  // 릴리즈 직후 방향 == 릴리즈 시점의 접선 (한 스텝 안에서 theta가 더 돌지 않았는지)
-  assert.ok(Math.hypot(s.dirX - expectX, s.dirY - expectY) < 1e-9);
+  // 릴리즈 직후 방향 == 릴리즈 시점의 접선+어시스트 (한 스텝 안에서 theta가 더 돌지 않았는지)
+  assert.ok(Math.hypot(s.dirX - tx / len, s.dirY - ty / len) < 1e-9);
   assert.equal(s.mode, 'flying');
   // 단위벡터
   assert.ok(Math.abs(Math.hypot(s.dirX, s.dirY) - 1) < 1e-9);

@@ -311,11 +311,11 @@ const WORLD = {
   halfW: 50,          // 통로 반폭 — 벽에 닿으면 죽는다
   cometR: 2.2,        // 코멧 반지름
   hazardR: 5.5,       // 소행성 반지름
-  captureR: 34,       // 이 거리 안의 앵커를 잡을 수 있다 (홀드 중 자동)
+  captureR: 38,       // 이 거리 안의 앵커를 잡을 수 있다 (홀드 중 자동)
   orbitMin: 11,       // 궤도 반지름 하한 — 너무 붙어서 잡으면 이만큼 밀어낸다
   orbitMax: 26,       // 궤도 반지름 상한
   nearMissBand: 5,    // 소행성을 이 여유 안으로 스치면 보너스
-  fallLimit: 95,      // 최고점에서 이만큼 떨어지면 죽는다 (카메라 밖)
+  fallLimit: 130,     // 최고점에서 이만큼 떨어지면 죽는다 (카메라 밖)
   genMargin: 260,     // 코멧 위로 이만큼 미리 트랙을 깔아 둔다
 };
 
@@ -331,15 +331,24 @@ function makeRng(seed) {
 }
 
 // 높이에 따른 난이도 곡선 — 전부 단조. 테스트가 단조성을 검증한다.
+// 첫 플레이테스트 피드백("너무 어려워")에 맞춰 시작을 느리고 너그럽게,
+// 정점은 그대로 두어 상급자의 목표는 지킨다.
 function paramsAt(height) {
   const h = Math.max(0, height);
-  const ramp = 1 - Math.exp(-h / 900); // 0 → 1 포화 곡선
+  const ramp = 1 - Math.exp(-h / 1300); // 0 → 1 포화 곡선 (완만하게)
   return {
-    speed: 42 + 58 * ramp,                        // 42 → 100
-    hazardChance: Math.min(0.9, 0.15 + 1.1 * ramp), // 구간당 소행성 확률
-    maxHazards: h < 250 ? 1 : 2,                  // 구간당 최대 소행성 수
-    anchorJitter: 14 + 16 * ramp,                 // 앵커 좌우 흔들림 폭
+    speed: 32 + 68 * ramp,                          // 32 → 100
+    hazardChance: Math.min(0.85, 0.08 + 1.0 * ramp), // 구간당 소행성 확률
+    maxHazards: h < 250 ? 1 : 2,                    // 구간당 최대 소행성 수
+    anchorJitter: 14 + 16 * ramp,                   // 앵커 좌우 흔들림 폭
   };
+}
+
+// 초반 에임 어시스트 — 릴리즈 방향을 위쪽으로 이만큼 끌어당긴다.
+// 완벽한 타이밍이 아니어도 대충 위로 가게 해서, 조작을 배우는 동안 벽에 덜 부딪히게.
+// 높이 800에서 완전히 사라진다 (단조 감소).
+function assistAt(height) {
+  return Math.max(0, 0.38 * (1 - Math.max(0, height) / 800));
 }
 
 // ----- 트랙 생성 (앵커 순서대로만 소비되는 RNG 스트림) -----
@@ -447,8 +456,13 @@ function tryLatch(state) {
 
 function release(state) {
   const o = state.orbit;
-  state.dirX = -Math.sin(o.theta) * o.dir;
-  state.dirY = Math.cos(o.theta) * o.dir;
+  let dx = -Math.sin(o.theta) * o.dir;
+  let dy = Math.cos(o.theta) * o.dir;
+  // 초반 에임 어시스트: 접선에 위쪽 성분을 섞은 뒤 다시 단위벡터로
+  dy += assistAt(state.height);
+  const len = Math.hypot(dx, dy);
+  state.dirX = dx / len;
+  state.dirY = dy / len;
   state.orbit = null;
   state.mode = 'flying';
   state.events.push({ type: 'release' });
