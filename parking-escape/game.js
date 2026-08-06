@@ -112,11 +112,13 @@ export class Game {
     this.history = [];
     this.won = false;
     this.guided = GUIDED_LEVELS.has(this.levelIndex);
+    this.helperShown = false;
     clearTimeout(this._winT);
 
     this.renderer.reset(this.state);
     this.dom.overlay.classList.add('hidden');
     this.closeLevels();
+    this.hideHelper();
     this.updateHud();
     this.updateGuide();
   }
@@ -125,6 +127,36 @@ export class Game {
   nextGuideMove() {
     if (!this.guided || this.won) return null;
     return this.solution[this.history.length] || null;
+  }
+
+  // 힌트: 지금 상태에서 솔버가 찾은 다음 최적 수를 손끝으로 짚어준다.
+  // 막다른 길이 없는 게임이라 힌트는 언제나 존재한다. 다음 수를 두면 저절로 사라진다.
+  hint() {
+    if (this.won) return;
+    this.hideHelper();
+    const g = this.nextGuideMove();
+    if (g) {
+      this.renderer.setGuide(g);
+      return;
+    }
+    const r = solve(this.state);
+    if (!r.solved || !r.moves.length) return; // 이론상 불가능하지만 방어
+    this.renderer.setGuide(r.moves[0]);
+    this.sound.pick();
+  }
+
+  // 오래 헤매면 먼저 손을 내민다 — 참고 답안의 두 배(최소 +6수)를 넘기면 한 번만.
+  maybeOfferHelp() {
+    if (this.helperShown || this.won || this.guided) return;
+    const threshold = Math.max(this.level.par * 2, this.level.par + 6);
+    if (this.history.length >= threshold) {
+      this.helperShown = true;
+      this.dom.helper.classList.remove('hidden');
+    }
+  }
+
+  hideHelper() {
+    this.dom.helper.classList.add('hidden');
   }
 
   updateGuide() {
@@ -154,6 +186,7 @@ export class Game {
     this.updateGuide();
 
     if (isWin(this.state)) this.win();
+    else this.maybeOfferHelp();
   }
 
   undo() {
@@ -179,6 +212,7 @@ export class Game {
     this.won = true;
     this.sound.win();
     this.renderer.setGuide(null);
+    this.hideHelper();
 
     const chapter = Math.floor(this.levelIndex / CHAPTER);
     const wasHome = this.passengerHome(chapter);

@@ -95,6 +95,63 @@ body {
    manipulation 만으로는 터치 이동이 스크롤로 새서 pointercancel 이 난다 */
 #board { flex: 1; width: 100%; display: block; min-height: 0; touch-action: none; }
 
+/* 헤맬 때 먼저 손을 내미는 패널 — 버튼(힌트/처음부터)이 패널 안에 직접 들어 있어
+   아이콘을 찾아 헤맬 필요가 없다. 보드를 만지면 조용히 사라진다. */
+#helper {
+  position: absolute;
+  left: 50%;
+  bottom: calc(22px + env(safe-area-inset-bottom));
+  transform: translateX(-50%);
+  width: min(92%, 360px);
+  background: #23305a;
+  border: 1px solid #3d5088;
+  padding: 14px 16px 12px;
+  border-radius: 18px;
+  text-align: center;
+  box-shadow: 0 12px 34px rgba(0, 0, 0, 0.5);
+  z-index: 20;
+  /* pop 키프레임은 transform을 통째로 바꿔서 translateX(-50%) 센터링이 풀린다 —
+     떠오르는 동안 오른쪽으로 쏠리지 않게 전용 키프레임을 쓴다 */
+  animation: hpop 0.3s cubic-bezier(0.2, 1.4, 0.4, 1);
+}
+@keyframes hpop {
+  from { transform: translateX(-50%) scale(0.72); opacity: 0; }
+  to { transform: translateX(-50%) scale(1); opacity: 1; }
+}
+
+.hp-title { font-size: 15px; font-weight: 800; }
+
+.hp-sub {
+  color: var(--muted);
+  font-size: 12px;
+  margin: 3px 0 11px;
+  line-height: 1.45;
+}
+
+.hp-actions { display: flex; gap: 8px; }
+
+.hp-btn {
+  flex: 1;
+  padding: 11px 0;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  background: rgba(255, 255, 255, 0.07);
+  color: var(--text);
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 800;
+  cursor: pointer;
+  transition: transform 0.08s;
+}
+.hp-btn:active { transform: scale(0.95); }
+
+.hp-btn.primary {
+  background: linear-gradient(180deg, #ffdf6b, #ffb524);
+  border: 0;
+  color: #241c05;
+  box-shadow: 0 5px 14px rgba(255, 181, 36, 0.35);
+}
+
 #overlay {
   position: absolute;
   inset: 0;

@@ -14,6 +14,7 @@ const dom = {
   btnRestart: $('btnRestart'),
   btnMute: $('btnMute'),
   btnNext: $('btnNext'),
+  helper: $('helper'),
   levelSelect: $('levelSelect'),
   journey: $('journey'),
   journeyTotal: $('journeyTotal'),
@@ -58,6 +59,7 @@ const boardXY = (e) => {
 dom.board.addEventListener('pointerdown', (e) => {
   e.preventDefault();
   dom.board.setPointerCapture(e.pointerId);
+  game.hideHelper(); // 다시 만지기 시작하면 도우미는 조용히 비켜준다
   const { x, y } = boardXY(e);
   renderer.pointerDown(x, y);
 });
@@ -71,6 +73,9 @@ dom.board.addEventListener('contextmenu', (e) => e.preventDefault());
 
 dom.btnUndo.addEventListener('click', () => game.undo());
 dom.btnRestart.addEventListener('click', () => game.restart());
+$('btnHint').addEventListener('click', () => game.hint());
+$('hpHint').addEventListener('click', () => game.hint());
+$('hpRestart').addEventListener('click', () => game.restart());
 // 광고는 레벨을 깬 뒤 "다음 레벨"을 누를 때만 띄운다.
 // 퍼즐 도중이나 다시하기에는 절대 띄우지 않는다.
 dom.btnNext.addEventListener('click', async () => {
@@ -116,6 +121,7 @@ if (params.has('debug')) {
     state: () => game.state,
     loadLevel: (i) => game.loadLevel(i),
     move: (v, to) => game.applyMove(v, to),
+    hint: () => game.hint(),
     autoWin: () => game.autoWin(),
     center: (i) => {
       const r = dom.board.getBoundingClientRect();

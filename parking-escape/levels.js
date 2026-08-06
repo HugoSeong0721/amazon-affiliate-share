@@ -20,13 +20,19 @@ CAR_COUNTS.forEach((cars, ci) => {
   }
 });
 
-// 원하는 난이도 곡선: 1수에서 시작해 완만하게 출발했다가 뒤로 갈수록 가파르게.
+// 원하는 난이도 곡선: 1수에서 시작해 꾸준히 오른다.
 // maxPar는 풀에서 실제로 나온 최댓값 — 곡선은 "있는 것 중에서" 고른다.
+//
+// 처음 버전은 t^1.35 였는데 실플레이에서 "20레벨까지 너무 쉽다가 갑자기 어려워진다"는
+// 피드백이 나왔다. 지수 곡선은 초반을 너무 오래 눌러두고 중반에 기울기가 몰린다.
+// 지금은 선형+약한 이차 혼합 — 10레벨 안에 2수, 20레벨쯤 4수에 닿고, 그 뒤로는
+// 대략 6레벨마다 1수씩 고르게 오른다.
 export function curveTargets(maxPar, count = LEVEL_COUNT) {
   const targets = [];
   for (let i = 0; i < count; i++) {
     const t = count === 1 ? 0 : i / (count - 1);
-    targets.push(Math.max(1, Math.round(1 + (maxPar - 1) * Math.pow(t, 1.35))));
+    const shaped = 0.55 * t + 0.45 * t * t;
+    targets.push(Math.max(1, Math.round(1 + (maxPar - 1) * shaped)));
   }
   return targets;
 }

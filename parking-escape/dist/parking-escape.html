@@ -104,6 +104,63 @@ body {
    manipulation 만으로는 터치 이동이 스크롤로 새서 pointercancel 이 난다 */
 #board { flex: 1; width: 100%; display: block; min-height: 0; touch-action: none; }
 
+/* 헤맬 때 먼저 손을 내미는 패널 — 버튼(힌트/처음부터)이 패널 안에 직접 들어 있어
+   아이콘을 찾아 헤맬 필요가 없다. 보드를 만지면 조용히 사라진다. */
+#helper {
+  position: absolute;
+  left: 50%;
+  bottom: calc(22px + env(safe-area-inset-bottom));
+  transform: translateX(-50%);
+  width: min(92%, 360px);
+  background: #23305a;
+  border: 1px solid #3d5088;
+  padding: 14px 16px 12px;
+  border-radius: 18px;
+  text-align: center;
+  box-shadow: 0 12px 34px rgba(0, 0, 0, 0.5);
+  z-index: 20;
+  /* pop 키프레임은 transform을 통째로 바꿔서 translateX(-50%) 센터링이 풀린다 —
+     떠오르는 동안 오른쪽으로 쏠리지 않게 전용 키프레임을 쓴다 */
+  animation: hpop 0.3s cubic-bezier(0.2, 1.4, 0.4, 1);
+}
+@keyframes hpop {
+  from { transform: translateX(-50%) scale(0.72); opacity: 0; }
+  to { transform: translateX(-50%) scale(1); opacity: 1; }
+}
+
+.hp-title { font-size: 15px; font-weight: 800; }
+
+.hp-sub {
+  color: var(--muted);
+  font-size: 12px;
+  margin: 3px 0 11px;
+  line-height: 1.45;
+}
+
+.hp-actions { display: flex; gap: 8px; }
+
+.hp-btn {
+  flex: 1;
+  padding: 11px 0;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  background: rgba(255, 255, 255, 0.07);
+  color: var(--text);
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 800;
+  cursor: pointer;
+  transition: transform 0.08s;
+}
+.hp-btn:active { transform: scale(0.95); }
+
+.hp-btn.primary {
+  background: linear-gradient(180deg, #ffdf6b, #ffb524);
+  border: 0;
+  color: #241c05;
+  box-shadow: 0 5px 14px rgba(255, 181, 36, 0.35);
+}
+
 #overlay {
   position: absolute;
   inset: 0;
@@ -472,6 +529,7 @@ body {
       </div>
       <div class="hud-right">
         <button id="btnLevels" class="hud-btn" title="Journey map" aria-label="Journey map">☰</button>
+        <button id="btnHint" class="hud-btn" title="Hint" aria-label="Hint">💡</button>
         <button id="btnUndo" class="hud-btn" title="Undo" aria-label="Undo">↩︎</button>
         <button id="btnRestart" class="hud-btn" title="Restart level" aria-label="Restart level">⟳</button>
         <button id="btnMute" class="hud-btn" title="Sound on/off" aria-label="Sound">🔊</button>
@@ -479,6 +537,15 @@ body {
     </header>
 
     <canvas id="board"></canvas>
+
+    <div id="helper" class="hidden">
+      <p class="hp-title">🤔 Stuck?</p>
+      <p class="hp-sub">Every position can still be solved — want a nudge?</p>
+      <div class="hp-actions">
+        <button id="hpRestart" class="hp-btn" type="button">⟳ Start over</button>
+        <button id="hpHint" class="hp-btn primary" type="button">💡 Hint</button>
+      </div>
+    </div>
 
     <div id="overlay" class="hidden">
       <div class="overlay-card">
@@ -747,9 +814,6 @@ const LEVEL_DATA = [
  {par:1,v:"0221402000213321",sol:"04"},
  {par:1,v:"1221502025311420",sol:"04"},
  {par:1,v:"3221432001211220",sol:"04"},
- {par:1,v:"3221142133305320",sol:"04"},
- {par:1,v:"1221022044201531",sol:"04"},
- {par:1,v:"3221442031211120",sol:"04"},
  {par:2,v:"2221513030312321",sol:"1304"},
  {par:2,v:"1221452142204020",sol:"2304"},
  {par:2,v:"0221412043210521",sol:"1004"},
@@ -757,19 +821,20 @@ const LEVEL_DATA = [
  {par:2,v:"0221212015213330",sol:"1004"},
  {par:2,v:"0221302103203230",sol:"3304"},
  {par:2,v:"0221133025215030",sol:"3304"},
+ {par:2,v:"0221342033215220",sol:"3004"},
  {par:3,v:"1221522041201321",sol:"102004"},
  {par:3,v:"0221212023304230",sol:"103304"},
  {par:3,v:"0221252134312030",sol:"103304"},
  {par:3,v:"0221522014312120",sol:"103004"},
  {par:3,v:"1221522002204130",sol:"103304"},
  {par:3,v:"1221233050304030",sol:"233304"},
- {par:3,v:"0221322020205230",sol:"103304"},
  {par:4,v:"0221412004205120342110200331212153203531302133212420",sol:"30a21004"},
  {par:4,v:"2221033125313020402110205230422034210421012020200521",sol:"63827304"},
  {par:4,v:"2221332042203031033135311021043100205230052111214121",sol:"23529304"},
  {par:4,v:"3221133023215220242144211021412100200420112035314021",sol:"72c33004"},
  {par:4,v:"1221342103205220113145215020302100200521133114214120",sol:"3371c004"},
  {par:4,v:"2221112015213320442042205320022031211321002120215120",sol:"8250c004"},
+ {par:4,v:"3221512013211021033044211420432135213320303101312420",sol:"30a21004"},
  {par:5,v:"2221102112300230402111314230232025215220002041214521",sol:"8093c26304"},
  {par:5,v:"1221032134210420412043213020352114212321402115211121",sol:"61a0406004"},
  {par:5,v:"0221302044212320002021204121332145210330142034201021",sol:"11c4105004"},
@@ -780,6 +845,7 @@ const LEVEL_DATA = [
  {par:6,v:"3221042023204021412133305220113001300031212144211521",sol:"3372a1436004"},
  {par:6,v:"1221203143214421412045212521212132200331142110200030",sol:"8302b1114004"},
  {par:6,v:"1221412153301020012003203031142123213421252120204220",sol:"40527092c304"},
+ {par:6,v:"1221352104314120102044210331303121213321002051201521",sol:"02417130b004"},
  {par:7,v:"0221332022303521312052200421402020210321002101211521",sol:"53738440c02304"},
  {par:7,v:"1221313133201330522054204320012010310420232040211121",sol:"7280b3c0124004"},
  {par:7,v:"0221332124210321412030215420102051200420142021302521",sol:"23524080c3b304"},
@@ -794,15 +860,16 @@ const LEVEL_DATA = [
  {par:9,v:"1221422015210130532030213320112144205120312110210421",sol:"90b052c13270a21004"},
  {par:9,v:"0221232131205130243103201420452100202120102040204220",sol:"20723390026241c304"},
  {par:9,v:"0221402110211321333011215120042014210020442131214220",sol:"019220125060b2c004"},
+ {par:9,v:"2221342130211421503035210120202010300420413023211521",sol:"4360923012c052a304"},
  {par:10,v:"0221032044213220452114213031112151300020132125213121",sol:"01239160b04283c43004"},
  {par:10,v:"0221542000213130033104313031352121204220053101215120",sol:"1374338093038162c004"},
  {par:10,v:"3221302103202421133020202220313125214420522054200120",sol:"4080c02230645272a004"},
  {par:10,v:"2221312114215030132134204321152103301031452100204421",sol:"0111b1905063a3c33304"},
+ {par:10,v:"1221012041203431032023204521322013202521202110200521",sol:"1000a450700282312304"},
  {par:11,v:"3221512053201321342104212120402101213020153133210220",sol:"5160c30061917010609004"},
  {par:11,v:"1221132152300230142040210020342120213121242035314220",sol:"3361805291c013a3b22304"},
  {par:11,v:"1221343123202031012105213521512043212131002103213220",sol:"0022103364c48373932004"},
  {par:11,v:"2221002011211321243140214120102115210220542043210421",sol:"53b3a043c1931170526004"},
- {par:11,v:"0221332122203120042013205130002145212421012144211531",sol:"203002425290b2c0836304"},
  {par:12,v:"2221152104204321113123204020442150302021032101203320",sol:"01135490a1b240c033738304"},
  {par:12,v:"3221353103203320142111311321302150304321442101200021",sol:"011124b2503193a383743004"},
  {par:12,v:"1221353120204421322004201321002042205020312114202421",sol:"5292a4400262b0c032839304"},
@@ -1967,11 +2034,13 @@ class Game {
     this.history = [];
     this.won = false;
     this.guided = GUIDED_LEVELS.has(this.levelIndex);
+    this.helperShown = false;
     clearTimeout(this._winT);
 
     this.renderer.reset(this.state);
     this.dom.overlay.classList.add('hidden');
     this.closeLevels();
+    this.hideHelper();
     this.updateHud();
     this.updateGuide();
   }
@@ -1980,6 +2049,36 @@ class Game {
   nextGuideMove() {
     if (!this.guided || this.won) return null;
     return this.solution[this.history.length] || null;
+  }
+
+  // 힌트: 지금 상태에서 솔버가 찾은 다음 최적 수를 손끝으로 짚어준다.
+  // 막다른 길이 없는 게임이라 힌트는 언제나 존재한다. 다음 수를 두면 저절로 사라진다.
+  hint() {
+    if (this.won) return;
+    this.hideHelper();
+    const g = this.nextGuideMove();
+    if (g) {
+      this.renderer.setGuide(g);
+      return;
+    }
+    const r = solve(this.state);
+    if (!r.solved || !r.moves.length) return; // 이론상 불가능하지만 방어
+    this.renderer.setGuide(r.moves[0]);
+    this.sound.pick();
+  }
+
+  // 오래 헤매면 먼저 손을 내민다 — 참고 답안의 두 배(최소 +6수)를 넘기면 한 번만.
+  maybeOfferHelp() {
+    if (this.helperShown || this.won || this.guided) return;
+    const threshold = Math.max(this.level.par * 2, this.level.par + 6);
+    if (this.history.length >= threshold) {
+      this.helperShown = true;
+      this.dom.helper.classList.remove('hidden');
+    }
+  }
+
+  hideHelper() {
+    this.dom.helper.classList.add('hidden');
   }
 
   updateGuide() {
@@ -2009,6 +2108,7 @@ class Game {
     this.updateGuide();
 
     if (isWin(this.state)) this.win();
+    else this.maybeOfferHelp();
   }
 
   undo() {
@@ -2034,6 +2134,7 @@ class Game {
     this.won = true;
     this.sound.win();
     this.renderer.setGuide(null);
+    this.hideHelper();
 
     const chapter = Math.floor(this.levelIndex / CHAPTER);
     const wasHome = this.passengerHome(chapter);
@@ -2198,6 +2299,7 @@ const dom = {
   btnRestart: $('btnRestart'),
   btnMute: $('btnMute'),
   btnNext: $('btnNext'),
+  helper: $('helper'),
   levelSelect: $('levelSelect'),
   journey: $('journey'),
   journeyTotal: $('journeyTotal'),
@@ -2242,6 +2344,7 @@ const boardXY = (e) => {
 dom.board.addEventListener('pointerdown', (e) => {
   e.preventDefault();
   dom.board.setPointerCapture(e.pointerId);
+  game.hideHelper(); // 다시 만지기 시작하면 도우미는 조용히 비켜준다
   const { x, y } = boardXY(e);
   renderer.pointerDown(x, y);
 });
@@ -2255,6 +2358,9 @@ dom.board.addEventListener('contextmenu', (e) => e.preventDefault());
 
 dom.btnUndo.addEventListener('click', () => game.undo());
 dom.btnRestart.addEventListener('click', () => game.restart());
+$('btnHint').addEventListener('click', () => game.hint());
+$('hpHint').addEventListener('click', () => game.hint());
+$('hpRestart').addEventListener('click', () => game.restart());
 // 광고는 레벨을 깬 뒤 "다음 레벨"을 누를 때만 띄운다.
 // 퍼즐 도중이나 다시하기에는 절대 띄우지 않는다.
 dom.btnNext.addEventListener('click', async () => {
@@ -2300,6 +2406,7 @@ if (params.has('debug')) {
     state: () => game.state,
     loadLevel: (i) => game.loadLevel(i),
     move: (v, to) => game.applyMove(v, to),
+    hint: () => game.hint(),
     autoWin: () => game.autoWin(),
     center: (i) => {
       const r = dom.board.getBoundingClientRect();

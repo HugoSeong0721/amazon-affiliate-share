@@ -17,6 +17,7 @@
       </div>
       <div class="hud-right">
         <button id="btnLevels" class="hud-btn" title="Journey map" aria-label="Journey map">☰</button>
+        <button id="btnHint" class="hud-btn" title="Hint" aria-label="Hint">💡</button>
         <button id="btnUndo" class="hud-btn" title="Undo" aria-label="Undo">↩︎</button>
         <button id="btnRestart" class="hud-btn" title="Restart level" aria-label="Restart level">⟳</button>
         <button id="btnMute" class="hud-btn" title="Sound on/off" aria-label="Sound">🔊</button>
@@ -24,6 +25,15 @@
     </header>
 
     <canvas id="board"></canvas>
+
+    <div id="helper" class="hidden">
+      <p class="hp-title">🤔 Stuck?</p>
+      <p class="hp-sub">Every position can still be solved — want a nudge?</p>
+      <div class="hp-actions">
+        <button id="hpRestart" class="hp-btn" type="button">⟳ Start over</button>
+        <button id="hpHint" class="hp-btn primary" type="button">💡 Hint</button>
+      </div>
+    </div>
 
     <div id="overlay" class="hidden">
       <div class="overlay-card">
