@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="theme-color" content="#101728">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🚕</text></svg>">
+<title>Taxi Out — Parking Escape Puzzle</title>
+<link rel="stylesheet" href="./style.css">
+</head>
+<body>
+  <div id="app">
+    <header id="topbar">
+      <div class="hud-left">
+        <div id="levelLabel">Level 1</div>
+        <div id="moveLabel">0 moves</div>
+      </div>
+      <div class="hud-right">
+        <button id="btnLevels" class="hud-btn" title="Journey map" aria-label="Journey map">☰</button>
+        <button id="btnHint" class="hud-btn" title="Hint" aria-label="Hint">💡</button>
+        <button id="btnUndo" class="hud-btn" title="Undo" aria-label="Undo">↩︎</button>
+        <button id="btnRestart" class="hud-btn" title="Restart level" aria-label="Restart level">⟳</button>
+        <button id="btnMute" class="hud-btn" title="Sound on/off" aria-label="Sound">🔊</button>
+      </div>
+    </header>
+
+    <canvas id="board"></canvas>
+
+    <div id="helper" class="hidden">
+      <p class="hp-title">🤔 Stuck?</p>
+      <p class="hp-sub">Every position can still be solved — want a nudge?</p>
+      <div class="hp-actions">
+        <button id="hpRestart" class="hp-btn" type="button">⟳ Start over</button>
+        <button id="hpHint" class="hp-btn primary" type="button">💡 Hint</button>
+      </div>
+    </div>
+
+    <div id="overlay" class="hidden">
+      <div class="overlay-card">
+        <h2 id="overlayTitle">Level Clear!</h2>
+        <div id="starRow" class="stars">
+          <span class="star"></span><span class="star"></span><span class="star"></span>
+        </div>
+        <p id="overlayInfo"></p>
+        <p id="overlayRescue" class="rescue-note hidden"></p>
+        <div class="overlay-actions">
+          <button id="btnLevelsFromWin" class="ghost-btn">Journey</button>
+          <button id="btnNext">Next Level ▶</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="adSlot" class="hidden">
+      <div class="ad-frame">
+        <div class="ad-head">
+          <span class="ad-tag">AD</span>
+          <button id="adClose" class="ad-close" disabled>5</button>
+        </div>
+        <div class="ad-body">
+          <p class="ad-title">Ad placeholder</p>
+          <p class="ad-sub">An interstitial ad will appear here once an ad network is connected.</p>
+        </div>
+      </div>
+    </div>
+
+    <div id="levelSelect" class="hidden">
+      <div class="ls-card">
+        <div class="ls-head">
+          <h2>Journey</h2>
+          <div id="journeyTotal" class="j-total"></div>
+          <button id="btnCloseLevels" class="hud-btn" title="Close" aria-label="Close">✕</button>
+        </div>
+        <div id="journey"></div>
+      </div>
+    </div>
+  </div>
+  <script type="module" src="./main.js"></script>
+</body>
+</html>
