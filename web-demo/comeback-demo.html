@@ -1,0 +1,790 @@
+<title>Comeback! K-pop Dress Up — Web Demo</title>
+<style>
+  /* ==============================================================
+     Comeback! K-pop Dress Up — playable web demo
+     Committed single-theme visual world: candy studio + neon stage.
+     ============================================================== */
+  :root {
+    --candy: #ff4f9a;
+    --candy-deep: #e23a82;
+    --cyan: #45d6ff;
+    --ink: #40265e;
+    --ink-soft: #7a5f99;
+    --gold: #ffc531;
+    --panel: #ffffff;
+    --panel-soft: #fff0f7;
+    --line: #ffd2e6;
+    --font-round: ui-rounded, "Arial Rounded MT Bold", "Trebuchet MS", "Segoe UI", system-ui, sans-serif;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    font-family: var(--font-round);
+    color: var(--ink);
+    background:
+      radial-gradient(1200px 500px at 15% -10%, #ffd9ec 0%, transparent 60%),
+      radial-gradient(1000px 600px at 110% 15%, #e3d4ff 0%, transparent 55%),
+      linear-gradient(160deg, #ffe9f4 0%, #f3e6ff 55%, #e8f4ff 100%);
+    min-height: 100vh;
+  }
+  button { font-family: inherit; cursor: pointer; }
+  button:focus-visible, [tabindex]:focus-visible {
+    outline: 3px solid var(--cyan);
+    outline-offset: 2px;
+  }
+
+  .wrap { max-width: 1080px; margin: 0 auto; padding: 14px 16px 40px; }
+
+  /* ---------- top bar ---------- */
+  header {
+    display: flex; align-items: center; justify-content: space-between;
+    gap: 12px; padding: 8px 2px 14px;
+  }
+  .logo {
+    font-size: clamp(24px, 4vw, 34px);
+    font-weight: 900;
+    letter-spacing: 0.5px;
+    color: #fff;
+    text-shadow:
+      0 2px 0 var(--candy-deep),
+      0 4px 14px rgba(255, 79, 154, 0.55);
+    -webkit-text-stroke: 1.5px var(--candy);
+  }
+  .logo .spark { display: inline-block; animation: twinkle 1.8s ease-in-out infinite; }
+  @keyframes twinkle { 0%,100% { transform: scale(1) rotate(0deg); } 50% { transform: scale(1.25) rotate(12deg); } }
+
+  .coinbar {
+    display: flex; align-items: center; gap: 8px;
+    background: var(--panel);
+    border: 3px solid var(--gold);
+    border-radius: 999px;
+    padding: 7px 18px 7px 12px;
+    font-size: 21px; font-weight: 900;
+    box-shadow: 0 4px 0 rgba(64, 38, 94, 0.12);
+    font-variant-numeric: tabular-nums;
+  }
+  .coinbar .bump { animation: coinbump 0.4s ease; }
+  @keyframes coinbump { 40% { transform: scale(1.3); } }
+
+  /* ---------- layout ---------- */
+  main { display: grid; grid-template-columns: 1fr 380px; gap: 18px; align-items: start; }
+  @media (max-width: 860px) { main { grid-template-columns: 1fr; } }
+
+  /* ---------- stage ---------- */
+  .stage-card {
+    border-radius: 26px;
+    padding: 12px;
+    background: var(--panel);
+    box-shadow: 0 10px 30px rgba(64, 38, 94, 0.14);
+  }
+  .stage {
+    position: relative;
+    border-radius: 18px;
+    overflow: hidden;
+    min-height: 480px;
+    display: flex; align-items: flex-end; justify-content: center;
+    border: 4px solid transparent;
+  }
+  .stage.bg-neon {
+    background: linear-gradient(180deg, #2b1650 0%, #571f77 55%, #a12a8a 100%);
+    border-color: var(--cyan);
+  }
+  .stage.bg-y2k {
+    background: linear-gradient(180deg, #8fd7ff 0%, #cfe9ff 45%, #ffd7ef 100%);
+    border-color: #ff9ecb;
+  }
+  .stage.bg-retro {
+    background: repeating-linear-gradient(135deg, #ffd166 0 26px, #ffb54d 26px 52px);
+    border-color: #ff7b54;
+  }
+  .stage-deco { position: absolute; inset: 0; pointer-events: none; }
+  .stage-deco span {
+    position: absolute; font-size: 22px; opacity: 0.85;
+    animation: floaty 4.5s ease-in-out infinite;
+  }
+  @keyframes floaty { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-14px); } }
+  @media (prefers-reduced-motion: reduce) {
+    .stage-deco span, .logo .spark, .coinbar .bump { animation: none !important; }
+  }
+
+  .doll-holder { position: relative; z-index: 2; padding-bottom: 6px; }
+  .doll-holder svg { display: block; height: min(62vh, 470px); width: auto; filter: drop-shadow(0 10px 12px rgba(30, 10, 50, 0.28)); }
+
+  .stage-actions { display: flex; gap: 12px; justify-content: center; padding-top: 12px; flex-wrap: wrap; }
+  .big-btn {
+    border: none;
+    border-radius: 999px;
+    padding: 14px 30px;
+    font-size: 22px; font-weight: 900; color: #fff;
+    background: linear-gradient(180deg, #ff6fae, var(--candy));
+    box-shadow: 0 5px 0 var(--candy-deep), 0 10px 18px rgba(255, 79, 154, 0.4);
+    transition: transform 0.08s ease;
+  }
+  .big-btn:active { transform: translateY(3px); box-shadow: 0 2px 0 var(--candy-deep); }
+  .big-btn.alt { background: linear-gradient(180deg, #6fe0ff, #2fb9e8); box-shadow: 0 5px 0 #1f93bd, 0 10px 18px rgba(69, 214, 255, 0.4); }
+  .big-btn.alt:active { box-shadow: 0 2px 0 #1f93bd; }
+
+  /* ---------- closet ---------- */
+  .closet {
+    background: var(--panel);
+    border-radius: 26px;
+    padding: 14px;
+    box-shadow: 0 10px 30px rgba(64, 38, 94, 0.14);
+  }
+  .closet h2 { margin: 2px 6px 10px; font-size: 20px; }
+  .tabs { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 12px; }
+  .tab {
+    border: none; border-radius: 999px;
+    background: var(--panel-soft);
+    color: var(--ink);
+    padding: 8px 13px;
+    font-size: 15px; font-weight: 800;
+  }
+  .tab[aria-selected="true"] { background: var(--candy); color: #fff; box-shadow: 0 3px 0 var(--candy-deep); }
+
+  .grid {
+    display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px;
+    max-height: 480px; overflow-y: auto; padding: 2px;
+  }
+  .cell {
+    border: 3px solid var(--line);
+    border-radius: 16px;
+    background: #fff;
+    padding: 6px 6px 8px;
+    display: flex; flex-direction: column; align-items: center; gap: 4px;
+  }
+  .cell.on { border-color: var(--candy); background: #fff5fa; }
+  .cell .preview {
+    width: 100%; aspect-ratio: 1; border-radius: 10px;
+    background: linear-gradient(160deg, #fff0f7, #f1e7ff);
+    display: flex; align-items: center; justify-content: center; overflow: hidden;
+  }
+  .cell .preview svg { width: 88%; height: 88%; }
+  .cell .swatch { width: 100%; aspect-ratio: 1; border-radius: 10px; }
+  .cell .tag { font-size: 13.5px; font-weight: 900; line-height: 1.15; text-align: center; }
+  .tag.free { color: #14a06d; }
+  .tag.price { color: var(--ink-soft); }
+  .tag.onlabel { color: var(--candy); }
+
+  /* ---------- modals / toast ---------- */
+  .veil[hidden] { display: none; }
+  .veil {
+    position: fixed; inset: 0; z-index: 50;
+    background: rgba(46, 20, 70, 0.45);
+    display: flex; align-items: center; justify-content: center;
+    padding: 20px;
+  }
+  .modal {
+    background: #fff; border-radius: 24px;
+    padding: 22px 22px 18px;
+    width: min(380px, 92vw);
+    text-align: center;
+    box-shadow: 0 20px 50px rgba(30, 10, 50, 0.35);
+  }
+  .modal h3 { margin: 0 0 6px; font-size: 26px; }
+  .modal p { margin: 4px 0 14px; font-size: 19px; font-weight: 800; color: var(--ink-soft); }
+  .modal .row { display: flex; gap: 10px; justify-content: center; }
+  .modal .preview-big {
+    width: 110px; height: 110px; margin: 0 auto 8px;
+    border-radius: 16px; background: var(--panel-soft);
+    display: flex; align-items: center; justify-content: center; overflow: hidden;
+  }
+  .modal .preview-big svg { width: 90%; height: 90%; }
+  .btn-soft {
+    border: none; border-radius: 999px; padding: 12px 26px;
+    font-size: 19px; font-weight: 900; color: var(--ink);
+    background: #ece7f2;
+  }
+  .modal img.card { width: min(250px, 70vw); border-radius: 14px; box-shadow: 0 10px 24px rgba(30,10,50,0.3); margin-bottom: 12px; }
+
+  #toast {
+    position: fixed; left: 50%; top: 18px; transform: translateX(-50%);
+    z-index: 60;
+    background: var(--ink); color: #fff;
+    font-weight: 900; font-size: 18px;
+    padding: 12px 24px; border-radius: 999px;
+    box-shadow: 0 8px 20px rgba(30, 10, 50, 0.35);
+    opacity: 0; pointer-events: none;
+    transition: opacity 0.25s ease, top 0.25s ease;
+  }
+  #toast.show { opacity: 1; top: 26px; }
+
+  /* photo countdown + flash */
+  #countdown {
+    position: absolute; inset: 0; z-index: 5;
+    display: none; align-items: center; justify-content: center;
+    font-size: 120px; font-weight: 900; color: #fff;
+    text-shadow: 0 0 24px var(--candy), 0 4px 0 var(--candy-deep);
+  }
+  #flash { position: absolute; inset: 0; z-index: 6; background: #fff; opacity: 0; pointer-events: none; }
+
+  footer {
+    margin-top: 26px; text-align: center;
+    font-size: 14px; font-weight: 700; color: var(--ink-soft);
+  }
+</style>
+
+<div class="wrap">
+  <header>
+    <div class="logo">COMEBACK! <span class="spark">✨</span></div>
+    <div class="coinbar"><span>🪙</span><span id="coins">0</span></div>
+  </header>
+
+  <main>
+    <section class="stage-card" aria-label="Your star">
+      <div class="stage bg-neon" id="stage">
+        <div class="stage-deco" id="stageDeco"></div>
+        <div class="doll-holder"><svg id="doll" viewBox="0 0 200 330" role="img" aria-label="Your K-pop character"></svg></div>
+        <div id="countdown"></div>
+        <div id="flash"></div>
+      </div>
+      <div class="stage-actions">
+        <button class="big-btn" id="photoBtn">📸 Photocard!</button>
+        <button class="big-btn alt" id="shuffleBtn">🎲 Surprise me</button>
+      </div>
+    </section>
+
+    <section class="closet" aria-label="Closet">
+      <h2>👗 Closet</h2>
+      <div class="tabs" role="tablist" id="tabs"></div>
+      <div class="grid" id="grid"></div>
+    </section>
+  </main>
+
+  <footer>
+    웹 데모 버전 · 실제 게임은 Roblox로 개발 중 · 코인은 게임 속 가상 재화입니다 (실제 결제 없음)
+  </footer>
+</div>
+
+<div class="veil" id="veil" hidden>
+  <div class="modal" id="modalBox" role="dialog" aria-modal="true"></div>
+</div>
+<div id="toast" role="status"></div>
+
+<script>
+"use strict";
+
+/* =====================================================================
+   Item catalog — every visual is drawn as SVG layers on a 200x330 doll.
+   ===================================================================== */
+
+const SKIN_TONES = [
+  "#ffdcc4","#facdb0","#f1c2a7","#e8b38f","#d8a07a","#c78d69",
+  "#b47a58","#9e6748","#865439","#6d422c","#573422","#402619"
+];
+const HAIR_COLORS = [
+  "#2e2633","#4a3226","#7a4a2b","#c98a4b","#f2d16b","#f7f3ef",
+  "#ff8fc0","#c99cff","#7fd8ff","#8be8c0","#ff7b6b","#5661d6"
+];
+
+function hairSet(back, bangs) { return { back, bangs }; }
+
+const HAIR = [
+  { id:"long",  name:"Long & Sleek", price:0, ...hairSet(
+    '<rect class="hf" x="56" y="38" width="88" height="156" rx="42"/>',
+    '<path class="hf" d="M58 76 Q58 28 100 28 Q142 28 142 76 Q128 50 112 58 Q104 42 90 56 Q74 46 58 76 Z"/>') },
+  { id:"twin",  name:"Twin Tails", price:25, ...hairSet(
+    '<ellipse class="hf" cx="50" cy="126" rx="15" ry="52"/><ellipse class="hf" cx="150" cy="126" rx="15" ry="52"/><rect class="hf" x="58" y="38" width="84" height="80" rx="40"/><circle cx="53" cy="80" r="7" fill="#ffd23e"/><circle cx="147" cy="80" r="7" fill="#ffd23e"/>',
+    '<path class="hf" d="M58 76 Q58 28 100 28 Q142 28 142 76 Q126 52 108 60 Q100 44 88 58 Q72 48 58 76 Z"/>') },
+  { id:"bob",   name:"Cutie Bob", price:50, ...hairSet(
+    '<rect class="hf" x="52" y="36" width="96" height="92" rx="44"/>',
+    '<path class="hf" d="M56 78 Q56 28 100 28 Q144 28 144 78 Q126 54 106 62 Q98 44 86 58 Q70 48 56 78 Z"/>') },
+  { id:"pony",  name:"High Pony", price:75, ...hairSet(
+    '<circle class="hf" cx="104" cy="26" r="15"/><ellipse class="hf" cx="132" cy="98" rx="14" ry="50" transform="rotate(14 132 98)"/><circle cx="112" cy="34" r="6" fill="#7fd8ff"/>',
+    '<path class="hf" d="M58 76 Q58 28 100 28 Q142 28 142 76 Q126 50 110 58 Q102 42 88 56 Q72 46 58 76 Z"/>') },
+  { id:"buns",  name:"Space Buns", price:100, ...hairSet(
+    '<circle class="hf" cx="57" cy="36" r="17"/><circle class="hf" cx="143" cy="36" r="17"/><rect class="hf" x="56" y="40" width="88" height="84" rx="42"/>',
+    '<path class="hf" d="M58 76 Q58 30 100 30 Q142 30 142 76 Q124 54 106 60 Q98 46 88 58 Q72 50 58 76 Z"/>') },
+  { id:"wavy",  name:"Wavy Star", price:100, ...hairSet(
+    '<path class="hf" d="M56 70 Q56 26 100 26 Q144 26 144 70 L146 150 Q150 172 138 186 Q128 198 120 184 Q112 200 100 186 Q88 200 80 184 Q72 198 62 186 Q50 172 54 150 Z"/>',
+    '<path class="hf" d="M58 76 Q58 28 100 28 Q142 28 142 76 Q128 50 112 58 Q104 42 90 56 Q74 46 58 76 Z"/>') },
+];
+
+const TOPS = [
+  { id:"startee", name:"Star Tee", price:0, svg:
+    '<rect x="72" y="118" width="56" height="62" rx="14" fill="#ffffff"/><rect x="58" y="120" width="18" height="26" rx="9" fill="#ffffff"/><rect x="124" y="120" width="18" height="26" rx="9" fill="#ffffff"/><path d="M100 138 L104.7 147.5 L115 149 L107.5 156.4 L109.3 166.6 L100 161.7 L90.7 166.6 L92.5 156.4 L85 149 L95.3 147.5 Z" fill="#ffc531"/>' },
+  { id:"hoodie", name:"Crop Hoodie", price:25, svg:
+    '<rect x="70" y="116" width="60" height="58" rx="15" fill="#ff7bb0"/><rect x="58" y="120" width="18" height="34" rx="9" fill="#ff7bb0"/><rect x="124" y="120" width="18" height="34" rx="9" fill="#ff7bb0"/><path d="M82 120 Q100 134 118 120 L118 128 Q100 142 82 128 Z" fill="#e85e97"/><line x1="94" y1="132" x2="94" y2="150" stroke="#ffffff" stroke-width="3" stroke-linecap="round"/><line x1="106" y1="132" x2="106" y2="150" stroke="#ffffff" stroke-width="3" stroke-linecap="round"/>' },
+  { id:"sailor", name:"Sailor Top", price:50, svg:
+    '<rect x="72" y="118" width="56" height="62" rx="14" fill="#ffffff"/><rect x="58" y="120" width="18" height="26" rx="9" fill="#ffffff"/><rect x="124" y="120" width="18" height="26" rx="9" fill="#ffffff"/><path d="M78 118 L100 146 L122 118 L122 132 L100 158 L78 132 Z" fill="#3b4a8f"/><circle cx="100" cy="150" r="6" fill="#ff5d5d"/>' },
+  { id:"heart", name:"Heart Sweater", price:50, svg:
+    '<rect x="70" y="116" width="60" height="64" rx="15" fill="#b79cff"/><rect x="56" y="120" width="20" height="44" rx="10" fill="#b79cff"/><rect x="124" y="120" width="20" height="44" rx="10" fill="#b79cff"/><path d="M100 164 Q84 150 88 141 Q92 133 100 141 Q108 133 112 141 Q116 150 100 164 Z" fill="#ff5d8f"/>' },
+  { id:"jacket", name:"Stage Jacket", price:75, svg:
+    '<rect x="72" y="118" width="56" height="20" rx="8" fill="#ffffff"/><rect x="68" y="116" width="64" height="64" rx="15" fill="#2a2140"/><rect x="56" y="120" width="20" height="46" rx="10" fill="#2a2140"/><rect x="124" y="120" width="20" height="46" rx="10" fill="#2a2140"/><path d="M86 116 L100 140 L114 116" fill="#ffffff"/><line x1="70" y1="172" x2="130" y2="172" stroke="#45d6ff" stroke-width="4" stroke-linecap="round"/><line x1="60" y1="160" x2="60" y2="130" stroke="#45d6ff" stroke-width="3" stroke-linecap="round"/><line x1="140" y1="160" x2="140" y2="130" stroke="#45d6ff" stroke-width="3" stroke-linecap="round"/>' },
+  { id:"rainbow", name:"Rainbow Tee", price:100, svg:
+    '<rect x="72" y="118" width="56" height="62" rx="14" fill="#ffffff"/><rect x="58" y="120" width="18" height="26" rx="9" fill="#ffffff"/><rect x="124" y="120" width="18" height="26" rx="9" fill="#ffffff"/><path d="M82 158 Q100 138 118 158" fill="none" stroke="#ff5d5d" stroke-width="5" stroke-linecap="round"/><path d="M84 166 Q100 148 116 166" fill="none" stroke="#ffc531" stroke-width="5" stroke-linecap="round"/><path d="M87 174 Q100 159 113 174" fill="none" stroke="#45d6ff" stroke-width="5" stroke-linecap="round"/>' },
+];
+
+const BOTTOMS = [
+  { id:"denim", name:"Denim Skirt", price:0, svg:
+    '<path d="M76 176 L124 176 L132 216 L68 216 Z" fill="#7ba7e0"/><line x1="72" y1="206" x2="128" y2="206" stroke="#5c88c4" stroke-width="3"/>' },
+  { id:"tutu", name:"Tutu Skirt", price:25, svg:
+    '<path d="M76 176 L124 176 L136 214 Q127 224 118 214 Q109 226 100 214 Q91 226 82 214 Q73 224 64 214 Z" fill="#ff9ecb"/><path d="M76 176 L124 176 L128 192 L72 192 Z" fill="#ff7bb0"/>' },
+  { id:"cargo", name:"Cargo Pants", price:50, svg:
+    '<path d="M78 176 L122 176 L122 200 L118 286 L104 286 L102 212 L98 212 L96 286 L82 286 L78 200 Z" fill="#9aa06b"/><rect x="84" y="224" width="12" height="14" rx="3" fill="#7c815a"/><rect x="104" y="224" width="12" height="14" rx="3" fill="#7c815a"/>' },
+  { id:"track", name:"Track Pants", price:75, svg:
+    '<path d="M78 176 L122 176 L122 200 L118 286 L104 286 L102 212 L98 212 L96 286 L82 286 L78 200 Z" fill="#2a2140"/><line x1="85" y1="200" x2="87" y2="282" stroke="#ffffff" stroke-width="4" stroke-linecap="round"/><line x1="115" y1="200" x2="113" y2="282" stroke="#ffffff" stroke-width="4" stroke-linecap="round"/>' },
+  { id:"plaid", name:"Plaid Skirt", price:100, svg:
+    '<path d="M76 176 L124 176 L132 216 L68 216 Z" fill="#c8385a"/><line x1="84" y1="176" x2="79" y2="216" stroke="#8f2440" stroke-width="4"/><line x1="100" y1="176" x2="100" y2="216" stroke="#8f2440" stroke-width="4"/><line x1="116" y1="176" x2="121" y2="216" stroke="#8f2440" stroke-width="4"/><line x1="71" y1="196" x2="129" y2="196" stroke="#ffd9e2" stroke-width="2.5"/>' },
+];
+
+const SHOES = [
+  { id:"sneak", name:"Sneakers", price:0, svg:
+    '<path d="M83 288 L99 288 L99 306 Q99 310 94 310 L80 310 Q76 310 77 305 Z" fill="#ffffff"/><path d="M101 288 L117 288 L123 305 Q124 310 120 310 L106 310 Q101 310 101 306 Z" fill="#ffffff"/><path d="M77 304 L99 304 L99 310 L80 310 Q76 310 77 304 Z" fill="#ff4f9a"/><path d="M101 304 L123 304 Q124 310 120 310 L101 310 Z" fill="#ff4f9a"/>' },
+  { id:"boots", name:"Star Boots", price:50, svg:
+    '<rect x="81" y="272" width="18" height="38" rx="6" fill="#2a2140"/><rect x="101" y="272" width="18" height="38" rx="6" fill="#2a2140"/><path d="M90 284 L91.8 288 L96 288.5 L93 291.5 L93.8 295.8 L90 293.7 L86.2 295.8 L87 291.5 L84 288.5 L88.2 288 Z" fill="#ffc531"/><path d="M110 284 L111.8 288 L116 288.5 L113 291.5 L113.8 295.8 L110 293.7 L106.2 295.8 L107 291.5 L104 288.5 L108.2 288 Z" fill="#ffc531"/>' },
+  { id:"platform", name:"Platform Kicks", price:100, svg:
+    '<path d="M82 284 L98 284 L98 300 L80 300 Z" fill="#ffffff"/><path d="M102 284 L118 284 L120 300 L102 300 Z" fill="#ffffff"/><rect x="78" y="300" width="22" height="10" rx="4" fill="#45d6ff"/><rect x="101" y="300" width="22" height="10" rx="4" fill="#45d6ff"/>' },
+];
+
+const EXTRAS = [
+  { id:"none", name:"None", price:0, svg:"" },
+  { id:"phones", name:"Headphones", price:25, svg:
+    '<path d="M54 74 Q54 18 100 18 Q146 18 146 74" fill="none" stroke="#45d6ff" stroke-width="9" stroke-linecap="round"/><rect x="44" y="62" width="18" height="28" rx="9" fill="#45d6ff"/><rect x="138" y="62" width="18" height="28" rx="9" fill="#45d6ff"/>' },
+  { id:"clip", name:"Star Clips", price:25, svg:
+    '<path d="M66 44 L69 51 L76 52 L71 57 L72.5 64 L66 60.5 L59.5 64 L61 57 L56 52 L63 51 Z" fill="#ffd23e"/><path d="M140 52 L142.4 57.6 L148 58.4 L144 62.4 L145.2 68 L140 65.2 L134.8 68 L136 62.4 L132 58.4 L137.6 57.6 Z" fill="#ff8fc0"/>' },
+  { id:"shades", name:"Heart Shades", price:50, svg:
+    '<path d="M86 74 Q74 62 66 72 Q60 82 74 90 Q84 94 86 82 Z" fill="#ff5d8f" opacity="0.92"/><path d="M114 74 Q126 62 134 72 Q140 82 126 90 Q116 94 114 82 Z" fill="#ff5d8f" opacity="0.92"/><line x1="88" y1="76" x2="112" y2="76" stroke="#e23a82" stroke-width="4"/>' },
+  { id:"mic", name:"Star Mic", price:75, svg:
+    '<rect x="126" y="184" width="9" height="26" rx="4.5" fill="#5a4a75" transform="rotate(-18 130 196)"/><circle cx="134" cy="180" r="10" fill="#2a2140"/><circle cx="134" cy="180" r="10" fill="none" stroke="#ffc531" stroke-width="2.5"/><circle cx="131" cy="177" r="2.6" fill="#ffffff" opacity="0.8"/>' },
+  { id:"beret", name:"Cherry Beret", price:100, svg:
+    '<ellipse cx="98" cy="34" rx="41" ry="16" fill="#ff5d5d" transform="rotate(-6 98 34)"/><circle cx="98" cy="20" r="5" fill="#c93b3b"/>' },
+];
+
+const BACKGROUNDS = [
+  { id:"neon", name:"Neon Stage", price:0, cls:"bg-neon",
+    css:"linear-gradient(180deg,#2b1650,#571f77,#a12a8a)",
+    deco:["✦","✧","♪","✦","✧","★"],
+    draw(ctx,w,h){
+      const g = ctx.createLinearGradient(0,0,0,h);
+      g.addColorStop(0,"#2b1650"); g.addColorStop(0.55,"#571f77"); g.addColorStop(1,"#a12a8a");
+      ctx.fillStyle = g; ctx.fillRect(0,0,w,h);
+      ctx.fillStyle = "rgba(255,255,255,0.85)";
+      for (let i=0;i<40;i++){ const x=(i*97)%w, y=(i*61)%Math.floor(h*0.7); ctx.beginPath(); ctx.arc(x,y,(i%3)+1,0,7); ctx.fill(); }
+      ctx.strokeStyle = "#45d6ff"; ctx.lineWidth = 10; ctx.strokeRect(14,14,w-28,h-28);
+    } },
+  { id:"y2k", name:"Y2K Sky", price:50, cls:"bg-y2k",
+    css:"linear-gradient(180deg,#8fd7ff,#cfe9ff,#ffd7ef)",
+    deco:["☁️","🩵","☁️","💿","☁️","🤍"],
+    draw(ctx,w,h){
+      const g = ctx.createLinearGradient(0,0,0,h);
+      g.addColorStop(0,"#8fd7ff"); g.addColorStop(0.45,"#cfe9ff"); g.addColorStop(1,"#ffd7ef");
+      ctx.fillStyle = g; ctx.fillRect(0,0,w,h);
+      ctx.fillStyle = "rgba(255,255,255,0.9)";
+      for (let i=0;i<6;i++){
+        const x=(i*130+40)%w, y=60+(i*90)%Math.floor(h*0.5);
+        ctx.beginPath(); ctx.ellipse(x,y,46,18,0,0,7); ctx.ellipse(x+30,y-10,30,14,0,0,7); ctx.fill();
+      }
+    } },
+  { id:"retro", name:"Retro Pop", price:75, cls:"bg-retro",
+    css:"repeating-linear-gradient(135deg,#ffd166 0 26px,#ffb54d 26px 52px)",
+    deco:["🍒","🌼","🧡","🍒","🌼","⭐"],
+    draw(ctx,w,h){
+      ctx.fillStyle = "#ffd166"; ctx.fillRect(0,0,w,h);
+      ctx.strokeStyle = "#ffb54d"; ctx.lineWidth = 26;
+      for (let x=-h;x<w+h;x+=52){ ctx.beginPath(); ctx.moveTo(x,0); ctx.lineTo(x+h,h); ctx.stroke(); }
+      ctx.fillStyle = "#ff7b54";
+      for (let i=0;i<8;i++){ const x=(i*140+60)%w, y=(i*110+50)%h; ctx.beginPath(); ctx.arc(x,y,10,0,7); ctx.fill(); }
+    } },
+];
+
+/* =====================================================================
+   State (saved locally in this browser)
+   ===================================================================== */
+
+const CATEGORIES = [
+  { key:"hair",   label:"💇 Hair",   items: HAIR },
+  { key:"haircol",label:"🌈 Color",  colors: HAIR_COLORS },
+  { key:"top",    label:"👕 Tops",   items: TOPS },
+  { key:"bottom", label:"👖 Bottoms",items: BOTTOMS },
+  { key:"shoes",  label:"👟 Shoes",  items: SHOES },
+  { key:"extra",  label:"🎀 Extras", items: EXTRAS },
+  { key:"skin",   label:"🎨 Skin",   colors: SKIN_TONES },
+  { key:"bg",     label:"🌟 Stage",  items: BACKGROUNDS },
+];
+
+const DEFAULTS = {
+  coins: 100,
+  owned: {},
+  equip: { hair:"long", haircol:0, top:"startee", bottom:"denim", shoes:"sneak", extra:"none", skin:2, bg:"neon" },
+  lastDaily: 0,
+};
+
+// localStorage can be blocked in embedded/sandboxed pages; the game must
+// still run, just without persistence.
+function storageGet() {
+  try { return JSON.parse(localStorage.getItem("comeback-demo") || "{}"); }
+  catch (err) { return {}; }
+}
+function save() {
+  try { localStorage.setItem("comeback-demo", JSON.stringify(state)); }
+  catch (err) { /* play on without saving */ }
+}
+
+let state = Object.assign({}, DEFAULTS, storageGet());
+state.equip = Object.assign({}, DEFAULTS.equip, state.equip);
+state.owned = state.owned || {};
+function ownedOrFree(item) { return item.price === 0 || state.owned[item.id] === true; }
+
+/* =====================================================================
+   Tiny sounds (WebAudio, no assets)
+   ===================================================================== */
+let audioCtx = null;
+function blip(freq, dur, type) {
+  try {
+    audioCtx = audioCtx || new (window.AudioContext || window.webkitAudioContext)();
+    const osc = audioCtx.createOscillator(), gain = audioCtx.createGain();
+    osc.type = type || "sine"; osc.frequency.value = freq;
+    gain.gain.setValueAtTime(0.12, audioCtx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + dur);
+    osc.connect(gain).connect(audioCtx.destination);
+    osc.start(); osc.stop(audioCtx.currentTime + dur);
+  } catch (err) { /* sound is optional */ }
+}
+const sndTap = () => blip(660, 0.09, "triangle");
+const sndBuy = () => { blip(523, 0.12, "triangle"); setTimeout(() => blip(784, 0.16, "triangle"), 90); };
+const sndShutter = () => { blip(1200, 0.05, "square"); setTimeout(() => blip(700, 0.08, "square"), 60); };
+
+/* =====================================================================
+   Doll rendering
+   ===================================================================== */
+const doll = document.getElementById("doll");
+
+function findItem(list, id) { return list.find(i => i.id === id) || list[0]; }
+
+function dollSVG() {
+  const skin = SKIN_TONES[state.equip.skin] || SKIN_TONES[2];
+  const hairColor = HAIR_COLORS[state.equip.haircol] || HAIR_COLORS[0];
+  const hair = findItem(HAIR, state.equip.hair);
+  const top = findItem(TOPS, state.equip.top);
+  const bottom = findItem(BOTTOMS, state.equip.bottom);
+  const shoes = findItem(SHOES, state.equip.shoes);
+  const extra = findItem(EXTRAS, state.equip.extra);
+
+  return `
+  <style>.hf{fill:${hairColor}}</style>
+  ${hair.back}
+  <!-- body -->
+  <rect x="62" y="122" width="13" height="56" rx="6.5" fill="${skin}"/>
+  <rect x="125" y="122" width="13" height="56" rx="6.5" fill="${skin}"/>
+  <circle cx="68.5" cy="182" r="7" fill="${skin}"/>
+  <circle cx="131.5" cy="182" r="7" fill="${skin}"/>
+  <rect x="86" y="176" width="12" height="116" rx="6" fill="${skin}"/>
+  <rect x="102" y="176" width="12" height="116" rx="6" fill="${skin}"/>
+  <rect x="93" y="106" width="14" height="18" rx="6" fill="${skin}"/>
+  <rect x="76" y="118" width="48" height="64" rx="15" fill="${skin}"/>
+  <!-- head -->
+  <ellipse cx="100" cy="74" rx="45" ry="43" fill="${skin}"/>
+  <!-- face -->
+  <ellipse cx="83" cy="78" rx="6.5" ry="8.5" fill="#33223f"/>
+  <ellipse cx="117" cy="78" rx="6.5" ry="8.5" fill="#33223f"/>
+  <circle cx="85.5" cy="74.5" r="2.6" fill="#fff"/>
+  <circle cx="119.5" cy="74.5" r="2.6" fill="#fff"/>
+  <circle cx="81.5" cy="81.5" r="1.4" fill="#fff" opacity="0.85"/>
+  <circle cx="115.5" cy="81.5" r="1.4" fill="#fff" opacity="0.85"/>
+  <ellipse cx="72" cy="92" rx="7" ry="4.5" fill="#ff9ec2" opacity="0.75"/>
+  <ellipse cx="128" cy="92" rx="7" ry="4.5" fill="#ff9ec2" opacity="0.75"/>
+  <path d="M93 97 Q100 104 107 97" fill="none" stroke="#b0596f" stroke-width="3" stroke-linecap="round"/>
+  <!-- clothes -->
+  ${bottom.svg}
+  ${top.svg}
+  ${shoes.svg}
+  ${hair.bangs}
+  ${extra.svg}`;
+}
+
+function renderDoll() { doll.innerHTML = dollSVG(); }
+
+/* =====================================================================
+   Stage background
+   ===================================================================== */
+const stage = document.getElementById("stage");
+const stageDeco = document.getElementById("stageDeco");
+
+function renderStage() {
+  const bg = findItem(BACKGROUNDS, state.equip.bg);
+  stage.className = "stage " + bg.cls;
+  stageDeco.innerHTML = "";
+  bg.deco.forEach((glyph, i) => {
+    const s = document.createElement("span");
+    s.textContent = glyph;
+    s.style.left = (8 + (i * 17) % 84) + "%";
+    s.style.top = (6 + (i * 23) % 55) + "%";
+    s.style.animationDelay = (i * 0.6) + "s";
+    stageDeco.appendChild(s);
+  });
+}
+
+/* =====================================================================
+   Coins / toast / modal
+   ===================================================================== */
+const coinsEl = document.getElementById("coins");
+function renderCoins(bump) {
+  coinsEl.textContent = state.coins;
+  if (bump) {
+    coinsEl.classList.remove("bump"); void coinsEl.offsetWidth; coinsEl.classList.add("bump");
+  }
+}
+
+const toastEl = document.getElementById("toast");
+let toastTimer = null;
+function toast(msg) {
+  toastEl.textContent = msg;
+  toastEl.classList.add("show");
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => toastEl.classList.remove("show"), 2200);
+}
+
+const veil = document.getElementById("veil");
+const modalBox = document.getElementById("modalBox");
+function openModal(html) { modalBox.innerHTML = html; veil.hidden = false; }
+function closeModal() { veil.hidden = true; modalBox.innerHTML = ""; }
+veil.addEventListener("click", (e) => { if (e.target === veil) closeModal(); });
+
+/* =====================================================================
+   Closet
+   ===================================================================== */
+const tabsEl = document.getElementById("tabs");
+const gridEl = document.getElementById("grid");
+let activeTab = CATEGORIES[0];
+
+const PREVIEW_CROP = {
+  hair: "34 6 132 200", top: "50 104 100 84", bottom: "58 168 84 126",
+  shoes: "68 264 64 52", extra: "34 6 132 210", bg: null,
+};
+
+function previewSVG(catKey, item) {
+  const crop = PREVIEW_CROP[catKey] || "0 0 200 330";
+  let inner = "";
+  if (catKey === "hair") {
+    inner = `<style>.hf{fill:${HAIR_COLORS[state.equip.haircol]}}</style>${item.back}<ellipse cx="100" cy="74" rx="45" ry="43" fill="#f3ded2"/>${item.bangs}`;
+  } else if (catKey === "extra") {
+    inner = `<ellipse cx="100" cy="74" rx="45" ry="43" fill="#f3ded2" opacity="0.5"/>${item.svg}`;
+    if (!item.svg) inner = '<text x="100" y="120" text-anchor="middle" font-size="60">🚫</text>';
+  } else {
+    inner = item.svg;
+  }
+  return `<svg viewBox="${crop}" aria-hidden="true">${inner}</svg>`;
+}
+
+function priceTag(item, isOn) {
+  if (isOn) return '<span class="tag onlabel">✅ On!</span>';
+  if (item.price === 0) return '<span class="tag free">FREE 💛</span>';
+  if (state.owned[item.id]) return '<span class="tag">Owned ✔</span>';
+  return `<span class="tag price">🪙 ${item.price}</span>`;
+}
+
+function renderTabs() {
+  tabsEl.innerHTML = "";
+  CATEGORIES.forEach(cat => {
+    const b = document.createElement("button");
+    b.className = "tab"; b.setAttribute("role", "tab");
+    b.setAttribute("aria-selected", String(cat === activeTab));
+    b.textContent = cat.label;
+    b.addEventListener("click", () => { sndTap(); activeTab = cat; renderTabs(); renderGrid(); });
+    tabsEl.appendChild(b);
+  });
+}
+
+function renderGrid() {
+  gridEl.innerHTML = "";
+  const cat = activeTab;
+
+  if (cat.colors) {
+    cat.colors.forEach((color, index) => {
+      const isOn = state.equip[cat.key] === index;
+      const cell = document.createElement("button");
+      cell.className = "cell" + (isOn ? " on" : "");
+      cell.innerHTML = `<div class="swatch" style="background:${color}"></div><span class="tag ${isOn ? "onlabel" : "free"}">${isOn ? "✅ On!" : "FREE 💛"}</span>`;
+      cell.addEventListener("click", () => {
+        sndTap();
+        state.equip[cat.key] = index;
+        save(); renderDoll(); renderGrid();
+      });
+      gridEl.appendChild(cell);
+    });
+    return;
+  }
+
+  cat.items.forEach(item => {
+    const isOn = state.equip[cat.key] === item.id;
+    const cell = document.createElement("button");
+    cell.className = "cell" + (isOn ? " on" : "");
+    const preview = cat.key === "bg"
+      ? `<div class="swatch" style="background:${item.css}"></div>`
+      : `<div class="preview">${previewSVG(cat.key, item)}</div>`;
+    cell.innerHTML = `${preview}${priceTag(item, isOn)}<span class="tag">${item.name}</span>`;
+    cell.addEventListener("click", () => onItemTap(cat, item));
+    gridEl.appendChild(cell);
+  });
+}
+
+function equip(cat, item) {
+  state.equip[cat.key] = item.id;
+  save();
+  if (cat.key === "bg") renderStage(); else renderDoll();
+  renderGrid();
+}
+
+function onItemTap(cat, item) {
+  sndTap();
+  if (ownedOrFree(item)) { equip(cat, item); return; }
+  const preview = cat.key === "bg"
+    ? `<div class="preview-big" style="background:${item.css}"></div>`
+    : `<div class="preview-big">${previewSVG(cat.key, item)}</div>`;
+  openModal(`
+    ${preview}
+    <h3>${item.name}</h3>
+    <p>Buy for 🪙 ${item.price}?</p>
+    <div class="row">
+      <button class="big-btn" id="mYes">Yes! 💜</button>
+      <button class="btn-soft" id="mNo">No</button>
+    </div>`);
+  document.getElementById("mNo").addEventListener("click", () => { sndTap(); closeModal(); });
+  document.getElementById("mYes").addEventListener("click", () => {
+    if (state.coins < item.price) {
+      closeModal();
+      toast("Not enough coins yet! Take photocards 📸");
+      return;
+    }
+    state.coins -= item.price;
+    state.owned[item.id] = true;
+    sndBuy();
+    renderCoins(true);
+    closeModal();
+    toast("You got it! 🎉");
+    equip(cat, item);
+  });
+}
+
+/* =====================================================================
+   Photocard booth
+   ===================================================================== */
+const photoBtn = document.getElementById("photoBtn");
+const countdownEl = document.getElementById("countdown");
+const flashEl = document.getElementById("flash");
+let lastPhoto = 0;
+let photoBusy = false;
+
+function wait(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+async function drawPhotocard() {
+  const W = 540, H = 720;
+  const canvas = document.createElement("canvas");
+  canvas.width = W; canvas.height = H;
+  const ctx = canvas.getContext("2d");
+
+  findItem(BACKGROUNDS, state.equip.bg).draw(ctx, W, H);
+
+  // the doll
+  const svgMarkup = `<svg xmlns="http://www.w3.org/2000/svg" width="360" height="594" viewBox="0 0 200 330">${dollSVG()}</svg>`;
+  const url = URL.createObjectURL(new Blob([svgMarkup], { type: "image/svg+xml" }));
+  await new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => { ctx.drawImage(img, (W - 360) / 2, 70); URL.revokeObjectURL(url); resolve(); };
+    img.onerror = reject;
+    img.src = url;
+  });
+
+  // frame + caption
+  ctx.strokeStyle = "#ffffff"; ctx.lineWidth = 18; ctx.strokeRect(9, 9, W - 18, H - 18);
+  ctx.strokeStyle = "#ff4f9a"; ctx.lineWidth = 6; ctx.strokeRect(24, 24, W - 48, H - 48);
+  ctx.fillStyle = "#ffffff";
+  ctx.font = "900 40px 'Arial Rounded MT Bold', 'Trebuchet MS', sans-serif";
+  ctx.textAlign = "center";
+  ctx.shadowColor = "rgba(226,58,130,0.8)"; ctx.shadowBlur = 12;
+  ctx.fillText("COMEBACK! ✨", W / 2, H - 52);
+  ctx.shadowBlur = 0;
+  return canvas.toDataURL("image/png");
+}
+
+async function takePhoto() {
+  if (photoBusy) return;
+  photoBusy = true;
+  photoBtn.disabled = true;
+
+  countdownEl.style.display = "flex";
+  for (const n of ["3", "2", "1"]) {
+    countdownEl.textContent = n;
+    sndTap();
+    await wait(650);
+  }
+  countdownEl.style.display = "none";
+
+  sndShutter();
+  flashEl.style.transition = "none"; flashEl.style.opacity = "0.95";
+  void flashEl.offsetWidth;
+  flashEl.style.transition = "opacity 0.5s ease"; flashEl.style.opacity = "0";
+
+  let dataUrl = null;
+  try { dataUrl = await drawPhotocard(); } catch (err) { /* keep going without image */ }
+
+  const now = Date.now();
+  const rewarded = now - lastPhoto > 10000;
+  if (rewarded) {
+    lastPhoto = now;
+    state.coins += 15;
+    save();
+    renderCoins(true);
+  }
+
+  openModal(`
+    ${dataUrl ? `<img class="card" src="${dataUrl}" alt="Your photocard">` : ""}
+    <h3>Photocard! 📸</h3>
+    <p>${rewarded ? "+15 🪙" : "So cute!"}</p>
+    <div class="row">
+      ${dataUrl ? `<a class="big-btn" style="text-decoration:none" id="mSave" href="${dataUrl}" download="comeback-photocard.png">Save 💾</a>` : ""}
+      <button class="btn-soft" id="mOk">Done</button>
+    </div>`);
+  document.getElementById("mOk").addEventListener("click", () => { sndTap(); closeModal(); });
+
+  photoBusy = false;
+  photoBtn.disabled = false;
+}
+photoBtn.addEventListener("click", takePhoto);
+
+/* =====================================================================
+   Surprise-me shuffle (only free/owned items)
+   ===================================================================== */
+document.getElementById("shuffleBtn").addEventListener("click", () => {
+  sndBuy();
+  const pick = arr => arr[Math.floor(Math.random() * arr.length)];
+  const usable = list => list.filter(ownedOrFree);
+  state.equip.hair = pick(usable(HAIR)).id;
+  state.equip.top = pick(usable(TOPS)).id;
+  state.equip.bottom = pick(usable(BOTTOMS)).id;
+  state.equip.shoes = pick(usable(SHOES)).id;
+  state.equip.extra = pick(usable(EXTRAS)).id;
+  state.equip.haircol = Math.floor(Math.random() * HAIR_COLORS.length);
+  save(); renderDoll(); renderGrid();
+});
+
+/* =====================================================================
+   Daily gift
+   ===================================================================== */
+function maybeDailyGift() {
+  const now = Date.now();
+  if (now - (state.lastDaily || 0) < 20 * 60 * 60 * 1000) return;
+  state.lastDaily = now;
+  state.coins += 50;
+  save();
+  setTimeout(() => {
+    renderCoins(true);
+    openModal(`
+      <h3>🎁 Daily Gift!</h3>
+      <p style="color:var(--gold); text-shadow:0 1px 0 #b9860b">+50 🪙</p>
+      <div class="row"><button class="big-btn" id="mOk">Yay!</button></div>`);
+    document.getElementById("mOk").addEventListener("click", () => { sndBuy(); closeModal(); });
+  }, 700);
+}
+
+/* =====================================================================
+   Boot
+   ===================================================================== */
+renderDoll();
+renderStage();
+renderCoins(false);
+renderTabs();
+renderGrid();
+maybeDailyGift();
+</script>

@@ -1,0 +1,44 @@
+{
+  "name": "Comeback! K-pop Dress Up",
+  "tree": {
+    "$className": "DataModel",
+    "ReplicatedStorage": {
+      "Shared": {
+        "$path": "src/shared"
+      }
+    },
+    "ServerScriptService": {
+      "Server": {
+        "$path": "src/server"
+      }
+    },
+    "StarterPlayer": {
+      "StarterPlayerScripts": {
+        "Client": {
+          "$path": "src/client"
+        }
+      }
+    },
+    "Lighting": {
+      "$properties": {
+        "Ambient": [0.45, 0.4, 0.5],
+        "OutdoorAmbient": [0.55, 0.45, 0.6],
+        "Brightness": 1.7,
+        "ClockTime": 14.5,
+        "EnvironmentDiffuseScale": 0.6,
+        "EnvironmentSpecularScale": 0.6
+      }
+    },
+    "SoundService": {
+      "BGM": {
+        "$className": "Sound",
+        "$properties": {
+          "SoundId": "",
+          "Looped": true,
+          "Volume": 0.35,
+          "Playing": true
+        }
+      }
+    }
+  }
+}
