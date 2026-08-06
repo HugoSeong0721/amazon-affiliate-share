@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="theme-color" content="#0d0805">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🔥</text></svg>">
+<title>Torch Dive — One More Floor</title>
+<link rel="stylesheet" href="./style.css">
+</head>
+<body>
+  <div id="app">
+    <header id="hud">
+      <div id="torchRow" class="hud-cell"></div>
+      <div id="depthLabel" class="hud-mid">FLOOR 1</div>
+      <div class="hud-cell hud-right">
+        <div id="todayLabel">TODAY 0</div>
+        <button id="btnMute" class="hud-btn" title="Sound on/off" aria-label="Sound">🔊</button>
+      </div>
+    </header>
+
+    <main id="dungeon">
+      <div id="compRow"></div>
+      <div id="doors"></div>
+    </main>
+
+    <footer id="actions">
+      <button id="btnLantern" class="action-btn" aria-label="Peek with a lantern">🏮 ×1</button>
+      <button id="btnBank" class="action-btn primary" aria-label="Bank and climb out"><span id="bankLabel">CLIMB OUT</span></button>
+    </footer>
+
+    <div id="overlay" class="hidden">
+      <div class="overlay-card">
+        <div id="ovKicker">BANKED</div>
+        <div id="ovBig" class="ov-good">+0</div>
+        <div id="ovSub"></div>
+        <div id="ovTorches"></div>
+        <p class="retry-note" id="ovNote">tap to dive again</p>
+      </div>
+    </div>
+
+    <div id="adSlot" class="hidden">
+      <div class="ad-frame">
+        <div class="ad-head">
+          <span class="ad-tag">AD</span>
+          <button id="adClose" class="ad-close" disabled>5</button>
+        </div>
+        <div class="ad-body">
+          <p class="ad-title">Ad placeholder</p>
+          <p class="ad-sub">An interstitial ad will appear here once an ad network is connected.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+  <script type="module" src="./main.js"></script>
+</body>
+</html>
