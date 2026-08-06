@@ -27,12 +27,18 @@ CAR_COUNTS.forEach((cars, ci) => {
 // 피드백이 나왔다. 지수 곡선은 초반을 너무 오래 눌러두고 중반에 기울기가 몰린다.
 // 지금은 선형+약한 이차 혼합 — 10레벨 안에 2수, 20레벨쯤 4수에 닿고, 그 뒤로는
 // 대략 6레벨마다 1수씩 고르게 오른다.
+// "그냥 택시만 쭉 끌면 끝"인 par 1 판은 처음 두 레벨까지만 허용한다.
+// 레벨 3부터는 최소 2수 — 2수짜리 해는 반드시 다른 차를 한 대는 비켜야 나온다
+// (같은 차를 연달아 미는 건 한 수로 접히므로 par 2 = 남의 차 개입이 보장된다).
+const FREE_RIDE_LEVELS = 2;
+
 export function curveTargets(maxPar, count = LEVEL_COUNT) {
   const targets = [];
   for (let i = 0; i < count; i++) {
     const t = count === 1 ? 0 : i / (count - 1);
     const shaped = 0.55 * t + 0.45 * t * t;
-    targets.push(Math.max(1, Math.round(1 + (maxPar - 1) * shaped)));
+    const want = Math.max(1, Math.round(1 + (maxPar - 1) * shaped));
+    targets.push(i < FREE_RIDE_LEVELS ? want : Math.max(2, want));
   }
   return targets;
 }

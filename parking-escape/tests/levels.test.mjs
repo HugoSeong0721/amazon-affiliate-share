@@ -86,6 +86,14 @@ test('난이도가 단조 증가하고, 시작은 튜토리얼답고, 끝은 씹
   assert.ok(pars.at(-1) >= 20, `마지막 레벨이 ${pars.at(-1)}수 — 마무리가 너무 싱겁다`);
 });
 
+test('레벨 3부터는 반드시 다른 차를 비켜야 한다 (par 2 이상)', () => {
+  // 같은 차를 연달아 미는 건 한 수로 접히므로, par 2면 남의 차 개입이 보장된다
+  LEVEL_DATA.forEach((lv, i) => {
+    if (i < 2) return;
+    assert.ok(lv.par >= 2, `레벨 ${i + 1}이 ${lv.par}수 — 택시만 끌면 끝난다`);
+  });
+});
+
 test('첫 레벨은 한 번의 드래그(택시 → 출구)로 끝난다', () => {
   const lv = LEVEL_DATA[0];
   const moves = decodeMoves(lv.sol);
