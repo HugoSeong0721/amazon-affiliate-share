@@ -275,6 +275,62 @@ body {
   margin: -8px 0 18px;
 }
 
+/* 가입 초대 — 문이 아니라 초대. 건너뛰기가 항상 보인다. */
+#signup {
+  position: absolute;
+  inset: 0;
+  z-index: 45;
+  background: rgba(6, 10, 22, 0.74);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 18px;
+}
+
+.su-card {
+  width: min(100%, 340px);
+  background: var(--panel);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 22px;
+  padding: 26px 24px 18px;
+  text-align: center;
+  box-shadow: 0 24px 70px rgba(0, 0, 0, 0.55);
+  animation: pop 0.32s cubic-bezier(0.2, 1.4, 0.4, 1);
+}
+
+.su-emoji { font-size: 40px; margin-bottom: 6px; }
+.su-card h2 { font-size: 21px; letter-spacing: -0.3px; margin-bottom: 6px; }
+.su-sub { color: var(--muted); font-size: 13px; line-height: 1.5; margin-bottom: 18px; }
+
+.su-google {
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 10px;
+}
+.su-google.su-placeholder {
+  color: var(--muted);
+  font-size: 12px;
+  border: 1px dashed rgba(255, 255, 255, 0.2);
+  border-radius: 22px;
+  padding: 12px;
+}
+
+.su-skip {
+  background: none;
+  border: 0;
+  color: var(--muted);
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  padding: 10px 16px;
+  cursor: pointer;
+}
+.su-skip:active { opacity: 0.7; }
+
 /* 전면 광고 자리 */
 #adSlot {
   position: absolute;

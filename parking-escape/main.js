@@ -3,6 +3,7 @@
 import { Renderer } from './render.js';
 import { Sound } from './audio.js';
 import { AdManager, AD_CONFIG, createPlaceholderProvider } from './ads.js';
+import { Signup, SIGNUP_CONFIG } from './signup.js';
 import { Game, LEVEL_DATA } from './game.js';
 
 const $ = (id) => document.getElementById(id);
@@ -109,6 +110,14 @@ updateMuteIcon();
 renderer.resize();
 game.loadLevel(game.levelIndex);
 
+// 이메일 가입 초대 — 설정(SIGNUP_CONFIG)이 채워져 있을 때만 뜬다.
+// ?signup 으로 설정 없이 UI를 미리 볼 수 있다.
+const signup = new Signup({
+  dom: { root: $('signup'), googleSlot: $('suGoogle'), skip: $('suSkip') },
+  force: params.has('signup'),
+});
+signup.maybeShow();
+
 // ?debug — 자동화 테스트/개발용 훅
 if (params.has('debug')) {
   window.__pke = {
@@ -116,6 +125,8 @@ if (params.has('debug')) {
     renderer,
     sound,
     ads,
+    signup,
+    signupModule: { Signup, SIGNUP_CONFIG },
     adsModule: { AdManager, AD_CONFIG },
     levelCount: LEVEL_DATA.length,
     state: () => game.state,

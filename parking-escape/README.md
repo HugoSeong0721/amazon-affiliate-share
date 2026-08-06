@@ -53,6 +53,30 @@ node --test parking-escape/tests/*.mjs      # 엔진 + 구운 레벨 검증
 node parking-escape/tools/build-single-file.mjs  # 자립형 HTML 한 파일 (dist/)
 ```
 
+## 이메일 가입 (구글 원탭)
+
+첫 실행 때 "Sign in with Google" 초대 패널이 뜬다 — 원탭이라 자기 이메일 칩을
+한 번 누르면 가입 끝, 비밀번호가 없다. **문이 아니라 초대다**: Not now가 항상 보이고,
+거절하면 24시간 동안 다시 묻지 않으며, 가입 없이도 게임 전체가 열려 있다.
+
+정적 사이트라 서버가 없어서 두 가지를 무료로 빌려 쓴다. 켜려면 (한 번만, ~10분):
+
+1. **수집 엔드포인트** — [`tools/collect-emails.gs`](tools/collect-emails.gs) 머리말의
+   순서대로 구글 시트 + Apps Script 웹앱을 배포하고, URL을
+   `signup.js`의 `SIGNUP_CONFIG.collectEndpoint`에 붙여넣는다
+2. **구글 OAuth 클라이언트 ID** — [console.cloud.google.com](https://console.cloud.google.com)
+   → API 및 서비스 → 사용자 인증 정보 → OAuth 클라이언트 ID(웹 애플리케이션).
+   "승인된 자바스크립트 원본"에 게임이 열리는 주소를 등록한다
+   (`https://hugoseong0721.github.io`, 테스트용이면 githack 주소도).
+   발급된 ID를 `SIGNUP_CONFIG.googleClientId`에 붙여넣는다
+
+두 값이 비어 있으면 패널 자체가 뜨지 않는다 — 설정 전에도 게임은 그대로 돌아간다.
+`?signup`으로 설정 없이 패널 UI를 미리 볼 수 있다. 가입 이메일은 시트에
+[시각, 이메일, 이름, 구글ID, 게임] 순으로 쌓인다.
+
+이메일을 모으기 시작하면 개인정보처리방침 한 줄은 필요하다 — crossword의
+`privacy.html` 패턴을 그대로 가져와 "이메일은 업데이트 소식 발송에만 쓴다"를 명시하자.
+
 ## 광고
 
 자석 구슬과 같은 정책( `ads.js` ): 처음 3판은 무광고, 그 뒤 두 판마다, 최소 45초 간격,

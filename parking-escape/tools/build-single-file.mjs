@@ -23,6 +23,7 @@ buildSingleFile({
     'parking-escape/render.js',
     'parking-escape/audio.js',
     'parking-escape/ads.js',
+    'parking-escape/signup.js',
     'parking-escape/game.js',
     'parking-escape/main.js',
   ],
