@@ -68,10 +68,21 @@
    [Google Cloud Console](https://console.cloud.google.com/apis/credentials)에서
    OAuth 클라이언트 ID(웹)를 만들고, 게임을 올린 도메인을 승인된 출처에 등록하면 끝.
    구글이 검증한 이메일이 오므로 오타·가짜가 없다
-3. **수집** — `collectUrl`(Apps Script 웹앱)로 보낸다. URL이 없거나 오프라인이면
+3. **수집** — `collectUrl`로 보낸다. URL이 없거나 오프라인이면
    로컬 큐(`tdv.signupQueue`)에 쌓아 두고 다음 실행 때 재시도한다
 
-구글 시트로 받는 Apps Script는 5분짜리다 — 새 시트 → 확장 프로그램 → Apps Script:
+### 받는 곳 만들기 A — 구글 폼 (가장 쉬움, 2분, 코드·배포 없음)
+
+1. [forms.google.com](https://forms.google.com) → 새 폼 → 단답형 질문 하나 (제목 "Email")
+2. 폼 미리보기 페이지의 HTML에서 그 질문의 필드 이름(`entry.123456789`)을 찾는다
+3. `collectUrl`에 `https://docs.google.com/forms/d/e/<폼ID>/formResponse`,
+   `formEntry`에 `entry.123456789`를 넣는다
+
+응답은 폼의 '응답' 탭에 쌓이고, 버튼 한 번으로 구글 시트에 연결된다.
+
+### 받는 곳 만들기 B — Apps Script (열 구성을 마음대로 하고 싶을 때, 5분)
+
+새 시트 → 확장 프로그램 → Apps Script:
 
 ```js
 function doPost(e) {
@@ -82,7 +93,8 @@ function doPost(e) {
 }
 ```
 
-배포 → 웹 앱 → 액세스 권한 '모든 사용자' → 그 URL을 `collectUrl`에 붙여넣는다.
+배포 → 웹 앱 → 액세스 권한 '모든 사용자' → 그 URL을 `collectUrl`에 붙여넣는다
+(`formEntry`는 비워 둔다). 이 모드는 이메일 외에 가입 경로·날짜도 함께 적힌다.
 
 알아둘 것:
 - Google 버튼은 **https로 호스팅된 등록 도메인**에서만 뜬다 (`file://`·미등록 출처에서는

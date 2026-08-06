@@ -3,7 +3,7 @@
 
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { validateEmail, decodeJwtPayload, makeRecord } from '../signup.js';
+import { validateEmail, decodeJwtPayload, makeRecord, buildCollectRequest } from '../signup.js';
 
 test('validateEmail — 붙잡을 것과 놓아줄 것', () => {
   assert.ok(validateEmail('hugo.se@iottie.com'));
@@ -32,6 +32,18 @@ test('decodeJwtPayload — 깨진 입력은 조용히 null', () => {
   assert.equal(decodeJwtPayload(''), null);
   assert.equal(decodeJwtPayload('not-a-jwt'), null);
   assert.equal(decodeJwtPayload('a.%%%.c'), null);
+});
+
+test('buildCollectRequest — 구글 폼이면 urlencoded, Apps Script면 JSON', () => {
+  const record = makeRecord('diver@example.com', 'email', '2026-08-06');
+
+  const form = buildCollectRequest(record, { formEntry: 'entry.123456789' });
+  assert.equal(form.contentType, 'application/x-www-form-urlencoded');
+  assert.equal(form.body, 'entry.123456789=diver%40example.com');
+
+  const script = buildCollectRequest(record, { formEntry: '' });
+  assert.equal(script.contentType, 'text/plain');
+  assert.deepEqual(JSON.parse(script.body), record);
 });
 
 test('makeRecord — 이메일은 소문자로 접고, 게임과 날짜가 찍힌다', () => {

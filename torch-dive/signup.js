@@ -13,8 +13,12 @@ export const SIGNUP_CONFIG = {
   // Google Cloud Console → APIs & Services → Credentials → OAuth client ID (Web)
   // 예: '1234567890-abc.apps.googleusercontent.com'  (비우면 Google 버튼이 숨는다)
   googleClientId: '',
-  // 이메일을 받아 시트에 적는 Apps Script 웹앱 URL (README의 스니펫 참고. 비우면 로컬 큐에만 쌓인다)
+  // 이메일을 받을 곳. 두 가지 중 하나 (비우면 로컬 큐에만 쌓인다):
+  //  A) 구글 폼 (가장 쉬움, 스크립트·배포 불필요): 폼의 …/formResponse URL을 넣고
+  //     아래 formEntry에 이메일 질문의 필드 이름(entry.123456789)을 넣는다
+  //  B) Apps Script 웹앱 URL (README의 스니펫 참고): formEntry는 비워 둔다
   collectUrl: '',
+  formEntry: '',
 };
 
 const STORAGE_USER = 'tdv.user';
@@ -47,6 +51,18 @@ export function decodeJwtPayload(jwt) {
 
 export function makeRecord(email, via, dayKey) {
   return { game: 'torch-dive', email: String(email).trim().toLowerCase(), via, day: dayKey, at: new Date().toISOString() };
+}
+
+// 수집 요청의 본문을 만든다 — 구글 폼이면 urlencoded, Apps Script면 JSON.
+// 둘 다 CORS preflight가 없는 '단순 요청'이라 no-cors로 어디서든 보내진다.
+export function buildCollectRequest(record, config) {
+  if (config.formEntry) {
+    return {
+      contentType: 'application/x-www-form-urlencoded',
+      body: new URLSearchParams({ [config.formEntry]: record.email }).toString(),
+    };
+  }
+  return { contentType: 'text/plain', body: JSON.stringify(record) };
 }
 
 // ----- 게이트 -----
@@ -217,12 +233,12 @@ export class Signup {
     const remaining = [];
     for (const record of q) {
       try {
-        // text/plain + no-cors — Apps Script가 preflight 없이 받을 수 있는 조합
+        const { contentType, body } = buildCollectRequest(record, this.config);
         await fetch(collectUrl, {
           method: 'POST',
           mode: 'no-cors',
-          headers: { 'Content-Type': 'text/plain' },
-          body: JSON.stringify(record),
+          headers: { 'Content-Type': contentType },
+          body,
         });
       } catch {
         remaining.push(record);

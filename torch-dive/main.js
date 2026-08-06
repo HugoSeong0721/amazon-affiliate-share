@@ -78,6 +78,7 @@ const signupConfig = {
   ...SIGNUP_CONFIG,
   googleClientId: params.get('gclient') || SIGNUP_CONFIG.googleClientId,
   collectUrl: params.get('collect') || SIGNUP_CONFIG.collectUrl,
+  formEntry: params.get('entry') || SIGNUP_CONFIG.formEntry,
 };
 const signup = new Signup({ dom, sound, dayKey: localDayKey(), config: signupConfig });
 
