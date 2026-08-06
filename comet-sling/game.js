@@ -1,13 +1,15 @@
 // 게임 껍데기 — 엔진(순수 물리)을 화면·소리·저장과 잇는다.
 // 모드: ready(출발대) → running(런) → dead(결과) → ready…
 
-import { DT, newRun, step, score, drainEvents } from './engine.js';
+import { DT, WORLD, newRun, step, score, drainEvents } from './engine.js';
 
 const STORE = {
   best: 'cms.best',
   runs: 'cms.runs',
-  taught: 'cms.taught', // 첫 릴리즈에 성공하면 1 — 이후로 홀드 힌트를 숨긴다
+  taught: 'cms.taught', // 성공한 릴리즈 누적 수 — 0이면 유령 시범, 3 미만이면 코치 손가락
 };
+
+const COACH_UNTIL_RELEASES = 3;
 
 export class Game {
   constructor({ renderer, sound, dom, onRunEnded }) {
@@ -18,7 +20,7 @@ export class Game {
 
     this.best = Number(localStorage.getItem(STORE.best) || 0);
     this.runs = Number(localStorage.getItem(STORE.runs) || 0);
-    this.taught = localStorage.getItem(STORE.taught) === '1';
+    this.releases = Number(localStorage.getItem(STORE.taught) || 0);
 
     this.mode = 'ready';
     this.holding = false;
@@ -82,8 +84,30 @@ export class Game {
     this.renderer.draw(this.state, {
       mode: this.mode,
       holding: this.holding,
-      showHint: !this.taught,
+      demo: this.releases === 0,
+      coach: this._coach(),
     });
+  }
+
+  // 아직 손에 익기 전(릴리즈 3회 미만)에는 지금 뭘 해야 하는지 손가락이 짚어준다
+  _coach() {
+    if (this.releases >= COACH_UNTIL_RELEASES) return null;
+    if (this.mode !== 'running' || this.state.dead) return null;
+    const s = this.state;
+    if (s.mode === 'orbit') {
+      // 접선이 위를 향하는 릴리즈 타이밍
+      const o = s.orbit;
+      const upness = Math.cos(o.theta) * o.dir;
+      return upness > 0.45 ? 'release' : null;
+    }
+    if (!this.holding) {
+      // 잡을 수 있는 앵커가 사거리 안에 있는데 안 누르고 있다
+      const near = s.anchors.some(
+        (a) => a.y >= s.y - WORLD.captureR && Math.hypot(a.x - s.x, a.y - s.y) < WORLD.captureR * 1.2
+      );
+      if (near) return 'hold';
+    }
+    return null;
   }
 
   _handleEvents() {
@@ -91,9 +115,9 @@ export class Game {
       if (ev.type === 'latch') this.sound.latch();
       if (ev.type === 'release') {
         this.sound.release();
-        if (!this.taught) {
-          this.taught = true;
-          localStorage.setItem(STORE.taught, '1');
+        if (this.releases < COACH_UNTIL_RELEASES) {
+          this.releases += 1;
+          localStorage.setItem(STORE.taught, String(this.releases));
         }
       }
       if (ev.type === 'spark') {

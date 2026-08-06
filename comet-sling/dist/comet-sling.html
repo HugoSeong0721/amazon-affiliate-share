@@ -638,7 +638,9 @@ class Renderer {
     this._drawTrail(ctx);
     if (!state.dead && ui.mode !== 'ready') this._drawComet(ctx, state);
     this._drawParticles(ctx, dt);
-    if (ui.mode === 'ready') this._drawReadyHint(ctx, state, ui);
+    if (ui.mode === 'ready') this._drawReadyComet(ctx, state);
+    if (ui.mode === 'ready' && ui.demo) this._drawGhostDemo(ctx, state);
+    else if (ui.coach) this._drawCoachFinger(ctx, ui.coach === 'hold', ui.coach === 'hold' ? 'hold' : 'let go!');
 
     ctx.restore();
   }
@@ -830,9 +832,8 @@ class Renderer {
     ctx.globalAlpha = 1;
   }
 
-  // 출발대: 코멧이 숨쉬듯 떠 있고, 아직 안 배웠으면 손가락 홀드 힌트를 띄운다.
-  // 글로 설명하지 않는다 — 손가락과 링이 전부다.
-  _drawReadyHint(ctx, state, ui) {
+  // 출발대: 코멧이 숨쉬듯 떠 있다
+  _drawReadyComet(ctx, state) {
     const bob = Math.sin(this._t * 2.2) * 4;
     const x = this.sx(state.x), y = this.sy(state.y) + bob;
     const r = WORLD.cometR * this.scale;
@@ -847,22 +848,105 @@ class Renderer {
     ctx.beginPath();
     ctx.arc(x, y, r * 0.55, 0, Math.PI * 2);
     ctx.fill();
+  }
 
-    if (!ui.showHint) return;
-    // 손가락 + 차오르는 링 = "누르고 있어라"
-    const hx = x, hy = y + 74;
-    const phase = (this._t % 1.6) / 1.6;
-    ctx.strokeStyle = COL.hint;
-    ctx.lineWidth = 3;
+  // 유령 시범 — 첫 릴리즈에 성공하기 전까지, 출발대에서 유령 혜성이 직접 보여준다:
+  // 다가가고 → (손가락이 누르면) 붙어서 한 바퀴 돌고 → (손가락이 떼면) 위로 날아간다.
+  // 글 대신 손이 가르친다.
+  _drawGhostDemo(ctx, state) {
+    const a = state.anchors[0];
+    const r = 20;
+    const T = 4.4, t = this._t % T;
+    let gx, gy, pressed = false, label = null, alpha = 0.7;
+
+    if (t < 1.1) {
+      // 아래에서 궤도 가장자리로 다가간다
+      const k = t / 1.1;
+      gx = a.x + r;
+      gy = a.y - 60 + 60 * k;
+    } else if (t < 3.0) {
+      // 손가락이 누르고 — 한 바퀴
+      pressed = true;
+      label = 'hold';
+      const th = ((t - 1.1) / 1.9) * Math.PI * 2;
+      gx = a.x + Math.cos(th) * r;
+      gy = a.y + Math.sin(th) * r;
+    } else if (t < 3.9) {
+      // 손가락을 떼고 — 접선(위)으로 날아가며 사라진다
+      const k = (t - 3.0) / 0.9;
+      gx = a.x + r;
+      gy = a.y + k * 90;
+      alpha = 0.7 * (1 - k);
+      if (k < 0.45) label = 'let go!';
+    } else {
+      this._drawCoachFinger(ctx, false, null);
+      return;
+    }
+
+    // 시범 중에는 캡처 링을 항상 보여준다
+    ctx.setLineDash([4, 6]);
+    ctx.strokeStyle = 'rgba(176,107,255,0.35)';
+    ctx.lineWidth = 1.5;
     ctx.beginPath();
-    ctx.arc(hx, hy, 20, -Math.PI / 2, -Math.PI / 2 + Math.min(1, phase * 1.4) * Math.PI * 2);
+    ctx.arc(this.sx(a.x), this.sy(a.y), WORLD.captureR * this.scale * 0.95, 0, Math.PI * 2);
     ctx.stroke();
+    ctx.setLineDash([]);
+    if (pressed) {
+      ctx.strokeStyle = 'rgba(227,194,255,0.45)';
+      ctx.beginPath();
+      ctx.arc(this.sx(a.x), this.sy(a.y), r * this.scale, 0, Math.PI * 2);
+      ctx.stroke();
+    }
+
+    // 유령 혜성
+    const x = this.sx(gx), y = this.sy(gy);
+    ctx.globalAlpha = alpha;
+    ctx.shadowColor = COL.comet;
+    ctx.shadowBlur = 16;
+    ctx.fillStyle = COL.comet;
+    ctx.beginPath();
+    ctx.arc(x, y, WORLD.cometR * this.scale * 0.9, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.shadowBlur = 0;
+    ctx.globalAlpha = 1;
+
+    this._drawCoachFinger(ctx, pressed, label);
+  }
+
+  // 화면 아래 중앙의 코치 손가락 — 엄지가 실제로 닿을 자리에서 누름/뗌을 보여준다
+  _drawCoachFinger(ctx, pressed, label) {
+    const hx = this.w / 2, hy = this.h * 0.88;
+    const pulse = 0.5 + 0.5 * Math.sin(this._t * 5);
+
+    ctx.beginPath();
+    ctx.arc(hx, hy, pressed ? 24 : 27, 0, Math.PI * 2);
+    if (pressed) {
+      ctx.fillStyle = `rgba(142,246,255,${0.16 + 0.12 * pulse})`;
+      ctx.fill();
+      ctx.strokeStyle = COL.hint;
+      ctx.lineWidth = 3;
+      ctx.stroke();
+    } else {
+      ctx.strokeStyle = `rgba(255,255,255,${0.3 + 0.25 * pulse})`;
+      ctx.lineWidth = 2;
+      ctx.setLineDash([3, 5]);
+      ctx.stroke();
+      ctx.setLineDash([]);
+    }
+
     ctx.font = '26px system-ui';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    ctx.globalAlpha = phase < 0.85 ? 1 : 1 - (phase - 0.85) / 0.15;
-    ctx.fillText('👆', hx, hy + 1);
-    ctx.globalAlpha = 1;
+    ctx.fillText('👆', hx, hy + (pressed ? 3 : 0));
+
+    if (label) {
+      ctx.font = '800 15px system-ui';
+      ctx.fillStyle = label === 'hold' ? COL.hint : COL.spark;
+      ctx.shadowColor = 'rgba(0,0,0,0.8)';
+      ctx.shadowBlur = 6;
+      ctx.fillText(label, hx, hy + 46);
+      ctx.shadowBlur = 0;
+    }
   }
 }
 
@@ -1114,8 +1198,10 @@ class AdManager {
 const STORE = {
   best: 'cms.best',
   runs: 'cms.runs',
-  taught: 'cms.taught', // 첫 릴리즈에 성공하면 1 — 이후로 홀드 힌트를 숨긴다
+  taught: 'cms.taught', // 성공한 릴리즈 누적 수 — 0이면 유령 시범, 3 미만이면 코치 손가락
 };
+
+const COACH_UNTIL_RELEASES = 3;
 
 class Game {
   constructor({ renderer, sound, dom, onRunEnded }) {
@@ -1126,7 +1212,7 @@ class Game {
 
     this.best = Number(safeStorage.getItem(STORE.best) || 0);
     this.runs = Number(safeStorage.getItem(STORE.runs) || 0);
-    this.taught = safeStorage.getItem(STORE.taught) === '1';
+    this.releases = Number(safeStorage.getItem(STORE.taught) || 0);
 
     this.mode = 'ready';
     this.holding = false;
@@ -1190,8 +1276,30 @@ class Game {
     this.renderer.draw(this.state, {
       mode: this.mode,
       holding: this.holding,
-      showHint: !this.taught,
+      demo: this.releases === 0,
+      coach: this._coach(),
     });
+  }
+
+  // 아직 손에 익기 전(릴리즈 3회 미만)에는 지금 뭘 해야 하는지 손가락이 짚어준다
+  _coach() {
+    if (this.releases >= COACH_UNTIL_RELEASES) return null;
+    if (this.mode !== 'running' || this.state.dead) return null;
+    const s = this.state;
+    if (s.mode === 'orbit') {
+      // 접선이 위를 향하는 릴리즈 타이밍
+      const o = s.orbit;
+      const upness = Math.cos(o.theta) * o.dir;
+      return upness > 0.45 ? 'release' : null;
+    }
+    if (!this.holding) {
+      // 잡을 수 있는 앵커가 사거리 안에 있는데 안 누르고 있다
+      const near = s.anchors.some(
+        (a) => a.y >= s.y - WORLD.captureR && Math.hypot(a.x - s.x, a.y - s.y) < WORLD.captureR * 1.2
+      );
+      if (near) return 'hold';
+    }
+    return null;
   }
 
   _handleEvents() {
@@ -1199,9 +1307,9 @@ class Game {
       if (ev.type === 'latch') this.sound.latch();
       if (ev.type === 'release') {
         this.sound.release();
-        if (!this.taught) {
-          this.taught = true;
-          safeStorage.setItem(STORE.taught, '1');
+        if (this.releases < COACH_UNTIL_RELEASES) {
+          this.releases += 1;
+          safeStorage.setItem(STORE.taught, String(this.releases));
         }
       }
       if (ev.type === 'spark') {
