@@ -18,7 +18,7 @@ export const SIGNUP_CONFIG = {
   endpoint: '',
 };
 
-const STORE = {
+const SIGNUP_STORE = {
   email: 'cms.email',
   skipped: 'cms.emailSkipped',
   queue: 'cms.emailQueue',
@@ -30,7 +30,7 @@ function validEmail(v) {
 
 function loadQueue() {
   try {
-    return JSON.parse(localStorage.getItem(STORE.queue) || '[]');
+    return JSON.parse(localStorage.getItem(SIGNUP_STORE.queue) || '[]');
   } catch {
     return [];
   }
@@ -38,7 +38,7 @@ function loadQueue() {
 
 function saveQueue(q) {
   try {
-    localStorage.setItem(STORE.queue, JSON.stringify(q.slice(-20)));
+    localStorage.setItem(SIGNUP_STORE.queue, JSON.stringify(q.slice(-20)));
   } catch {}
 }
 
@@ -116,7 +116,7 @@ export class SignupGate {
     this.onDone = onDone || (() => {});
 
     // 이미 가입했거나 건너뛴 사람에게는 다시 묻지 않는다
-    if (localStorage.getItem(STORE.email) || localStorage.getItem(STORE.skipped) === '1') {
+    if (localStorage.getItem(SIGNUP_STORE.email) || localStorage.getItem(SIGNUP_STORE.skipped) === '1') {
       this.dom.signup.classList.add('hidden');
       flushQueue(this.config); // 미전송분 재시도
       this.onDone();
@@ -139,7 +139,7 @@ export class SignupGate {
     });
 
     this.dom.skipBtn.addEventListener('click', () => {
-      localStorage.setItem(STORE.skipped, '1');
+      localStorage.setItem(SIGNUP_STORE.skipped, '1');
       this._close();
     });
 
@@ -147,7 +147,7 @@ export class SignupGate {
   }
 
   _accept(email, via) {
-    localStorage.setItem(STORE.email, email);
+    localStorage.setItem(SIGNUP_STORE.email, email);
     const entry = { email, via, game: 'comet-sling', at: new Date().toISOString() };
     send(entry, this.config).then((ok) => {
       if (!ok) {

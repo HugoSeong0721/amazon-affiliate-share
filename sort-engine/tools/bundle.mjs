@@ -54,6 +54,13 @@ export function buildSingleFile(opts) {
   if (/^\s*(import|export)\s/m.test(bundle)) {
     throw new Error('번들에 import/export가 남아 있습니다 — jsFiles 순서나 strip 규칙을 확인하세요');
   }
+  // 파일들이 한 스코프로 합쳐지므로 최상위 선언이 충돌하면 페이지 전체가 죽는다.
+  // 배포 전에 파싱해서 잡는다 (예: 두 파일이 같은 이름의 const를 선언).
+  try {
+    new Function(SAFE_STORAGE + bundle);
+  } catch (e) {
+    throw new Error(`번들이 파싱되지 않습니다 — 최상위 선언 충돌 가능성: ${e.message}`);
+  }
 
   const html = read(htmlFile);
   const app = html.match(/(<div id="app">[\s\S]*<\/div>)\s*<script/);
