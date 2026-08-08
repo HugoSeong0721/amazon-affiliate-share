@@ -54,8 +54,9 @@ const picked = targets.map((want, li) => {
   let bestScore = Infinity;
   for (const cand of pool) {
     if (used.has(cand.board)) continue;
-    // 초반(목표가 낮을수록)은 차도 적은 판을 골라 화면까지 쉬워 보이게 한다
-    const carBias = want <= 3 ? cand.cars : -cand.cars * 0.01;
+    // 튜토리얼 구간(2수 이하)만 차가 적은 판을 고르고, 그 뒤로는 같은 par면
+    // 차가 많은 빽빽한 판을 고른다 — 읽어야 할 차가 많을수록 체감 난이도가 올라간다
+    const carBias = want <= 2 ? cand.cars : -cand.cars * 0.01;
     const score = Math.abs(cand.par - want) + carBias * 0.001;
     if (score < bestScore) {
       bestScore = score;

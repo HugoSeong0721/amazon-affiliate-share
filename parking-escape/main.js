@@ -71,6 +71,9 @@ dom.board.addEventListener('pointermove', (e) => {
 dom.board.addEventListener('pointerup', () => renderer.pointerUp());
 dom.board.addEventListener('pointercancel', () => renderer.pointerCancel());
 dom.board.addEventListener('contextmenu', (e) => e.preventDefault());
+// iOS 사파리: touch-action/overflow 설정을 뚫고 오는 고무줄 스크롤의 마지막 방어선.
+// passive: false 가 핵심 — 기본값(passive)으로는 preventDefault가 무시된다.
+dom.board.addEventListener('touchmove', (e) => e.preventDefault(), { passive: false });
 
 dom.btnUndo.addEventListener('click', () => game.undo());
 dom.btnRestart.addEventListener('click', () => game.restart());
