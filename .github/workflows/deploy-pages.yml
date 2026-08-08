@@ -1,5 +1,9 @@
-# 게임들을 GitHub Pages로 배포한다 — 저장소 설정을 손대지 않아도
-# configure-pages의 enablement가 첫 실행 때 Pages를 켠다.
+# 게임들을 GitHub Pages로 배포한다.
+#
+# 공식 Pages 액션(deploy-pages) 대신 gh-pages 브랜치 방식을 쓴다:
+# github-pages 환경의 기본 보호 규칙이 main 이외 브랜치의 배포를 막는 반면,
+# gh-pages 브랜치는 밀어넣는 것만으로 사이트가 서비스되기 때문이다.
+# gh-pages에는 이 워크플로의 빌드 산출물만 들어간다 — 소스 브랜치가 아니다.
 #
 # 배포 주소:
 #   https://hugoseong0721.github.io/amazon-affiliate-share/                    (어필리에이트 도구)
@@ -15,11 +19,6 @@ on:
       - claude/game-idea-differentiation-ij0g9r
   workflow_dispatch:
 
-permissions:
-  contents: read
-  pages: write
-  id-token: write
-
 concurrency:
   group: pages
   cancel-in-progress: true
@@ -27,9 +26,8 @@ concurrency:
 jobs:
   deploy:
     runs-on: ubuntu-latest
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
+    permissions:
+      contents: write
     steps:
       - uses: actions/checkout@v4
 
@@ -44,13 +42,9 @@ jobs:
             --exclude 'store-assets' \
             --exclude 'node_modules'
 
-      - uses: actions/configure-pages@v5
+      - name: Publish to gh-pages branch
+        uses: peaceiris/actions-gh-pages@v4
         with:
-          enablement: true
-
-      - uses: actions/upload-pages-artifact@v3
-        with:
-          path: _site
-
-      - id: deployment
-        uses: actions/deploy-pages@v4
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./_site
+          force_orphan: true
