@@ -50,14 +50,17 @@ const maxPar = Math.max(...pool.map((l) => l.par));
 const targets = curveTargets(maxPar);
 const used = new Set();
 const picked = targets.map((want, li) => {
+  // 차량 수도 계단이다. par만 맞추면 "4대짜리 판 → 13대짜리 판"으로 화면이
+  // 한 번에 빽빽해져서 그 자체가 난이도 절벽으로 느껴진다 (실플레이 피드백).
+  // 초반 20레벨은 두 레벨마다 한 대씩 늘고, 그 뒤는 많을수록 좋다.
+  const wantCars = li < 20 ? Math.min(12, 5 + Math.floor(li / 2)) : null;
   let best = null;
   let bestScore = Infinity;
   for (const cand of pool) {
     if (used.has(cand.board)) continue;
-    // 튜토리얼 구간(2수 이하)만 차가 적은 판을 고르고, 그 뒤로는 같은 par면
-    // 차가 많은 빽빽한 판을 고른다 — 읽어야 할 차가 많을수록 체감 난이도가 올라간다
-    const carBias = want <= 2 ? cand.cars : -cand.cars * 0.01;
-    const score = Math.abs(cand.par - want) + carBias * 0.001;
+    const carScore =
+      wantCars === null ? -cand.cars * 0.001 : Math.abs(cand.cars - wantCars) * 0.05;
+    const score = Math.abs(cand.par - want) + carScore;
     if (score < bestScore) {
       bestScore = score;
       best = cand;

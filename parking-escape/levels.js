@@ -23,24 +23,27 @@ CAR_COUNTS.forEach((cars, ci) => {
 // 원하는 난이도 곡선: 1수에서 시작해 꾸준히 오른다.
 // maxPar는 풀에서 실제로 나온 최댓값 — 곡선은 "있는 것 중에서" 고른다.
 //
-// 세 번의 실플레이 피드백으로 다듬었다:
+// 네 번의 실플레이 피드백으로 다듬었다:
 //   t^1.35     → "20레벨까지 너무 쉽다가 갑자기 어려워진다" (초반을 너무 오래 눌러둔다)
 //   선형+이차  → "그래도 너무 쉽다" (2~4수 구간이 20레벨이나 늘어진다)
-//   지금 t^0.6 → 튜토리얼은 레벨 1 하나뿐. 레벨 2부터 바로 3수, 10레벨쯤 7수,
-//                20레벨쯤 10수에 닿은 뒤 완만하게 최댓값까지 오른다.
+//   t^0.6      → "레벨 2부터 갑자기 무척 어렵다" (1수 튜토리얼 직후 3수+빽빽한 판)
+//   지금       → 수식을 버리고 초반 20레벨은 손으로 박는다. 두 레벨마다 1수씩
+//                계단식으로 올라 레벨 20에서 10수, 그 뒤는 완만한 곡선으로 최댓값까지.
 //
-// "그냥 택시만 쭉 끌면 끝"인 par 1 판은 레벨 1(손가락 안내)뿐이다.
 // 레벨 2부터는 최소 2수 — 2수짜리 해는 반드시 다른 차를 한 대는 비켜야 나온다
 // (같은 차를 연달아 미는 건 한 수로 접히므로 par 2 = 남의 차 개입이 보장된다).
-const FREE_RIDE_LEVELS = 1;
+const EARLY_TARGETS = [1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 7, 7, 8, 8, 9, 9, 10, 10, 10];
 
 export function curveTargets(maxPar, count = LEVEL_COUNT) {
   const targets = [];
+  const base = EARLY_TARGETS[EARLY_TARGETS.length - 1];
   for (let i = 0; i < count; i++) {
-    const t = count === 1 ? 0 : i / (count - 1);
-    const shaped = Math.pow(t, 0.6);
-    const want = Math.max(1, Math.round(1 + (maxPar - 1) * shaped));
-    targets.push(i < FREE_RIDE_LEVELS ? want : Math.max(2, want));
+    if (i < EARLY_TARGETS.length) {
+      targets.push(EARLY_TARGETS[i]);
+      continue;
+    }
+    const t = (i - EARLY_TARGETS.length + 1) / (count - EARLY_TARGETS.length);
+    targets.push(Math.round(base + (maxPar - base) * Math.pow(t, 0.9)));
   }
   return targets;
 }
