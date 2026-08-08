@@ -5,7 +5,7 @@ import { Sound } from './audio.js';
 import { AdManager, AD_CONFIG, createPlaceholderProvider } from './ads.js';
 import { Game } from './game.js';
 import { SignupGate, SIGNUP_CONFIG } from './signup.js';
-import { newRun, WORLD, paramsAt } from './engine.js';
+import { newRun, WORLD, paramsAt, aim } from './engine.js';
 
 const $ = (id) => document.getElementById(id);
 const dom = {
@@ -121,7 +121,7 @@ if (params.has('debug')) {
     sound,
     ads,
     adsModule: { AdManager, AD_CONFIG },
-    engine: { newRun, WORLD, paramsAt },
+    engine: { newRun, WORLD, paramsAt, aim },
     state: () => game.state,
     press: () => game.press(),
     release: () => game.releasePress(),

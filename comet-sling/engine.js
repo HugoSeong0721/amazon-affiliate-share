@@ -51,6 +51,41 @@ export function assistAt(height) {
   return Math.max(0, 0.38 * (1 - Math.max(0, height) / 800));
 }
 
+// 자석 조준 — 릴리즈 방향이 근처 앵커와 이 각도 이내로 맞으면 그 앵커로 스냅한다.
+// "옆으로 튕겨나간다"는 느낌의 해독제: 얼추 맞으면 정확히 맞은 걸로 쳐 준다.
+const SNAP_DEG = 25;
+const SNAP_MAX_DIST = 230;
+
+// 지금 놓으면 날아갈 방향 (순수 함수 — 릴리즈와 조준선 표시가 같은 값을 쓴다).
+// 반환: { dx, dy, snapped } — snapped 는 스냅된 앵커 인덱스 또는 null
+export function aim(state) {
+  const o = state.orbit;
+  if (!o) return { dx: state.dirX, dy: state.dirY, snapped: null };
+  let dx = -Math.sin(o.theta) * o.dir;
+  let dy = Math.cos(o.theta) * o.dir + assistAt(state.height);
+  const len = Math.hypot(dx, dy);
+  dx /= len;
+  dy /= len;
+
+  // 진행 방향과 가장 잘 맞는 앵커를 찾는다 (지금 돌고 있는 앵커는 제외)
+  let best = null, bestCos = Math.cos((SNAP_DEG * Math.PI) / 180);
+  for (let i = 0; i < state.anchors.length; i++) {
+    if (i === o.i) continue;
+    const a = state.anchors[i];
+    const ax = a.x - state.x, ay = a.y - state.y;
+    const d = Math.hypot(ax, ay);
+    if (d < WORLD.orbitMin || d > SNAP_MAX_DIST) continue;
+    const cos = (ax * dx + ay * dy) / d;
+    if (cos > bestCos) { bestCos = cos; best = i; }
+  }
+  if (best !== null) {
+    const a = state.anchors[best];
+    const d = Math.hypot(a.x - state.x, a.y - state.y);
+    return { dx: (a.x - state.x) / d, dy: (a.y - state.y) / d, snapped: best };
+  }
+  return { dx, dy, snapped: null };
+}
+
 // ----- 트랙 생성 (앵커 순서대로만 소비되는 RNG 스트림) -----
 
 function nextAnchor(prev, rng, p) {
@@ -155,17 +190,13 @@ function tryLatch(state) {
 }
 
 function release(state) {
-  const o = state.orbit;
-  let dx = -Math.sin(o.theta) * o.dir;
-  let dy = Math.cos(o.theta) * o.dir;
-  // 초반 에임 어시스트: 접선에 위쪽 성분을 섞은 뒤 다시 단위벡터로
-  dy += assistAt(state.height);
-  const len = Math.hypot(dx, dy);
-  state.dirX = dx / len;
-  state.dirY = dy / len;
+  // 접선 + 에임 어시스트 + 자석 조준 — 조준선(aim)이 보여준 그대로 날아간다
+  const a = aim(state);
+  state.dirX = a.dx;
+  state.dirY = a.dy;
   state.orbit = null;
   state.mode = 'flying';
-  state.events.push({ type: 'release' });
+  state.events.push({ type: 'release', snapped: a.snapped });
 }
 
 function die(state, cause) {

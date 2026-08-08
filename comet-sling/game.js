@@ -1,7 +1,7 @@
 // 게임 껍데기 — 엔진(순수 물리)을 화면·소리·저장과 잇는다.
 // 모드: ready(출발대) → running(런) → dead(결과) → ready…
 
-import { DT, WORLD, newRun, step, score, drainEvents } from './engine.js';
+import { DT, WORLD, newRun, step, score, drainEvents, aim } from './engine.js';
 
 const STORE = {
   best: 'cms.best',
@@ -95,10 +95,10 @@ export class Game {
     if (this.mode !== 'running' || this.state.dead) return null;
     const s = this.state;
     if (s.mode === 'orbit') {
-      // 접선이 위를 향하는 릴리즈 타이밍
+      // 릴리즈 타이밍: 조준이 앵커에 잠겼거나 접선이 위를 향할 때
       const o = s.orbit;
       const upness = Math.cos(o.theta) * o.dir;
-      return upness > 0.45 ? 'release' : null;
+      return aim(s).snapped !== null || upness > 0.45 ? 'release' : null;
     }
     if (!this.holding) {
       // 잡을 수 있는 앵커가 사거리 안에 있는데 안 누르고 있다
