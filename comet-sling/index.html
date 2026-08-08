@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="theme-color" content="#05040c">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>☄️</text></svg>">
+<title>Comet Sling — One-Touch Orbit Dash</title>
+<link rel="stylesheet" href="./style.css">
+</head>
+<body>
+  <div id="app">
+    <canvas id="board"></canvas>
+
+    <header id="hud">
+      <div class="hud-score">
+        <div id="scoreLabel">0</div>
+        <div id="bestLabel">BEST 0</div>
+      </div>
+      <button id="btnMute" class="hud-btn" title="Sound on/off" aria-label="Sound">🔊</button>
+    </header>
+
+    <div id="overlay" class="hidden">
+      <div class="overlay-card">
+        <div id="overlayScore">0</div>
+        <div id="overlayBest">BEST 0</div>
+        <p class="retry-note">tap to fly again</p>
+      </div>
+    </div>
+
+    <div id="signup" class="hidden">
+      <div class="signup-card">
+        <div class="signup-logo">☄️</div>
+        <h1 class="signup-title">Comet Sling</h1>
+        <p class="signup-sub">Save your best score &amp; get updates</p>
+        <div id="googleBtn" class="hidden"></div>
+        <div id="orDivider" class="or-divider hidden"><span>or</span></div>
+        <form id="emailForm" novalidate>
+          <input id="emailInput" type="email" inputmode="email" autocomplete="email"
+                 placeholder="your@email.com" aria-label="Email">
+          <button id="emailSubmit" type="submit">Play ▶</button>
+        </form>
+        <button id="skipBtn" type="button" class="skip-btn">just play</button>
+        <p class="signup-privacy">Your email is only used for game updates.</p>
+      </div>
+    </div>
+
+    <div id="adSlot" class="hidden">
+      <div class="ad-frame">
+        <div class="ad-head">
+          <span class="ad-tag">AD</span>
+          <button id="adClose" class="ad-close" disabled>5</button>
+        </div>
+        <div class="ad-body">
+          <p class="ad-title">Ad placeholder</p>
+          <p class="ad-sub">An interstitial ad will appear here once an ad network is connected.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+  <script type="module" src="./main.js"></script>
+</body>
+</html>

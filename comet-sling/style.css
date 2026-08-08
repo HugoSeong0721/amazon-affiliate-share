@@ -1,0 +1,369 @@
+/* 어두운 네온 우주 — 형제 게임들의 파스텔 낮과 정반대의 톤.
+   UI는 최소한만: 점수, 음소거, 결과 카드. 나머지는 전부 캔버스가 말한다. */
+
+:root {
+  --bg: #05040c;
+  --text: #eef3ff;
+  --muted: #6f7ba3;
+  --neon: #8ef6ff;
+  --neon-dim: rgba(142, 246, 255, 0.35);
+  --violet: #b06bff;
+  --gold: #ffd34d;
+  --panel: rgba(14, 12, 30, 0.92);
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+html, body { height: 100%; }
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Apple SD Gothic Neo", "Noto Sans KR", sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+#app {
+  position: relative;
+  height: 100dvh;
+  width: 100%;
+  max-width: 540px;
+  background: var(--bg);
+  overflow: hidden;
+}
+
+#board {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+  cursor: pointer;
+}
+
+/* ----- HUD — 캔버스 위에 떠 있는 최소 UI ----- */
+
+#hud {
+  position: absolute;
+  top: calc(8px + env(safe-area-inset-top));
+  left: 0;
+  right: 0;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  pointer-events: none;
+  padding: 0 14px;
+}
+
+.hud-score { text-align: center; }
+
+#scoreLabel {
+  font-size: 44px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  color: var(--text);
+  text-shadow: 0 0 18px var(--neon-dim), 0 0 4px rgba(142, 246, 255, 0.6);
+  font-variant-numeric: tabular-nums;
+  line-height: 1.05;
+}
+
+#bestLabel {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.22em;
+  color: var(--muted);
+}
+
+.hud-btn {
+  position: absolute;
+  right: 14px;
+  top: 0;
+  pointer-events: auto;
+  width: 40px;
+  height: 40px;
+  border: 1px solid rgba(142, 246, 255, 0.18);
+  border-radius: 12px;
+  background: rgba(14, 12, 30, 0.6);
+  color: var(--text);
+  font-size: 17px;
+  cursor: pointer;
+  backdrop-filter: blur(4px);
+}
+
+.hud-btn:active { transform: scale(0.94); }
+
+/* ----- 결과 카드 ----- */
+
+#overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: radial-gradient(80% 60% at 50% 45%, rgba(5, 4, 12, 0.2) 0%, rgba(5, 4, 12, 0.75) 100%);
+  z-index: 20;
+  pointer-events: none; /* 탭은 캔버스로 흘려보낸다 — 아무 데나 눌러 재시작 */
+}
+
+#overlay.hidden { display: none; }
+
+.overlay-card {
+  text-align: center;
+  padding: 26px 44px;
+  border: 1px solid rgba(142, 246, 255, 0.22);
+  border-radius: 20px;
+  background: var(--panel);
+  box-shadow: 0 0 42px rgba(142, 246, 255, 0.1), 0 18px 50px rgba(0, 0, 0, 0.55);
+  animation: cardIn 0.32s cubic-bezier(0.2, 1.4, 0.4, 1);
+}
+
+@keyframes cardIn {
+  from { transform: translateY(16px) scale(0.92); opacity: 0; }
+  to { transform: none; opacity: 1; }
+}
+
+#overlayScore {
+  font-size: 64px;
+  font-weight: 900;
+  color: var(--neon);
+  text-shadow: 0 0 26px var(--neon-dim);
+  font-variant-numeric: tabular-nums;
+  line-height: 1.1;
+}
+
+#overlayBest {
+  margin-top: 4px;
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: 0.24em;
+  color: var(--muted);
+}
+
+#overlayBest.newbest {
+  color: var(--gold);
+  text-shadow: 0 0 16px rgba(255, 211, 77, 0.5);
+  animation: bestPulse 0.9s ease-in-out infinite;
+}
+
+@keyframes bestPulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.08); }
+}
+
+.retry-note {
+  margin-top: 18px;
+  font-size: 13px;
+  letter-spacing: 0.14em;
+  color: var(--muted);
+  animation: fadePulse 1.6s ease-in-out infinite;
+}
+
+@keyframes fadePulse {
+  0%, 100% { opacity: 0.45; }
+  50% { opacity: 1; }
+}
+
+/* ----- 이메일 가입 게이트 (첫 실행 한 번만) ----- */
+
+#signup {
+  position: absolute;
+  inset: 0;
+  z-index: 30;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: radial-gradient(90% 70% at 50% 40%, rgba(10, 6, 24, 0.7) 0%, rgba(3, 3, 10, 0.96) 100%);
+  backdrop-filter: blur(3px);
+}
+
+#signup.hidden { display: none; }
+
+.signup-card {
+  width: min(88vw, 340px);
+  text-align: center;
+  padding: 30px 24px 20px;
+  border: 1px solid rgba(142, 246, 255, 0.22);
+  border-radius: 22px;
+  background: var(--panel);
+  box-shadow: 0 0 42px rgba(142, 246, 255, 0.1), 0 18px 50px rgba(0, 0, 0, 0.55);
+  animation: cardIn 0.32s cubic-bezier(0.2, 1.4, 0.4, 1);
+}
+
+.signup-logo { font-size: 44px; line-height: 1; }
+
+.signup-title {
+  margin-top: 8px;
+  font-size: 26px;
+  font-weight: 900;
+  letter-spacing: 0.02em;
+  color: var(--neon);
+  text-shadow: 0 0 22px var(--neon-dim);
+}
+
+.signup-sub {
+  margin-top: 4px;
+  font-size: 13px;
+  color: var(--muted);
+}
+
+#googleBtn {
+  margin: 18px auto 0;
+  display: flex;
+  justify-content: center;
+  min-height: 40px;
+}
+
+#googleBtn.hidden { display: none; }
+
+.or-divider {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 14px 0 0;
+  color: var(--muted);
+  font-size: 11px;
+  letter-spacing: 0.2em;
+}
+
+.or-divider.hidden { display: none; }
+
+.or-divider::before,
+.or-divider::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: rgba(255, 255, 255, 0.12);
+}
+
+#emailForm {
+  display: flex;
+  gap: 8px;
+  margin-top: 16px;
+}
+
+#emailInput {
+  flex: 1;
+  min-width: 0;
+  padding: 12px 14px;
+  border-radius: 12px;
+  border: 1px solid rgba(142, 246, 255, 0.25);
+  background: rgba(3, 3, 10, 0.6);
+  color: var(--text);
+  font-size: 15px;
+  outline: none;
+}
+
+#emailInput:focus { border-color: var(--neon); }
+
+#emailInput.shake { animation: shakeX 0.35s; border-color: #ff5a3c; }
+
+@keyframes shakeX {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-6px); }
+  75% { transform: translateX(6px); }
+}
+
+#emailSubmit {
+  padding: 12px 16px;
+  border: none;
+  border-radius: 12px;
+  background: var(--neon);
+  color: #04121a;
+  font-size: 14px;
+  font-weight: 900;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+#emailSubmit:active { transform: scale(0.96); }
+
+.skip-btn {
+  margin-top: 14px;
+  background: none;
+  border: none;
+  color: var(--muted);
+  font-size: 12.5px;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.signup-privacy {
+  margin-top: 14px;
+  font-size: 10.5px;
+  color: rgba(111, 123, 163, 0.75);
+  line-height: 1.4;
+}
+
+/* ----- 광고 자리 (형제 게임들과 같은 구조) ----- */
+
+#adSlot {
+  position: absolute;
+  inset: 0;
+  z-index: 40;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(3, 3, 8, 0.9);
+}
+
+#adSlot.hidden { display: none; }
+
+.ad-frame {
+  width: min(86vw, 360px);
+  border-radius: 16px;
+  overflow: hidden;
+  background: #10142a;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.ad-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 12px;
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.ad-tag {
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  color: var(--muted);
+  border: 1px solid var(--muted);
+  border-radius: 4px;
+  padding: 1px 6px;
+}
+
+.ad-close {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  border: none;
+  background: rgba(255, 255, 255, 0.12);
+  color: var(--text);
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.ad-close:disabled { opacity: 0.55; cursor: default; }
+
+.ad-body {
+  padding: 42px 20px;
+  text-align: center;
+}
+
+.ad-title { font-weight: 800; margin-bottom: 6px; }
+
+.ad-sub { font-size: 12.5px; color: var(--muted); line-height: 1.5; }
