@@ -25,6 +25,8 @@ buildSingleFile({
     'magnet-ball-sort/render.js',
     'magnet-ball-sort/audio.js',
     'magnet-ball-sort/ads.js',
+    'magnet-ball-sort/cloud.js',
+    'magnet-ball-sort/auth.js',
     'magnet-ball-sort/game.js',
     'magnet-ball-sort/main.js',
   ],

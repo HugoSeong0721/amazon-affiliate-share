@@ -96,6 +96,12 @@ export class AdManager {
     this._save();
   }
 
+  // 광고가 아닌 다른 전면 UI(가입 권유 등)가 흐름을 끊었을 때 호출한다.
+  // 시간 간격 계산에 같이 잡혀서, 한 전환에 끊김이 두 번 겹치지 않는다.
+  noteInterruption(now = Date.now()) {
+    this.lastShownAt = now;
+  }
+
   shouldShow(now = Date.now()) {
     if (!this.enabled || this.showing) return false;
     if (this.clearedTotal <= this.config.freeLevels) return false;
