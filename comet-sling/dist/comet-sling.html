@@ -1,0 +1,1832 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>☄️</text></svg>">
+<title>Comet Sling — One-Touch Orbit Dash</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="theme-color" content="#05040c">
+<style>
+/* 어두운 네온 우주 — 형제 게임들의 파스텔 낮과 정반대의 톤.
+   UI는 최소한만: 점수, 음소거, 결과 카드. 나머지는 전부 캔버스가 말한다. */
+
+:root {
+  --bg: #05040c;
+  --text: #eef3ff;
+  --muted: #6f7ba3;
+  --neon: #8ef6ff;
+  --neon-dim: rgba(142, 246, 255, 0.35);
+  --violet: #b06bff;
+  --gold: #ffd34d;
+  --panel: rgba(14, 12, 30, 0.92);
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+html, body { height: 100%; }
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Apple SD Gothic Neo", "Noto Sans KR", sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+#app {
+  position: relative;
+  height: 100dvh;
+  width: 100%;
+  max-width: 540px;
+  background: var(--bg);
+  overflow: hidden;
+}
+
+#board {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+  cursor: pointer;
+}
+
+/* ----- HUD — 캔버스 위에 떠 있는 최소 UI ----- */
+
+#hud {
+  position: absolute;
+  top: calc(8px + env(safe-area-inset-top));
+  left: 0;
+  right: 0;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  pointer-events: none;
+  padding: 0 14px;
+}
+
+.hud-score { text-align: center; }
+
+#scoreLabel {
+  font-size: 44px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  color: var(--text);
+  text-shadow: 0 0 18px var(--neon-dim), 0 0 4px rgba(142, 246, 255, 0.6);
+  font-variant-numeric: tabular-nums;
+  line-height: 1.05;
+}
+
+#bestLabel {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.22em;
+  color: var(--muted);
+}
+
+.hud-btn {
+  position: absolute;
+  right: 14px;
+  top: 0;
+  pointer-events: auto;
+  width: 40px;
+  height: 40px;
+  border: 1px solid rgba(142, 246, 255, 0.18);
+  border-radius: 12px;
+  background: rgba(14, 12, 30, 0.6);
+  color: var(--text);
+  font-size: 17px;
+  cursor: pointer;
+  backdrop-filter: blur(4px);
+}
+
+.hud-btn:active { transform: scale(0.94); }
+
+/* ----- 결과 카드 ----- */
+
+#overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: radial-gradient(80% 60% at 50% 45%, rgba(5, 4, 12, 0.2) 0%, rgba(5, 4, 12, 0.75) 100%);
+  z-index: 20;
+  pointer-events: none; /* 탭은 캔버스로 흘려보낸다 — 아무 데나 눌러 재시작 */
+}
+
+#overlay.hidden { display: none; }
+
+.overlay-card {
+  text-align: center;
+  padding: 26px 44px;
+  border: 1px solid rgba(142, 246, 255, 0.22);
+  border-radius: 20px;
+  background: var(--panel);
+  box-shadow: 0 0 42px rgba(142, 246, 255, 0.1), 0 18px 50px rgba(0, 0, 0, 0.55);
+  animation: cardIn 0.32s cubic-bezier(0.2, 1.4, 0.4, 1);
+}
+
+@keyframes cardIn {
+  from { transform: translateY(16px) scale(0.92); opacity: 0; }
+  to { transform: none; opacity: 1; }
+}
+
+#overlayScore {
+  font-size: 64px;
+  font-weight: 900;
+  color: var(--neon);
+  text-shadow: 0 0 26px var(--neon-dim);
+  font-variant-numeric: tabular-nums;
+  line-height: 1.1;
+}
+
+#overlayBest {
+  margin-top: 4px;
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: 0.24em;
+  color: var(--muted);
+}
+
+#overlayBest.newbest {
+  color: var(--gold);
+  text-shadow: 0 0 16px rgba(255, 211, 77, 0.5);
+  animation: bestPulse 0.9s ease-in-out infinite;
+}
+
+@keyframes bestPulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.08); }
+}
+
+.retry-note {
+  margin-top: 18px;
+  font-size: 13px;
+  letter-spacing: 0.14em;
+  color: var(--muted);
+  animation: fadePulse 1.6s ease-in-out infinite;
+}
+
+@keyframes fadePulse {
+  0%, 100% { opacity: 0.45; }
+  50% { opacity: 1; }
+}
+
+/* ----- 이메일 가입 게이트 (첫 실행 한 번만) ----- */
+
+#signup {
+  position: absolute;
+  inset: 0;
+  z-index: 30;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: radial-gradient(90% 70% at 50% 40%, rgba(10, 6, 24, 0.7) 0%, rgba(3, 3, 10, 0.96) 100%);
+  backdrop-filter: blur(3px);
+}
+
+#signup.hidden { display: none; }
+
+.signup-card {
+  width: min(88vw, 340px);
+  text-align: center;
+  padding: 30px 24px 20px;
+  border: 1px solid rgba(142, 246, 255, 0.22);
+  border-radius: 22px;
+  background: var(--panel);
+  box-shadow: 0 0 42px rgba(142, 246, 255, 0.1), 0 18px 50px rgba(0, 0, 0, 0.55);
+  animation: cardIn 0.32s cubic-bezier(0.2, 1.4, 0.4, 1);
+}
+
+.signup-logo { font-size: 44px; line-height: 1; }
+
+.signup-title {
+  margin-top: 8px;
+  font-size: 26px;
+  font-weight: 900;
+  letter-spacing: 0.02em;
+  color: var(--neon);
+  text-shadow: 0 0 22px var(--neon-dim);
+}
+
+.signup-sub {
+  margin-top: 4px;
+  font-size: 13px;
+  color: var(--muted);
+}
+
+#googleBtn {
+  margin: 18px auto 0;
+  display: flex;
+  justify-content: center;
+  min-height: 40px;
+}
+
+#googleBtn.hidden { display: none; }
+
+.or-divider {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 14px 0 0;
+  color: var(--muted);
+  font-size: 11px;
+  letter-spacing: 0.2em;
+}
+
+.or-divider.hidden { display: none; }
+
+.or-divider::before,
+.or-divider::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: rgba(255, 255, 255, 0.12);
+}
+
+#emailForm {
+  display: flex;
+  gap: 8px;
+  margin-top: 16px;
+}
+
+#emailInput {
+  flex: 1;
+  min-width: 0;
+  padding: 12px 14px;
+  border-radius: 12px;
+  border: 1px solid rgba(142, 246, 255, 0.25);
+  background: rgba(3, 3, 10, 0.6);
+  color: var(--text);
+  font-size: 15px;
+  outline: none;
+}
+
+#emailInput:focus { border-color: var(--neon); }
+
+#emailInput.shake { animation: shakeX 0.35s; border-color: #ff5a3c; }
+
+@keyframes shakeX {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-6px); }
+  75% { transform: translateX(6px); }
+}
+
+#emailSubmit {
+  padding: 12px 16px;
+  border: none;
+  border-radius: 12px;
+  background: var(--neon);
+  color: #04121a;
+  font-size: 14px;
+  font-weight: 900;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+#emailSubmit:active { transform: scale(0.96); }
+
+.skip-btn {
+  margin-top: 14px;
+  background: none;
+  border: none;
+  color: var(--muted);
+  font-size: 12.5px;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.signup-privacy {
+  margin-top: 14px;
+  font-size: 10.5px;
+  color: rgba(111, 123, 163, 0.75);
+  line-height: 1.4;
+}
+
+/* ----- 광고 자리 (형제 게임들과 같은 구조) ----- */
+
+#adSlot {
+  position: absolute;
+  inset: 0;
+  z-index: 40;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(3, 3, 8, 0.9);
+}
+
+#adSlot.hidden { display: none; }
+
+.ad-frame {
+  width: min(86vw, 360px);
+  border-radius: 16px;
+  overflow: hidden;
+  background: #10142a;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.ad-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 12px;
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.ad-tag {
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  color: var(--muted);
+  border: 1px solid var(--muted);
+  border-radius: 4px;
+  padding: 1px 6px;
+}
+
+.ad-close {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  border: none;
+  background: rgba(255, 255, 255, 0.12);
+  color: var(--text);
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.ad-close:disabled { opacity: 0.55; cursor: default; }
+
+.ad-body {
+  padding: 42px 20px;
+  text-align: center;
+}
+
+.ad-title { font-weight: 800; margin-bottom: 6px; }
+
+.ad-sub { font-size: 12.5px; color: var(--muted); line-height: 1.5; }
+
+</style>
+</head>
+<body>
+<div id="app">
+    <canvas id="board"></canvas>
+
+    <header id="hud">
+      <div class="hud-score">
+        <div id="scoreLabel">0</div>
+        <div id="bestLabel">BEST 0</div>
+      </div>
+      <button id="btnMute" class="hud-btn" title="Sound on/off" aria-label="Sound">🔊</button>
+    </header>
+
+    <div id="overlay" class="hidden">
+      <div class="overlay-card">
+        <div id="overlayScore">0</div>
+        <div id="overlayBest">BEST 0</div>
+        <p class="retry-note">tap to fly again</p>
+      </div>
+    </div>
+
+    <div id="signup" class="hidden">
+      <div class="signup-card">
+        <div class="signup-logo">☄️</div>
+        <h1 class="signup-title">Comet Sling</h1>
+        <p class="signup-sub">Save your best score &amp; get updates</p>
+        <div id="googleBtn" class="hidden"></div>
+        <div id="orDivider" class="or-divider hidden"><span>or</span></div>
+        <form id="emailForm" novalidate>
+          <input id="emailInput" type="email" inputmode="email" autocomplete="email"
+                 placeholder="your@email.com" aria-label="Email">
+          <button id="emailSubmit" type="submit">Play ▶</button>
+        </form>
+        <button id="skipBtn" type="button" class="skip-btn">just play</button>
+        <p class="signup-privacy">Your email is only used for game updates.</p>
+      </div>
+    </div>
+
+    <div id="adSlot" class="hidden">
+      <div class="ad-frame">
+        <div class="ad-head">
+          <span class="ad-tag">AD</span>
+          <button id="adClose" class="ad-close" disabled>5</button>
+        </div>
+        <div class="ad-body">
+          <p class="ad-title">Ad placeholder</p>
+          <p class="ad-sub">An interstitial ad will appear here once an ad network is connected.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+<script type="module">
+
+const safeStorage = (() => {
+  try {
+    localStorage.setItem('__probe', '1');
+    localStorage.removeItem('__probe');
+    return localStorage;
+  } catch {
+    const mem = new Map();
+    return {
+      getItem: (k) => (mem.has(k) ? mem.get(k) : null),
+      setItem: (k, v) => mem.set(k, String(v)),
+      removeItem: (k) => mem.delete(k),
+    };
+  }
+})();
+
+// ===== comet-sling/engine.js =====
+// 순수 게임 로직 — DOM/캔버스 없음. 시드 RNG, 트랙 생성, 고정 스텝 물리, 충돌, 점수.
+//
+// 결정론이 이 파일의 계약이다: 같은 시드 + 같은 입력 시퀀스 = 같은 런.
+// 물리는 고정 dt(1/120초)로만 전진하고, 트랙은 앵커 인덱스 순서로만 생성되므로
+// ensureTrack을 언제 몇 번 부르든 결과가 같다. 테스트가 이 계약을 검증한다.
+
+const DT = 1 / 120; // 고정 물리 스텝(초)
+
+// 월드 좌표: y는 위로 증가. 코멧은 (0,0)에서 출발해 위로 난다.
+const WORLD = {
+  halfW: 50,          // 통로 반폭 — 벽에 닿으면 죽는다
+  cometR: 2.2,        // 코멧 반지름
+  hazardR: 5.5,       // 소행성 반지름
+  captureR: 38,       // 이 거리 안의 앵커를 잡을 수 있다 (홀드 중 자동)
+  orbitMin: 11,       // 궤도 반지름 하한 — 너무 붙어서 잡으면 이만큼 밀어낸다
+  orbitMax: 26,       // 궤도 반지름 상한
+  nearMissBand: 5,    // 소행성을 이 여유 안으로 스치면 보너스
+  fallLimit: 130,     // 최고점에서 이만큼 떨어지면 죽는다 (카메라 밖)
+  genMargin: 260,     // 코멧 위로 이만큼 미리 트랙을 깔아 둔다
+};
+
+// mulberry32 — 작고 결정적인 시드 RNG
+function makeRng(seed) {
+  let s = seed >>> 0;
+  return function rng() {
+    s = (s + 0x6d2b79f5) | 0;
+    let t = Math.imul(s ^ (s >>> 15), 1 | s);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+// 높이에 따른 난이도 곡선 — 전부 단조. 테스트가 단조성을 검증한다.
+// 첫 플레이테스트 피드백("너무 어려워")에 맞춰 시작을 느리고 너그럽게,
+// 정점은 그대로 두어 상급자의 목표는 지킨다.
+function paramsAt(height) {
+  const h = Math.max(0, height);
+  const ramp = 1 - Math.exp(-h / 1300); // 0 → 1 포화 곡선 (완만하게)
+  return {
+    speed: 32 + 68 * ramp,                          // 32 → 100
+    hazardChance: Math.min(0.85, 0.08 + 1.0 * ramp), // 구간당 소행성 확률
+    maxHazards: h < 250 ? 1 : 2,                    // 구간당 최대 소행성 수
+    anchorJitter: 14 + 16 * ramp,                   // 앵커 좌우 흔들림 폭
+  };
+}
+
+// 초반 에임 어시스트 — 릴리즈 방향을 위쪽으로 이만큼 끌어당긴다.
+// 완벽한 타이밍이 아니어도 대충 위로 가게 해서, 조작을 배우는 동안 벽에 덜 부딪히게.
+// 높이 800에서 완전히 사라진다 (단조 감소).
+function assistAt(height) {
+  return Math.max(0, 0.38 * (1 - Math.max(0, height) / 800));
+}
+
+// ----- 트랙 생성 (앵커 순서대로만 소비되는 RNG 스트림) -----
+
+function nextAnchor(prev, rng, p) {
+  const dy = 58 + rng() * 26;
+  const maxX = WORLD.halfW - WORLD.orbitMax - WORLD.cometR - 2;
+  let x = prev.x + (rng() * 2 - 1) * p.anchorJitter * 2;
+  x = Math.max(-maxX, Math.min(maxX, x));
+  return { x, y: prev.y + dy };
+}
+
+function distToSegment(px, py, ax, ay, bx, by) {
+  const dx = bx - ax, dy = by - ay;
+  const len2 = dx * dx + dy * dy;
+  const t = len2 === 0 ? 0 : Math.max(0, Math.min(1, ((px - ax) * dx + (py - ay) * dy) / len2));
+  const cx = ax + t * dx, cy = ay + t * dy;
+  return Math.hypot(px - cx, py - cy);
+}
+
+// 구간(a→b) 사이에 소행성을 놓되, 플레이 가능성 불변식을 지킨다:
+//  - 어떤 앵커와도 orbitMax + hazardR + cometR + 3 이상 떨어진다 (궤도 중 절대 안 부딪힘)
+//  - a→b 직선에서 hazardR + cometR + 4 이상 떨어진다 (이상적인 비행선은 항상 열려 있다)
+//  - 통로 안에 완전히 들어간다
+function placeHazards(a, b, allAnchors, rng, p) {
+  const out = [];
+  const n = rng() < p.hazardChance ? 1 + (p.maxHazards > 1 && rng() < 0.35 ? 1 : 0) : 0;
+  const anchorClear = WORLD.orbitMax + WORLD.hazardR + WORLD.cometR + 3;
+  const lineClear = WORLD.hazardR + WORLD.cometR + 4;
+  const maxX = WORLD.halfW - WORLD.hazardR - 1;
+  for (let k = 0; k < n; k++) {
+    for (let tries = 0; tries < 25; tries++) {
+      const y = a.y + (0.25 + rng() * 0.5) * (b.y - a.y);
+      const x = (rng() * 2 - 1) * maxX;
+      if (distToSegment(x, y, a.x, a.y, b.x, b.y) < lineClear) continue;
+      if (allAnchors.some((an) => Math.hypot(an.x - x, an.y - y) < anchorClear)) continue;
+      if (out.some((hz) => Math.hypot(hz.x - x, hz.y - y) < WORLD.hazardR * 2 + 2)) continue;
+      out.push({ x, y });
+      break;
+    }
+  }
+  return out;
+}
+
+// ----- 런 상태 -----
+
+function newRun(seed) {
+  const state = {
+    seed: seed >>> 0,
+    rng: makeRng(seed),
+    t: 0,
+    mode: 'flying',          // 'flying' | 'orbit'
+    x: 0, y: 0,
+    dirX: 0, dirY: 1,        // 비행 방향 (단위벡터)
+    orbit: null,             // { i, r, theta, dir }
+    height: 0,               // 도달 최고 y — 점수의 뼈대
+    sparks: 0,               // 니어미스 횟수
+    dead: false,
+    deathCause: null,        // 'wall' | 'hazard' | 'fell'
+    anchors: [{ x: 0, y: 64 }],
+    hazards: [],
+    _credited: new Set(),    // 니어미스 중복 방지 (hazard 인덱스)
+    _held: false,
+    events: [],              // 프레임 이벤트 큐 — 렌더러/사운드가 비운다
+  };
+  ensureTrack(state, WORLD.genMargin);
+  return state;
+}
+
+// upToY까지 트랙을 깔아 둔다. 앵커 i → i+1 순서로만 RNG를 소비하므로 결정적이다.
+function ensureTrack(state, upToY) {
+  while (state.anchors[state.anchors.length - 1].y < upToY) {
+    const prev = state.anchors[state.anchors.length - 1];
+    const p = paramsAt(prev.y);
+    const next = nextAnchor(prev, state.rng, p);
+    state.anchors.push(next);
+    for (const hz of placeHazards(prev, next, state.anchors, state.rng, p)) state.hazards.push(hz);
+  }
+}
+
+function score(state) {
+  return Math.floor(state.height / 4) + state.sparks * 25;
+}
+
+function tryLatch(state) {
+  let best = -1, bestD = WORLD.captureR;
+  for (let i = 0; i < state.anchors.length; i++) {
+    const a = state.anchors[i];
+    if (a.y < state.y - WORLD.captureR) continue;   // 한참 지난 앵커는 안 잡는다
+    const d = Math.hypot(a.x - state.x, a.y - state.y);
+    if (d < bestD) { bestD = d; best = i; }
+  }
+  if (best < 0) return false;
+  const a = state.anchors[best];
+  const relX = state.x - a.x, relY = state.y - a.y;
+  const r = Math.max(WORLD.orbitMin, Math.min(WORLD.orbitMax, bestD));
+  // 진행 방향이 이어지도록 회전 방향을 고른다: cross(rel, dir) > 0 → 반시계
+  const cross = relX * state.dirY - relY * state.dirX;
+  const dir = cross >= 0 ? 1 : -1;
+  state.orbit = { i: best, r, theta: Math.atan2(relY, relX), dir };
+  state.mode = 'orbit';
+  state.events.push({ type: 'latch', i: best });
+  return true;
+}
+
+function release(state) {
+  const o = state.orbit;
+  let dx = -Math.sin(o.theta) * o.dir;
+  let dy = Math.cos(o.theta) * o.dir;
+  // 초반 에임 어시스트: 접선에 위쪽 성분을 섞은 뒤 다시 단위벡터로
+  dy += assistAt(state.height);
+  const len = Math.hypot(dx, dy);
+  state.dirX = dx / len;
+  state.dirY = dy / len;
+  state.orbit = null;
+  state.mode = 'flying';
+  state.events.push({ type: 'release' });
+}
+
+function die(state, cause) {
+  state.dead = true;
+  state.deathCause = cause;
+  state.events.push({ type: 'death', cause });
+}
+
+// 한 물리 스텝. input = { hold: boolean }
+function step(state, input) {
+  if (state.dead) return state;
+  state.t += DT;
+  const p = paramsAt(state.height);
+  const held = !!input.hold;
+
+  // 홀드 에지 처리 — 잡기/놓기
+  if (state.mode === 'orbit' && !held) release(state);
+  if (state.mode === 'flying' && held) tryLatch(state); // 사거리 밖이면 계속 날면서 다음 스텝에 재시도
+
+  if (state.mode === 'orbit') {
+    const o = state.orbit;
+    const a = state.anchors[o.i];
+    o.theta += o.dir * (p.speed / o.r) * DT;
+    state.x = a.x + Math.cos(o.theta) * o.r;
+    state.y = a.y + Math.sin(o.theta) * o.r;
+  } else {
+    state.x += state.dirX * p.speed * DT;
+    state.y += state.dirY * p.speed * DT;
+  }
+  state._held = held;
+
+  if (state.y > state.height) state.height = state.y;
+  ensureTrack(state, state.y + WORLD.genMargin);
+
+  // 죽음 판정
+  if (Math.abs(state.x) > WORLD.halfW - WORLD.cometR) return die(state, 'wall'), state;
+  if (state.y < state.height - WORLD.fallLimit) return die(state, 'fell'), state;
+
+  // 소행성: 충돌 + 니어미스 (지나간 것은 건너뛴다)
+  for (let i = 0; i < state.hazards.length; i++) {
+    const hz = state.hazards[i];
+    if (hz.y < state.y - 60 || hz.y > state.y + 60) continue;
+    const d = Math.hypot(hz.x - state.x, hz.y - state.y);
+    if (d < WORLD.hazardR + WORLD.cometR) return die(state, 'hazard'), state;
+    if (d < WORLD.hazardR + WORLD.cometR + WORLD.nearMissBand && !state._credited.has(i)) {
+      state._credited.add(i);
+      state.sparks += 1;
+      state.events.push({ type: 'spark', x: hz.x, y: hz.y });
+    }
+  }
+  return state;
+}
+
+// 이벤트 큐를 비우며 반환 — 렌더러/사운드용
+function drainEvents(state) {
+  const ev = state.events;
+  state.events = [];
+  return ev;
+}
+
+// ===== comet-sling/render.js =====
+// 캔버스 렌더러 — 게임의 '분위기'가 사는 곳.
+// 깊은 우주 배경, 패럴랙스 별, 네온 글로우, 코멧 트레일, 파티클, 화면 흔들림.
+// 월드 좌표(y 위로 증가)를 화면 좌표로 뒤집어 그린다. 카메라는 y만 따라간다.
+
+
+const COL = {
+  bgTop: '#0a0618',
+  bgBottom: '#03030a',
+  comet: '#8ef6ff',
+  cometCore: '#ffffff',
+  trail: 'rgba(110, 235, 255, 0.55)',
+  anchor: '#b06bff',
+  anchorActive: '#e3c2ff',
+  hazard: '#ff5a3c',
+  hazardCore: '#7d1f10',
+  wall: 'rgba(120, 90, 255, 0.5)',
+  spark: '#ffd34d',
+  hint: 'rgba(255,255,255,0.85)',
+};
+
+class Renderer {
+  constructor(canvas) {
+    this.canvas = canvas;
+    this.ctx = canvas.getContext('2d');
+    this.camY = 0;
+    this.trail = [];
+    this.particles = [];
+    this._shake = 0;
+    this._stars = this._makeStars();
+    this._t = 0;
+    this.resize();
+  }
+
+  _makeStars() {
+    // 고정 시드 별밭 — 층마다 패럴랙스 계수가 다르다
+    const layers = [];
+    let s = 1234567;
+    const rnd = () => ((s = (s * 1103515245 + 12345) & 0x7fffffff) / 0x7fffffff);
+    for (const [count, depth, size] of [[70, 0.15, 1], [45, 0.35, 1.6], [22, 0.6, 2.4]]) {
+      const pts = [];
+      for (let i = 0; i < count; i++) pts.push({ x: rnd(), y: rnd(), tw: rnd() * Math.PI * 2 });
+      layers.push({ pts, depth, size });
+    }
+    return layers;
+  }
+
+  resize() {
+    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    const r = this.canvas.getBoundingClientRect();
+    this.canvas.width = Math.round(r.width * dpr);
+    this.canvas.height = Math.round(r.height * dpr);
+    this.ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    this.w = r.width;
+    this.h = r.height;
+    this.scale = this.w / (WORLD.halfW * 2 + 8);
+  }
+
+  reset(state) {
+    this.camY = state.y;
+    this.trail = [];
+    this.particles = [];
+    this._shake = 0;
+  }
+
+  // 월드 → 화면
+  sx(x) { return this.w / 2 + x * this.scale; }
+  sy(y) { return this.h * 0.68 - (y - this.camY) * this.scale; }
+
+  shake(power) { this._shake = Math.max(this._shake, power); }
+
+  burst(wx, wy) {
+    for (let i = 0; i < 14; i++) {
+      const a = Math.random() * Math.PI * 2, v = 30 + Math.random() * 90;
+      this.particles.push({ x: wx, y: wy, vx: Math.cos(a) * v, vy: Math.sin(a) * v, life: 0.6, max: 0.6, col: COL.spark, r: 1.6 });
+    }
+  }
+
+  explode(wx, wy) {
+    for (let i = 0; i < 42; i++) {
+      const a = Math.random() * Math.PI * 2, v = 40 + Math.random() * 200;
+      const col = Math.random() < 0.6 ? COL.comet : '#ffffff';
+      this.particles.push({ x: wx, y: wy, vx: Math.cos(a) * v, vy: Math.sin(a) * v, life: 0.9 + Math.random() * 0.5, max: 1.2, col, r: 1.2 + Math.random() * 2.2 });
+    }
+  }
+
+  draw(state, ui) {
+    const ctx = this.ctx;
+    const dt = 1 / 60;
+    this._t += dt;
+
+    // 카메라 — 위로는 바로, 아래로는 천천히 따라간다
+    const target = Math.max(state.y, state.height - 20);
+    this.camY += (target - this.camY) * (state.dead ? 0.04 : 0.14);
+
+    // 트레일 기록 (죽으면 멈춘다)
+    if (!state.dead && ui.mode === 'running') {
+      this.trail.push({ x: state.x, y: state.y });
+      if (this.trail.length > 46) this.trail.shift();
+    }
+
+    // 흔들림
+    let ox = 0, oy = 0;
+    if (this._shake > 0.2) {
+      ox = (Math.random() * 2 - 1) * this._shake;
+      oy = (Math.random() * 2 - 1) * this._shake;
+      this._shake *= 0.86;
+    }
+
+    // 배경
+    const g = ctx.createLinearGradient(0, 0, 0, this.h);
+    g.addColorStop(0, COL.bgTop);
+    g.addColorStop(1, COL.bgBottom);
+    ctx.fillStyle = g;
+    ctx.fillRect(0, 0, this.w, this.h);
+
+    ctx.save();
+    ctx.translate(ox, oy);
+
+    this._drawStars(ctx);
+    this._drawWalls(ctx, state);
+    this._drawAnchors(ctx, state, ui);
+    this._drawHazards(ctx, state);
+    this._drawTrail(ctx);
+    if (!state.dead && ui.mode !== 'ready') this._drawComet(ctx, state);
+    this._drawParticles(ctx, dt);
+    if (ui.mode === 'ready') this._drawReadyComet(ctx, state);
+    if (ui.mode === 'ready' && ui.demo) this._drawGhostDemo(ctx, state);
+    else if (ui.coach) this._drawCoachFinger(ctx, ui.coach === 'hold', ui.coach === 'hold' ? 'hold' : 'let go!');
+
+    ctx.restore();
+  }
+
+  _drawStars(ctx) {
+    for (const layer of this._stars) {
+      const scroll = (this.camY * this.scale * layer.depth) % this.h;
+      for (const p of layer.pts) {
+        let y = (p.y * this.h + scroll) % this.h;
+        if (y < 0) y += this.h;
+        const tw = 0.45 + 0.55 * Math.abs(Math.sin(this._t * 1.3 + p.tw));
+        ctx.globalAlpha = 0.25 + 0.5 * layer.depth * tw;
+        ctx.fillStyle = '#cfd9ff';
+        ctx.fillRect(p.x * this.w, this.h - y, layer.size, layer.size);
+      }
+    }
+    ctx.globalAlpha = 1;
+  }
+
+  _drawWalls(ctx, state) {
+    const xl = this.sx(-WORLD.halfW), xr = this.sx(WORLD.halfW);
+    for (const x of [xl, xr]) {
+      const grad = ctx.createLinearGradient(x - 6, 0, x + 6, 0);
+      grad.addColorStop(0, 'rgba(120,90,255,0)');
+      grad.addColorStop(0.5, COL.wall);
+      grad.addColorStop(1, 'rgba(120,90,255,0)');
+      ctx.fillStyle = grad;
+      ctx.fillRect(x - 6, 0, 12, this.h);
+      ctx.strokeStyle = 'rgba(170,140,255,0.8)';
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.moveTo(x, 0);
+      ctx.lineTo(x, this.h);
+      ctx.stroke();
+    }
+    // 벽 눈금 — 스크롤이 몸으로 느껴지게
+    ctx.strokeStyle = 'rgba(170,140,255,0.35)';
+    ctx.lineWidth = 1;
+    const stepW = 40 * this.scale;
+    const base = (this.camY * this.scale) % stepW;
+    for (let y = -stepW; y < this.h + stepW; y += stepW) {
+      const yy = y + base;
+      for (const [x, d] of [[xl, 1], [xr, -1]]) {
+        ctx.beginPath();
+        ctx.moveTo(x, yy);
+        ctx.lineTo(x + d * 7, yy);
+        ctx.stroke();
+      }
+    }
+  }
+
+  _visible(wy, pad = 80) {
+    const y = this.sy(wy);
+    return y > -pad && y < this.h + pad;
+  }
+
+  _drawAnchors(ctx, state, ui) {
+    const pulse = 0.5 + 0.5 * Math.sin(this._t * 3.2);
+    for (let i = 0; i < state.anchors.length; i++) {
+      const a = state.anchors[i];
+      if (!this._visible(a.y)) continue;
+      const x = this.sx(a.x), y = this.sy(a.y);
+      const active = state.orbit && state.orbit.i === i;
+      const inRange = !state.dead && Math.hypot(a.x - state.x, a.y - state.y) < WORLD.captureR;
+
+      // 잡을 수 있는 앵커: 점선 캡처 링이 숨쉰다
+      if (inRange && !active) {
+        ctx.setLineDash([4, 6]);
+        ctx.strokeStyle = `rgba(176,107,255,${0.25 + 0.3 * pulse})`;
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.arc(x, y, WORLD.captureR * this.scale * (0.92 + 0.06 * pulse), 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.setLineDash([]);
+      }
+
+      // 궤도 중: 실제 궤도 원 + 앵커→코멧 빔
+      if (active) {
+        ctx.strokeStyle = 'rgba(227,194,255,0.5)';
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.arc(x, y, state.orbit.r * this.scale, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.strokeStyle = 'rgba(227,194,255,0.35)';
+        ctx.beginPath();
+        ctx.moveTo(x, y);
+        ctx.lineTo(this.sx(state.x), this.sy(state.y));
+        ctx.stroke();
+      }
+
+      // 앵커 본체 — 이중 네온 링
+      const col = active ? COL.anchorActive : COL.anchor;
+      ctx.shadowColor = col;
+      ctx.shadowBlur = active ? 22 : 12;
+      ctx.strokeStyle = col;
+      ctx.lineWidth = active ? 3 : 2;
+      ctx.beginPath();
+      ctx.arc(x, y, 4.6 * this.scale * 0.55, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.fillStyle = col;
+      ctx.beginPath();
+      ctx.arc(x, y, 1.4 * this.scale * 0.55, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.shadowBlur = 0;
+    }
+  }
+
+  _drawHazards(ctx, state) {
+    for (let i = 0; i < state.hazards.length; i++) {
+      const hz = state.hazards[i];
+      if (!this._visible(hz.y)) continue;
+      const x = this.sx(hz.x), y = this.sy(hz.y);
+      const r = WORLD.hazardR * this.scale;
+      const rot = this._t * 0.4 + i * 1.7;
+      ctx.save();
+      ctx.translate(x, y);
+      ctx.rotate(rot);
+      ctx.shadowColor = COL.hazard;
+      ctx.shadowBlur = 14;
+      ctx.fillStyle = COL.hazardCore;
+      ctx.strokeStyle = COL.hazard;
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      for (let k = 0; k < 8; k++) {
+        const a = (k / 8) * Math.PI * 2;
+        const rr = r * (0.82 + 0.18 * Math.sin(i * 3.1 + k * 2.7));
+        const px = Math.cos(a) * rr, py = Math.sin(a) * rr;
+        k === 0 ? ctx.moveTo(px, py) : ctx.lineTo(px, py);
+      }
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+      ctx.shadowBlur = 0;
+      ctx.fillStyle = 'rgba(255,90,60,0.5)';
+      ctx.beginPath();
+      ctx.arc(-r * 0.25, -r * 0.2, r * 0.18, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+    }
+  }
+
+  _drawTrail(ctx) {
+    if (this.trail.length < 2) return;
+    for (let i = 1; i < this.trail.length; i++) {
+      const p = this.trail[i - 1], q = this.trail[i];
+      const t = i / this.trail.length;
+      ctx.strokeStyle = COL.trail;
+      ctx.globalAlpha = t * 0.7;
+      ctx.lineWidth = t * 5;
+      ctx.lineCap = 'round';
+      ctx.beginPath();
+      ctx.moveTo(this.sx(p.x), this.sy(p.y));
+      ctx.lineTo(this.sx(q.x), this.sy(q.y));
+      ctx.stroke();
+    }
+    ctx.globalAlpha = 1;
+  }
+
+  _drawComet(ctx, state) {
+    const x = this.sx(state.x), y = this.sy(state.y);
+    const r = WORLD.cometR * this.scale;
+    ctx.shadowColor = COL.comet;
+    ctx.shadowBlur = 26;
+    ctx.fillStyle = COL.comet;
+    ctx.beginPath();
+    ctx.arc(x, y, r, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.shadowBlur = 10;
+    ctx.fillStyle = COL.cometCore;
+    ctx.beginPath();
+    ctx.arc(x, y, r * 0.55, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.shadowBlur = 0;
+  }
+
+  _drawParticles(ctx, dt) {
+    this.particles = this.particles.filter((p) => (p.life -= dt) > 0);
+    for (const p of this.particles) {
+      p.x += p.vx * dt;
+      p.y += p.vy * dt;
+      p.vx *= 0.97;
+      p.vy *= 0.97;
+      ctx.globalAlpha = Math.max(0, p.life / p.max);
+      ctx.fillStyle = p.col;
+      ctx.beginPath();
+      ctx.arc(this.sx(p.x), this.sy(p.y), p.r * this.scale * 0.5, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.globalAlpha = 1;
+  }
+
+  // 출발대: 코멧이 숨쉬듯 떠 있다
+  _drawReadyComet(ctx, state) {
+    const bob = Math.sin(this._t * 2.2) * 4;
+    const x = this.sx(state.x), y = this.sy(state.y) + bob;
+    const r = WORLD.cometR * this.scale;
+    ctx.shadowColor = COL.comet;
+    ctx.shadowBlur = 26;
+    ctx.fillStyle = COL.comet;
+    ctx.beginPath();
+    ctx.arc(x, y, r, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.shadowBlur = 0;
+    ctx.fillStyle = COL.cometCore;
+    ctx.beginPath();
+    ctx.arc(x, y, r * 0.55, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  // 유령 시범 — 첫 릴리즈에 성공하기 전까지, 출발대에서 유령 혜성이 직접 보여준다:
+  // 다가가고 → (손가락이 누르면) 붙어서 한 바퀴 돌고 → (손가락이 떼면) 위로 날아간다.
+  // 글 대신 손이 가르친다.
+  _drawGhostDemo(ctx, state) {
+    const a = state.anchors[0];
+    const r = 20;
+    const T = 4.4, t = this._t % T;
+    let gx, gy, pressed = false, label = null, alpha = 0.7;
+
+    if (t < 1.1) {
+      // 아래에서 궤도 가장자리로 다가간다
+      const k = t / 1.1;
+      gx = a.x + r;
+      gy = a.y - 60 + 60 * k;
+    } else if (t < 3.0) {
+      // 손가락이 누르고 — 한 바퀴
+      pressed = true;
+      label = 'hold';
+      const th = ((t - 1.1) / 1.9) * Math.PI * 2;
+      gx = a.x + Math.cos(th) * r;
+      gy = a.y + Math.sin(th) * r;
+    } else if (t < 3.9) {
+      // 손가락을 떼고 — 접선(위)으로 날아가며 사라진다
+      const k = (t - 3.0) / 0.9;
+      gx = a.x + r;
+      gy = a.y + k * 90;
+      alpha = 0.7 * (1 - k);
+      if (k < 0.45) label = 'let go!';
+    } else {
+      this._drawCoachFinger(ctx, false, null);
+      return;
+    }
+
+    // 시범 중에는 캡처 링을 항상 보여준다
+    ctx.setLineDash([4, 6]);
+    ctx.strokeStyle = 'rgba(176,107,255,0.35)';
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.arc(this.sx(a.x), this.sy(a.y), WORLD.captureR * this.scale * 0.95, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.setLineDash([]);
+    if (pressed) {
+      ctx.strokeStyle = 'rgba(227,194,255,0.45)';
+      ctx.beginPath();
+      ctx.arc(this.sx(a.x), this.sy(a.y), r * this.scale, 0, Math.PI * 2);
+      ctx.stroke();
+    }
+
+    // 유령 혜성
+    const x = this.sx(gx), y = this.sy(gy);
+    ctx.globalAlpha = alpha;
+    ctx.shadowColor = COL.comet;
+    ctx.shadowBlur = 16;
+    ctx.fillStyle = COL.comet;
+    ctx.beginPath();
+    ctx.arc(x, y, WORLD.cometR * this.scale * 0.9, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.shadowBlur = 0;
+    ctx.globalAlpha = 1;
+
+    this._drawCoachFinger(ctx, pressed, label);
+  }
+
+  // 화면 아래 중앙의 코치 손가락 — 엄지가 실제로 닿을 자리에서 누름/뗌을 보여준다
+  _drawCoachFinger(ctx, pressed, label) {
+    const hx = this.w / 2, hy = this.h * 0.88;
+    const pulse = 0.5 + 0.5 * Math.sin(this._t * 5);
+
+    ctx.beginPath();
+    ctx.arc(hx, hy, pressed ? 24 : 27, 0, Math.PI * 2);
+    if (pressed) {
+      ctx.fillStyle = `rgba(142,246,255,${0.16 + 0.12 * pulse})`;
+      ctx.fill();
+      ctx.strokeStyle = COL.hint;
+      ctx.lineWidth = 3;
+      ctx.stroke();
+    } else {
+      ctx.strokeStyle = `rgba(255,255,255,${0.3 + 0.25 * pulse})`;
+      ctx.lineWidth = 2;
+      ctx.setLineDash([3, 5]);
+      ctx.stroke();
+      ctx.setLineDash([]);
+    }
+
+    ctx.font = '26px system-ui';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('👆', hx, hy + (pressed ? 3 : 0));
+
+    if (label) {
+      ctx.font = '800 15px system-ui';
+      ctx.fillStyle = label === 'hold' ? COL.hint : COL.spark;
+      ctx.shadowColor = 'rgba(0,0,0,0.8)';
+      ctx.shadowBlur = 6;
+      ctx.fillText(label, hx, hy + 46);
+      ctx.shadowBlur = 0;
+    }
+  }
+}
+
+// ===== comet-sling/audio.js =====
+// WebAudio 신시사이저 — 오디오 파일 없이 코드로만 효과음을 만든다.
+// 형제 게임들의 Sound와 같은 뼈대지만, 소리의 결이 다르다:
+// 딸깍·퐁 같은 '장난감' 소리 대신 휘익·지잉·쿵 같은 '속도'의 소리다.
+
+const STORAGE_MUTED = 'cms.muted';
+
+class Sound {
+  constructor() {
+    this.muted = safeStorage.getItem(STORAGE_MUTED) === '1';
+    this._ctx = null;
+  }
+
+  get ctx() {
+    if (typeof AudioContext === 'undefined' && typeof webkitAudioContext === 'undefined') return null;
+    if (!this._ctx) {
+      try {
+        this._ctx = new (window.AudioContext || window.webkitAudioContext)();
+      } catch {
+        return null;
+      }
+    }
+    if (this._ctx.state === 'suspended') this._ctx.resume().catch(() => {});
+    return this._ctx;
+  }
+
+  setMuted(m) {
+    this.muted = m;
+    safeStorage.setItem(STORAGE_MUTED, m ? '1' : '0');
+  }
+
+  _tone(freq, { type = 'sine', dur = 0.12, gain = 0.1, delay = 0, slide = 0 } = {}) {
+    if (this.muted) return;
+    const ctx = this.ctx;
+    if (!ctx) return;
+    try {
+      const t0 = ctx.currentTime + delay;
+      const osc = ctx.createOscillator();
+      const g = ctx.createGain();
+      osc.type = type;
+      osc.frequency.setValueAtTime(freq, t0);
+      if (slide) osc.frequency.exponentialRampToValueAtTime(Math.max(40, freq + slide), t0 + dur);
+      g.gain.setValueAtTime(0, t0);
+      g.gain.linearRampToValueAtTime(gain, t0 + 0.008);
+      g.gain.exponentialRampToValueAtTime(0.0008, t0 + dur);
+      osc.connect(g).connect(ctx.destination);
+      osc.start(t0);
+      osc.stop(t0 + dur + 0.05);
+    } catch {}
+  }
+
+  _noise({ dur = 0.3, gain = 0.18, freq = 800, delay = 0, q = 1 } = {}) {
+    if (this.muted) return;
+    const ctx = this.ctx;
+    if (!ctx) return;
+    try {
+      const t0 = ctx.currentTime + delay;
+      const len = Math.ceil(ctx.sampleRate * dur);
+      const buf = ctx.createBuffer(1, len, ctx.sampleRate);
+      const data = buf.getChannelData(0);
+      for (let i = 0; i < len; i++) data[i] = Math.random() * 2 - 1;
+      const src = ctx.createBufferSource();
+      src.buffer = buf;
+      const filt = ctx.createBiquadFilter();
+      filt.type = 'bandpass';
+      filt.frequency.setValueAtTime(freq, t0);
+      filt.Q.value = q;
+      const g = ctx.createGain();
+      g.gain.setValueAtTime(gain, t0);
+      g.gain.exponentialRampToValueAtTime(0.0008, t0 + dur);
+      src.connect(filt).connect(g).connect(ctx.destination);
+      src.start(t0);
+    } catch {}
+  }
+
+  // 출발 — 낮은 곳에서 치솟는 휘익
+  launch() {
+    this._noise({ dur: 0.35, gain: 0.1, freq: 500, q: 0.8 });
+    this._tone(160, { type: 'sawtooth', dur: 0.32, gain: 0.05, slide: 420 });
+  }
+
+  // 앵커에 딱 붙는 순간 — 짧고 단단한 저음 + 자기장 울림
+  latch() {
+    this._tone(110, { type: 'square', dur: 0.06, gain: 0.1 });
+    this._tone(330, { type: 'sine', dur: 0.18, gain: 0.05, delay: 0.02 });
+  }
+
+  // 놓는 순간 — 위로 감기는 지잉
+  release() {
+    this._tone(220, { type: 'sawtooth', dur: 0.16, gain: 0.06, slide: 500 });
+    this._noise({ dur: 0.14, gain: 0.05, freq: 1800, q: 1.5 });
+  }
+
+  // 니어미스 — 밝은 반짝
+  spark() {
+    this._tone(1500, { type: 'sine', dur: 0.09, gain: 0.09 });
+    this._tone(2100, { type: 'sine', dur: 0.1, gain: 0.06, delay: 0.045 });
+  }
+
+  // 죽음 — 원인별로 무게가 다르다
+  crash(cause) {
+    if (cause === 'fell') {
+      this._tone(500, { type: 'sine', dur: 0.5, gain: 0.09, slide: -420 });
+    } else {
+      this._noise({ dur: 0.4, gain: 0.22, freq: 220, q: 0.7 });
+      this._tone(70, { type: 'square', dur: 0.3, gain: 0.12 });
+    }
+  }
+
+  // 최고 기록 갱신
+  fanfare() {
+    const notes = [523, 659, 784, 1047];
+    notes.forEach((f, i) => this._tone(f, { type: 'triangle', dur: 0.16, gain: 0.09, delay: i * 0.09 }));
+  }
+}
+
+// ===== comet-sling/ads.js =====
+// 전면 광고 자리와 노출 빈도 관리 — 형제 게임들과 같은 뼈대, 다른 단위.
+//
+// 퍼즐 게임은 '레벨 클리어'를 세지만, 엔드리스 러너는 '런'을 센다. 규칙도 그에 맞춘다:
+//   - 처음 몇 런은 무조건 무광고 (재미를 느끼기 전에 끊으면 그대로 이탈한다)
+//   - 런 도중에는 절대 안 뜬다. 죽고 나서 "다시" 를 누르는 전환 순간에만 뜬다
+//   - 짧은 런(몇 초 만에 죽음) 뒤에는 안 뜬다 — 연속 즉사에 광고까지 겹치면 최악의 경험이다
+//   - 런 수 조건과 시간 간격을 함께 본다
+
+const STORAGE_AD = 'cms.ads';
+
+const AD_CONFIG = {
+  // 이 횟수만큼 런을 마치기 전에는 광고를 띄우지 않는다
+  freeRuns: 5,
+  // 그 뒤로는 이 런 수마다
+  everyNRuns: 3,
+  // 아무리 자주 죽어도 이 시간(초) 안에는 두 번 띄우지 않는다
+  minSecondsBetween: 60,
+  // 이 시간(초)보다 짧았던 런 뒤에는 띄우지 않는다
+  minRunSeconds: 20,
+  // 닫기 버튼이 열리기까지의 시간(초)
+  countdownSeconds: 5,
+};
+
+// 광고 자리만 보여주는 기본 제공자 — 실제 SDK를 붙일 때 이 객체만 갈아끼운다.
+function createPlaceholderProvider({ root, closeBtn, config = AD_CONFIG }) {
+  return {
+    name: 'placeholder',
+    isReady: () => true,
+    show() {
+      return new Promise((resolve) => {
+        let left = config.countdownSeconds;
+        root.classList.remove('hidden');
+        closeBtn.disabled = true;
+        closeBtn.textContent = String(left);
+
+        const tick = setInterval(() => {
+          left -= 1;
+          if (left > 0) {
+            closeBtn.textContent = String(left);
+            return;
+          }
+          clearInterval(tick);
+          closeBtn.disabled = false;
+          closeBtn.textContent = '✕';
+          closeBtn.setAttribute('aria-label', 'Close ad');
+        }, 1000);
+
+        const done = () => {
+          clearInterval(tick);
+          closeBtn.removeEventListener('click', done);
+          root.classList.add('hidden');
+          resolve();
+        };
+        closeBtn.addEventListener('click', done);
+      });
+    },
+  };
+}
+
+class AdManager {
+  constructor({ provider, config = AD_CONFIG, enabled = true }) {
+    this.provider = provider;
+    this.config = config;
+    this.enabled = enabled;
+    this.showing = false;
+
+    let saved = {};
+    try {
+      saved = JSON.parse(safeStorage.getItem(STORAGE_AD) || '{}');
+    } catch {
+      saved = {};
+    }
+    this.runsTotal = Number(saved.runsTotal) || 0;
+    this.runsSinceAd = Number(saved.runsSinceAd) || 0;
+    // 마지막 광고 시각은 저장하지 않는다 — 앱을 다시 열었을 때
+    // "너무 이르다"는 이유로 건너뛰는 게 더 이상하다.
+    this.lastShownAt = 0;
+  }
+
+  _save() {
+    try {
+      safeStorage.setItem(
+        STORAGE_AD,
+        JSON.stringify({ runsTotal: this.runsTotal, runsSinceAd: this.runsSinceAd })
+      );
+    } catch {}
+  }
+
+  // 런이 하나 끝났다. 노출 여부 판단은 maybeShow에서.
+  noteRunEnded() {
+    this.runsTotal += 1;
+    this.runsSinceAd += 1;
+    this._save();
+  }
+
+  shouldShow(runSeconds, now = Date.now()) {
+    if (!this.enabled || this.showing) return false;
+    if (this.runsTotal <= this.config.freeRuns) return false;
+    if (this.runsSinceAd < this.config.everyNRuns) return false;
+    if (runSeconds < this.config.minRunSeconds) return false;
+    if (this.lastShownAt && now - this.lastShownAt < this.config.minSecondsBetween * 1000) {
+      return false;
+    }
+    return this.provider.isReady();
+  }
+
+  // 조건이 맞으면 광고를 띄우고 닫힐 때까지 기다린다. 아니면 즉시 넘어간다.
+  async maybeShow(runSeconds, now = Date.now()) {
+    if (!this.shouldShow(runSeconds, now)) return false;
+    this.showing = true;
+    try {
+      await this.provider.show();
+    } catch {
+      // 광고를 못 띄워도 게임 흐름은 멈추지 않는다
+    }
+    this.showing = false;
+    this.runsSinceAd = 0;
+    this.lastShownAt = Date.now();
+    this._save();
+    return true;
+  }
+}
+
+// ===== comet-sling/signup.js =====
+// 이메일 가입 게이트 — 첫 실행 때 한 번만 뜬다.
+//
+// 두 가지 경로로 이메일을 받는다:
+//   1) 직접 입력 → 시작하기
+//   2) 구글 로그인 버튼 (SIGNUP_CONFIG.googleClientId 를 채우면 켜진다)
+//
+// 받은 이메일은 기기에 저장하고, SIGNUP_CONFIG.endpoint(Apps Script 웹앱 URL)가
+// 설정돼 있으면 구글 시트로도 보낸다. 전송 실패분은 큐에 쌓았다가 다음 실행 때 재시도한다.
+// 설정 방법은 EMAIL-SETUP.md 참고.
+//
+// 강제 가입은 이탈을 부르므로 "그냥 플레이" 를 반드시 남겨 둔다 — 이메일 몇 개보다
+// 플레이어 전부를 잃는 쪽이 훨씬 비싸다.
+
+const SIGNUP_CONFIG = {
+  // 구글 클라우드 콘솔에서 발급한 웹 OAuth 클라이언트 ID (비어 있으면 구글 버튼 숨김)
+  googleClientId: '',
+  // 이메일이 쌓일 Apps Script 웹앱 URL (비어 있으면 기기 저장만)
+  endpoint: '',
+};
+
+const SIGNUP_STORE = {
+  email: 'cms.email',
+  skipped: 'cms.emailSkipped',
+  queue: 'cms.emailQueue',
+};
+
+function validEmail(v) {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(v);
+}
+
+function loadQueue() {
+  try {
+    return JSON.parse(safeStorage.getItem(SIGNUP_STORE.queue) || '[]');
+  } catch {
+    return [];
+  }
+}
+
+function saveQueue(q) {
+  try {
+    safeStorage.setItem(SIGNUP_STORE.queue, JSON.stringify(q.slice(-20)));
+  } catch {}
+}
+
+// Apps Script는 no-cors 로 쏜다 — 응답은 못 읽지만 도착은 한다.
+// 도착 확인이 불가능하므로 큐에서 지우는 건 fetch 가 예외 없이 끝났을 때다.
+async function send(entry, config) {
+  if (!config.endpoint) return false;
+  try {
+    await fetch(config.endpoint, {
+      method: 'POST',
+      mode: 'no-cors',
+      headers: { 'Content-Type': 'text/plain' },
+      body: JSON.stringify(entry),
+    });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+async function flushQueue(config) {
+  const q = loadQueue();
+  if (!q.length || !config.endpoint) return;
+  const remain = [];
+  for (const entry of q) {
+    if (!(await send(entry, config))) remain.push(entry);
+  }
+  saveQueue(remain);
+}
+
+function decodeJwtEmail(credential) {
+  try {
+    const payload = JSON.parse(
+      atob(credential.split('.')[1].replace(/-/g, '+').replace(/_/g, '/'))
+    );
+    return payload.email || null;
+  } catch {
+    return null;
+  }
+}
+
+// 구글 로그인 버튼 — 클라이언트 ID가 있을 때만 스크립트를 불러와 렌더한다.
+// 스크립트 로드에 실패해도 이메일 입력은 그대로 살아 있다.
+function initGoogleButton(dom, config, onEmail) {
+  if (!config.googleClientId) return;
+  const s = document.createElement('script');
+  s.src = 'https://accounts.google.com/gsi/client';
+  s.async = true;
+  s.onload = () => {
+    try {
+      window.google.accounts.id.initialize({
+        client_id: config.googleClientId,
+        callback: (resp) => {
+          const email = decodeJwtEmail(resp.credential);
+          if (email) onEmail(email, 'google');
+        },
+      });
+      window.google.accounts.id.renderButton(dom.googleBtn, {
+        theme: 'filled_black',
+        size: 'large',
+        text: 'continue_with',
+        width: 280,
+      });
+      dom.googleBtn.classList.remove('hidden');
+      dom.orDivider.classList.remove('hidden');
+    } catch {}
+  };
+  document.head.appendChild(s);
+}
+
+class SignupGate {
+  constructor({ dom, config = SIGNUP_CONFIG, onDone }) {
+    this.dom = dom;
+    this.config = config;
+    this.onDone = onDone || (() => {});
+
+    // 이미 가입했거나 건너뛴 사람에게는 다시 묻지 않는다
+    if (safeStorage.getItem(SIGNUP_STORE.email) || safeStorage.getItem(SIGNUP_STORE.skipped) === '1') {
+      this.dom.signup.classList.add('hidden');
+      flushQueue(this.config); // 미전송분 재시도
+      this.onDone();
+      return;
+    }
+
+    this.dom.signup.classList.remove('hidden');
+
+    const accept = (email, via) => this._accept(email, via);
+
+    this.dom.emailForm.addEventListener('submit', (e) => {
+      e.preventDefault();
+      const v = this.dom.emailInput.value.trim();
+      if (!validEmail(v)) {
+        this.dom.emailInput.classList.add('shake');
+        setTimeout(() => this.dom.emailInput.classList.remove('shake'), 400);
+        return;
+      }
+      accept(v, 'form');
+    });
+
+    this.dom.skipBtn.addEventListener('click', () => {
+      safeStorage.setItem(SIGNUP_STORE.skipped, '1');
+      this._close();
+    });
+
+    initGoogleButton(this.dom, this.config, accept);
+  }
+
+  _accept(email, via) {
+    safeStorage.setItem(SIGNUP_STORE.email, email);
+    const entry = { email, via, game: 'comet-sling', at: new Date().toISOString() };
+    send(entry, this.config).then((ok) => {
+      if (!ok) {
+        const q = loadQueue();
+        q.push(entry);
+        saveQueue(q);
+      }
+    });
+    this._close();
+  }
+
+  _close() {
+    this.dom.signup.classList.add('hidden');
+    this.onDone();
+  }
+}
+
+// ===== comet-sling/game.js =====
+// 게임 껍데기 — 엔진(순수 물리)을 화면·소리·저장과 잇는다.
+// 모드: ready(출발대) → running(런) → dead(결과) → ready…
+
+
+const STORE = {
+  best: 'cms.best',
+  runs: 'cms.runs',
+  taught: 'cms.taught', // 성공한 릴리즈 누적 수 — 0이면 유령 시범, 3 미만이면 코치 손가락
+};
+
+const COACH_UNTIL_RELEASES = 3;
+
+class Game {
+  constructor({ renderer, sound, dom, onRunEnded }) {
+    this.renderer = renderer;
+    this.sound = sound;
+    this.dom = dom;
+    this.onRunEnded = onRunEnded || (() => {});
+
+    this.best = Number(safeStorage.getItem(STORE.best) || 0);
+    this.runs = Number(safeStorage.getItem(STORE.runs) || 0);
+    this.releases = Number(safeStorage.getItem(STORE.taught) || 0);
+
+    this.mode = 'ready';
+    this.holding = false;
+    this._acc = 0;
+    this._deadAt = 0;
+    this._newBest = false;
+    this._runSeconds = 0;
+    this.state = newRun(this._seed());
+
+    this._syncHud();
+    this.dom.overlay.classList.add('hidden');
+  }
+
+  _seed() {
+    // 런마다 다른 시드. 디버그에서는 ?seed=로 고정할 수 있다 (main.js).
+    return (Date.now() ^ (Math.random() * 0xffffffff)) >>> 0;
+  }
+
+  // ----- 입력 -----
+
+  press() {
+    this.holding = true;
+    if (this.mode === 'ready') {
+      this.mode = 'running';
+      this._runSeconds = 0;
+      this.dom.overlay.classList.add('hidden');
+      this.sound.launch();
+    } else if (this.mode === 'dead' && performance.now() - this._deadAt > 600) {
+      this._retry();
+    }
+  }
+
+  releasePress() {
+    this.holding = false;
+  }
+
+  async _retry() {
+    this.holding = false;
+    await this.onRunEnded(this._runSeconds); // 광고 게이트 — 짧은 런에는 안 뜬다 (ads.js)
+    this.state = newRun(this._forcedSeed ?? this._seed());
+    this.mode = 'ready';
+    this._newBest = false;
+    this.renderer.reset(this.state);
+    this.dom.overlay.classList.add('hidden');
+    this._syncHud();
+  }
+
+  // ----- 프레임 -----
+
+  frame(dtMs) {
+    if (this.mode === 'running' && !this.state.dead) {
+      this._acc += Math.min(dtMs, 100) / 1000;
+      this._runSeconds += Math.min(dtMs, 100) / 1000;
+      while (this._acc >= DT) {
+        step(this.state, { hold: this.holding });
+        this._acc -= DT;
+      }
+      this._handleEvents();
+      this._syncHud();
+    }
+    this.renderer.draw(this.state, {
+      mode: this.mode,
+      holding: this.holding,
+      demo: this.releases === 0,
+      coach: this._coach(),
+    });
+  }
+
+  // 아직 손에 익기 전(릴리즈 3회 미만)에는 지금 뭘 해야 하는지 손가락이 짚어준다
+  _coach() {
+    if (this.releases >= COACH_UNTIL_RELEASES) return null;
+    if (this.mode !== 'running' || this.state.dead) return null;
+    const s = this.state;
+    if (s.mode === 'orbit') {
+      // 접선이 위를 향하는 릴리즈 타이밍
+      const o = s.orbit;
+      const upness = Math.cos(o.theta) * o.dir;
+      return upness > 0.45 ? 'release' : null;
+    }
+    if (!this.holding) {
+      // 잡을 수 있는 앵커가 사거리 안에 있는데 안 누르고 있다
+      const near = s.anchors.some(
+        (a) => a.y >= s.y - WORLD.captureR && Math.hypot(a.x - s.x, a.y - s.y) < WORLD.captureR * 1.2
+      );
+      if (near) return 'hold';
+    }
+    return null;
+  }
+
+  _handleEvents() {
+    for (const ev of drainEvents(this.state)) {
+      if (ev.type === 'latch') this.sound.latch();
+      if (ev.type === 'release') {
+        this.sound.release();
+        if (this.releases < COACH_UNTIL_RELEASES) {
+          this.releases += 1;
+          safeStorage.setItem(STORE.taught, String(this.releases));
+        }
+      }
+      if (ev.type === 'spark') {
+        this.sound.spark();
+        this.renderer.burst(ev.x, ev.y);
+      }
+      if (ev.type === 'death') this._onDeath(ev.cause);
+    }
+  }
+
+  _onDeath(cause) {
+    this.mode = 'dead';
+    this._deadAt = performance.now();
+    this.holding = false;
+    this.runs += 1;
+    safeStorage.setItem(STORE.runs, String(this.runs));
+
+    const s = score(this.state);
+    if (s > this.best) {
+      this.best = s;
+      this._newBest = true;
+      safeStorage.setItem(STORE.best, String(s));
+    }
+
+    this.sound.crash(cause);
+    this.renderer.shake(cause === 'wall' ? 10 : 14);
+    this.renderer.explode(this.state.x, this.state.y);
+    if (this._newBest) setTimeout(() => this.sound.fanfare(), 550);
+
+    // 폭발이 눈에 들어온 다음에 결과 카드를 올린다
+    setTimeout(() => {
+      this.dom.overlayScore.textContent = String(s);
+      this.dom.overlayBest.textContent = this._newBest ? 'NEW BEST!' : `BEST ${this.best}`;
+      this.dom.overlayBest.classList.toggle('newbest', this._newBest);
+      this.dom.overlay.classList.remove('hidden');
+      this._syncHud();
+    }, 650);
+  }
+
+  _syncHud() {
+    this.dom.scoreLabel.textContent = String(score(this.state));
+    this.dom.bestLabel.textContent = `BEST ${this.best}`;
+  }
+}
+
+// ===== comet-sling/main.js =====
+// 부트스트랩 — DOM 연결, 입력(홀드/릴리즈), 루프, 리사이즈, 디버그 API.
+
+
+
+
+
+
+
+const $ = (id) => document.getElementById(id);
+const dom = {
+  board: $('board'),
+  scoreLabel: $('scoreLabel'),
+  bestLabel: $('bestLabel'),
+  btnMute: $('btnMute'),
+  overlay: $('overlay'),
+  overlayScore: $('overlayScore'),
+  overlayBest: $('overlayBest'),
+  signup: $('signup'),
+  emailForm: $('emailForm'),
+  emailInput: $('emailInput'),
+  skipBtn: $('skipBtn'),
+  googleBtn: $('googleBtn'),
+  orDivider: $('orDivider'),
+};
+
+const params = new URLSearchParams(location.search);
+
+const renderer = new Renderer(dom.board);
+const sound = new Sound();
+
+// ?noads 로 광고를 끌 수 있다 (개발·자동화 테스트용)
+const ads = new AdManager({
+  enabled: !params.has('noads'),
+  provider: createPlaceholderProvider({
+    root: $('adSlot'),
+    closeBtn: $('adClose'),
+    config: AD_CONFIG,
+  }),
+});
+
+const game = new Game({
+  renderer,
+  sound,
+  dom,
+  // 광고는 죽은 뒤 "다시" 전환 순간에만. 런 도중에는 절대 안 뜬다.
+  onRunEnded: async (runSeconds) => {
+    ads.noteRunEnded();
+    await ads.maybeShow(runSeconds);
+  },
+});
+
+// 첫 실행 이메일 게이트 — 가입/건너뛰기 전에는 키 입력을 게임에 흘리지 않는다
+// (포인터는 게이트가 화면을 덮고 있어 자동으로 막힌다)
+let gateOpen = true;
+new SignupGate({
+  dom,
+  config: SIGNUP_CONFIG,
+  onDone: () => {
+    gateOpen = false;
+  },
+});
+
+// ?seed=123 으로 트랙을 고정할 수 있다 (리플레이/테스트용)
+if (params.has('seed')) {
+  game._forcedSeed = Number(params.get('seed')) >>> 0;
+  game.state = newRun(game._forcedSeed);
+  renderer.reset(game.state);
+}
+
+function updateMuteIcon() {
+  dom.btnMute.textContent = sound.muted ? '🔇' : '🔊';
+}
+
+// 입력 — 화면 아무 데나 누르면 잡고, 떼면 놓는다. 한 손가락이 전부다.
+dom.board.addEventListener('pointerdown', (e) => {
+  e.preventDefault();
+  game.press();
+});
+window.addEventListener('pointerup', () => game.releasePress());
+window.addEventListener('pointercancel', () => game.releasePress());
+window.addEventListener('blur', () => game.releasePress());
+dom.board.addEventListener('contextmenu', (e) => e.preventDefault());
+
+// 데스크톱 테스트용: 스페이스/아무 키나 홀드
+window.addEventListener('keydown', (e) => {
+  if (e.repeat || gateOpen) return;
+  if (e.key === ' ' || e.key === 'ArrowUp') game.press();
+});
+window.addEventListener('keyup', (e) => {
+  if (e.key === ' ' || e.key === 'ArrowUp') game.releasePress();
+});
+
+dom.btnMute.addEventListener('click', (e) => {
+  e.stopPropagation();
+  sound.setMuted(!sound.muted);
+  updateMuteIcon();
+});
+
+new ResizeObserver(() => renderer.resize()).observe(dom.board);
+window.addEventListener('resize', () => renderer.resize());
+
+updateMuteIcon();
+renderer.resize();
+
+// 메인 루프 — 렌더는 rAF, 물리는 game.frame 안에서 고정 스텝으로 돈다
+let last = performance.now();
+function loop(now) {
+  const dtMs = now - last;
+  last = now;
+  game.frame(dtMs);
+  requestAnimationFrame(loop);
+}
+requestAnimationFrame(loop);
+
+// ?debug — 자동화 테스트/개발용 훅
+if (params.has('debug')) {
+  window.__cms = {
+    game,
+    renderer,
+    sound,
+    ads,
+    adsModule: { AdManager, AD_CONFIG },
+    engine: { newRun, WORLD, paramsAt },
+    state: () => game.state,
+    press: () => game.press(),
+    release: () => game.releasePress(),
+    kill: () => {
+      game.state.dead = false;
+      game.state.events.push({ type: 'death', cause: 'debug' });
+      game._handleEvents();
+    },
+    newRun: (seed) => {
+      game.state = newRun(seed >>> 0);
+      game.mode = 'ready';
+      renderer.reset(game.state);
+      dom.overlay.classList.add('hidden');
+    },
+  };
+}
+
+</script>
+</body>
+</html>
