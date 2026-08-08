@@ -1,0 +1,56 @@
+# 게임들을 GitHub Pages로 배포한다 — 저장소 설정을 손대지 않아도
+# configure-pages의 enablement가 첫 실행 때 Pages를 켠다.
+#
+# 배포 주소:
+#   https://hugoseong0721.github.io/amazon-affiliate-share/                    (어필리에이트 도구)
+#   https://hugoseong0721.github.io/amazon-affiliate-share/crossword/          (크로스워드)
+#   https://hugoseong0721.github.io/amazon-affiliate-share/torch-dive/dist/torch-dive.html (토치 다이브)
+
+name: Deploy games to GitHub Pages
+
+on:
+  push:
+    branches:
+      - main
+      - claude/game-idea-differentiation-ij0g9r
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Assemble site (웹에 필요한 것만 — 앱 셸·대용량 자산 제외)
+        run: |
+          mkdir -p _site
+          rsync -a ./ _site/ \
+            --exclude '.git' \
+            --exclude '.github' \
+            --exclude '_site' \
+            --exclude 'magnet-balls-app' \
+            --exclude 'store-assets' \
+            --exclude 'node_modules'
+
+      - uses: actions/configure-pages@v5
+        with:
+          enablement: true
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+
+      - id: deployment
+        uses: actions/deploy-pages@v4
