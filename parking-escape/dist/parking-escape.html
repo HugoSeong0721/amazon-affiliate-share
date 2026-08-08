@@ -1,0 +1,2657 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🚕</text></svg>">
+<title>Taxi Out — Parking Escape Puzzle</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="theme-color" content="#101728">
+<style>
+:root {
+  --board-bg: radial-gradient(125% 100% at 50% 0%, #1c2542 0%, #101728 55%, #090d19 100%);
+  --panel: #1c2846;
+  --panel-line: rgba(255, 255, 255, 0.09);
+  --text: #eaf0ff;
+  --muted: #8794b8;
+  --accent: #ffce3a;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+/* iOS 사파리의 고무줄 스크롤(당겨서 새로고침 포함)이 드래그를 가로채지 않게.
+   overflow: hidden 만으로는 사파리가 바운스를 계속 허용한다 —
+   overscroll-behavior + 아래 position: fixed + main.js 의 touchmove 차단까지 세 겹이다. */
+html, body { height: 100%; overscroll-behavior: none; }
+
+body {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Apple SD Gothic Neo", "Noto Sans KR", sans-serif;
+  background: var(--board-bg);
+  color: var(--text);
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+#app {
+  position: relative;
+  height: 100dvh;
+  width: 100%;
+  max-width: 540px;
+  display: flex;
+  flex-direction: column;
+  padding: calc(6px + env(safe-area-inset-top)) 12px calc(10px + env(safe-area-inset-bottom));
+  background: var(--board-bg);
+}
+
+/* 넓은 화면에서는 여백에 흩어지지 않도록 기기 형태의 프레임 안에 담는다 */
+@media (min-width: 600px) and (min-height: 700px) {
+  body {
+    background: radial-gradient(120% 85% at 50% -10%, #151d38 0%, #080c18 62%, #05070f 100%);
+    padding: 24px;
+  }
+  #app {
+    height: min(calc(100dvh - 48px), 900px);
+    border-radius: 30px;
+    border: 1px solid rgba(255, 255, 255, 0.09);
+    box-shadow: 0 34px 90px rgba(0, 0, 0, 0.62);
+    overflow: hidden;
+    padding-top: 16px;
+    padding-bottom: 16px;
+  }
+}
+
+#topbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 6px 2px;
+}
+
+#levelLabel { font-weight: 800; font-size: 19px; letter-spacing: -0.2px; }
+#moveLabel {
+  color: var(--muted);
+  font-size: 13px;
+  margin-top: 1px;
+  font-variant-numeric: tabular-nums;
+}
+
+.hud-right { display: flex; gap: 7px; }
+
+.hud-btn {
+  width: 40px;
+  height: 40px;
+  border-radius: 13px;
+  border: 1px solid var(--panel-line);
+  background: var(--panel);
+  color: var(--text);
+  font-size: 18px;
+  line-height: 1;
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+  transition: transform 0.08s, opacity 0.15s;
+}
+.hud-btn:active { transform: scale(0.92); }
+.hud-btn:disabled { opacity: 0.35; }
+
+/* 드래그 게임이라 브라우저 팬/스크롤 제스처를 완전히 끈다 —
+   manipulation 만으로는 터치 이동이 스크롤로 새서 pointercancel 이 난다 */
+#board { flex: 1; width: 100%; display: block; min-height: 0; touch-action: none; }
+
+/* 헤맬 때 먼저 손을 내미는 패널 — 버튼(힌트/처음부터)이 패널 안에 직접 들어 있어
+   아이콘을 찾아 헤맬 필요가 없다. 보드를 만지면 조용히 사라진다. */
+#helper {
+  position: absolute;
+  left: 50%;
+  bottom: calc(22px + env(safe-area-inset-bottom));
+  transform: translateX(-50%);
+  width: min(92%, 360px);
+  background: #23305a;
+  border: 1px solid #3d5088;
+  padding: 14px 16px 12px;
+  border-radius: 18px;
+  text-align: center;
+  box-shadow: 0 12px 34px rgba(0, 0, 0, 0.5);
+  z-index: 20;
+  /* pop 키프레임은 transform을 통째로 바꿔서 translateX(-50%) 센터링이 풀린다 —
+     떠오르는 동안 오른쪽으로 쏠리지 않게 전용 키프레임을 쓴다 */
+  animation: hpop 0.3s cubic-bezier(0.2, 1.4, 0.4, 1);
+}
+@keyframes hpop {
+  from { transform: translateX(-50%) scale(0.72); opacity: 0; }
+  to { transform: translateX(-50%) scale(1); opacity: 1; }
+}
+
+.hp-title { font-size: 15px; font-weight: 800; }
+
+.hp-sub {
+  color: var(--muted);
+  font-size: 12px;
+  margin: 3px 0 11px;
+  line-height: 1.45;
+}
+
+.hp-actions { display: flex; gap: 8px; }
+
+.hp-btn {
+  flex: 1;
+  padding: 11px 0;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  background: rgba(255, 255, 255, 0.07);
+  color: var(--text);
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 800;
+  cursor: pointer;
+  transition: transform 0.08s;
+}
+.hp-btn:active { transform: scale(0.95); }
+
+.hp-btn.primary {
+  background: linear-gradient(180deg, #ffdf6b, #ffb524);
+  border: 0;
+  color: #241c05;
+  box-shadow: 0 5px 14px rgba(255, 181, 36, 0.35);
+}
+
+#overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(6, 10, 22, 0.68);
+  backdrop-filter: blur(5px);
+  -webkit-backdrop-filter: blur(5px);
+  display: grid;
+  place-items: center;
+  z-index: 30;
+}
+
+.overlay-card {
+  background: var(--panel);
+  padding: 30px 34px;
+  border-radius: 22px;
+  text-align: center;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 0 24px 70px rgba(0, 0, 0, 0.55);
+  animation: pop 0.32s cubic-bezier(0.2, 1.4, 0.4, 1);
+}
+@keyframes pop {
+  from { transform: scale(0.72); opacity: 0; }
+  to { transform: scale(1); opacity: 1; }
+}
+.overlay-card h2 { font-size: 25px; margin-bottom: 8px; letter-spacing: -0.3px; }
+#overlayInfo { color: var(--muted); font-size: 14px; margin-bottom: 20px; }
+
+.overlay-actions { display: flex; gap: 10px; justify-content: center; }
+
+.ghost-btn {
+  background: rgba(255, 255, 255, 0.07);
+  color: var(--text);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  font-size: 15px;
+  font-weight: 700;
+  font-family: inherit;
+  padding: 13px 20px;
+  border-radius: 15px;
+  cursor: pointer;
+  transition: transform 0.08s;
+}
+.ghost-btn:active { transform: scale(0.95); }
+
+/* 주 버튼은 택시색 — 이 게임의 주인공 색이 곧 행동 색이다 */
+#btnNext {
+  background: linear-gradient(180deg, #ffdf6b, #ffb524);
+  color: #241c05;
+  border: 0;
+  font-size: 16px;
+  font-weight: 800;
+  font-family: inherit;
+  padding: 13px 28px;
+  border-radius: 15px;
+  cursor: pointer;
+  box-shadow: 0 6px 18px rgba(255, 181, 36, 0.38);
+  transition: transform 0.08s;
+}
+#btnNext:active { transform: scale(0.95); }
+
+/* 레벨 목차 */
+#levelSelect {
+  position: absolute;
+  inset: 0;
+  z-index: 40;
+  background: rgba(6, 10, 22, 0.74);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  /* grid + place-items 로는 카드의 max-height 가 안 먹어서 화면을 넘친다.
+     flex 컨테이너에서는 자식의 max-height 가 확실히 적용된다. */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 18px;
+  overflow: hidden;
+}
+
+.ls-card {
+  width: 100%;
+  max-height: 100%;
+  min-height: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  background: var(--panel);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 22px;
+  padding: 18px;
+  box-shadow: 0 24px 70px rgba(0, 0, 0, 0.55);
+  animation: pop 0.26s cubic-bezier(0.2, 1.4, 0.4, 1);
+}
+
+.ls-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.ls-head h2 { font-size: 19px; letter-spacing: -0.2px; }
+
+/* 별 — 이모지는 기기마다 렌더링이 제각각이라 도형으로 그린다 */
+.stars { display: flex; gap: 7px; justify-content: center; margin-bottom: 10px; }
+
+.star {
+  width: 28px;
+  height: 28px;
+  background: rgba(255, 255, 255, 0.13);
+  clip-path: polygon(50% 0%, 61% 35%, 98% 35%, 68% 57%, 79% 91%, 50% 70%, 21% 91%, 32% 57%, 2% 35%, 39% 35%);
+}
+.star.on {
+  background: linear-gradient(180deg, #ffe27a, #ffb524);
+  animation: starPop 0.42s cubic-bezier(0.2, 1.6, 0.4, 1) backwards;
+}
+.star.on:nth-child(2) { animation-delay: 0.13s; }
+.star.on:nth-child(3) { animation-delay: 0.26s; }
+
+@keyframes starPop {
+  0% { transform: scale(0.2) rotate(-40deg); opacity: 0; }
+  100% { transform: scale(1) rotate(0); opacity: 1; }
+}
+
+.rescue-note {
+  color: #ffd98a;
+  font-size: 14px;
+  font-weight: 700;
+  margin: -8px 0 18px;
+}
+
+/* 가입 초대 — 문이 아니라 초대. 건너뛰기가 항상 보인다. */
+#signup {
+  position: absolute;
+  inset: 0;
+  z-index: 45;
+  background: rgba(6, 10, 22, 0.74);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 18px;
+}
+
+.su-card {
+  width: min(100%, 340px);
+  background: var(--panel);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 22px;
+  padding: 26px 24px 18px;
+  text-align: center;
+  box-shadow: 0 24px 70px rgba(0, 0, 0, 0.55);
+  animation: pop 0.32s cubic-bezier(0.2, 1.4, 0.4, 1);
+}
+
+.su-emoji { font-size: 40px; margin-bottom: 6px; }
+.su-card h2 { font-size: 21px; letter-spacing: -0.3px; margin-bottom: 6px; }
+.su-sub { color: var(--muted); font-size: 13px; line-height: 1.5; margin-bottom: 18px; }
+
+.su-google {
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 10px;
+}
+.su-google.su-placeholder {
+  color: var(--muted);
+  font-size: 12px;
+  border: 1px dashed rgba(255, 255, 255, 0.2);
+  border-radius: 22px;
+  padding: 12px;
+}
+
+.su-skip {
+  background: none;
+  border: 0;
+  color: var(--muted);
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  padding: 10px 16px;
+  cursor: pointer;
+}
+.su-skip:active { opacity: 0.7; }
+
+/* 전면 광고 자리 */
+#adSlot {
+  position: absolute;
+  inset: 0;
+  z-index: 50;
+  background: rgba(4, 6, 14, 0.9);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 18px;
+}
+
+.ad-frame {
+  width: 100%;
+  max-width: 420px;
+  max-height: 100%;
+  display: flex;
+  flex-direction: column;
+  border-radius: 18px;
+  border: 1px dashed rgba(255, 255, 255, 0.22);
+  background: #131b30;
+  overflow: hidden;
+}
+
+.ad-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 9px 10px 9px 12px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.ad-tag {
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  color: var(--muted);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 5px;
+  padding: 2px 6px;
+}
+
+.ad-close {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  background: rgba(255, 255, 255, 0.07);
+  color: var(--text);
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+}
+.ad-close:disabled { cursor: default; color: var(--muted); }
+
+.ad-body {
+  flex: 1;
+  min-height: 190px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  padding: 28px 22px;
+  text-align: center;
+}
+.ad-title { font-size: 17px; font-weight: 800; color: var(--muted); }
+.ad-sub { font-size: 12px; color: var(--muted); opacity: 0.8; line-height: 1.5; max-width: 30ch; }
+
+/* 여정 지도 */
+.j-total {
+  margin-left: auto;
+  margin-right: 4px;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+.j-total .star { width: 15px; height: 15px; }
+
+#journey {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  overflow-y: auto;
+  padding: 10px 0 14px;
+  /* 세로 플렉스 안에서 스크롤되려면 min-height: 0 이 있어야 한다.
+     없으면 내용 높이만큼 늘어나 카드가 화면을 넘치고 헤더가 밀려난다. */
+  flex: 1;
+  min-height: 0;
+}
+
+/* 길 — 노드 뒤로 흐르는 중앙선. 택시 게임이니 도로의 점선이다. */
+#journey::before {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 4px;
+  bottom: 4px;
+  width: 3px;
+  margin-left: -1.5px;
+  background: repeating-linear-gradient(
+    180deg,
+    rgba(255, 206, 58, 0.35) 0 6px,
+    transparent 6px 14px
+  );
+}
+
+.jn {
+  position: relative;
+  /* 세로 플렉스 안에서 눌려 타원이 되지 않게 축소를 막는다 */
+  flex: 0 0 auto;
+  width: 54px;
+  height: 54px;
+  border-radius: 50%;
+  border: 2px solid rgba(255, 255, 255, 0.14);
+  background: #22304f;
+  color: var(--text);
+  font-family: inherit;
+  font-size: 17px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  transition: transform 0.08s;
+}
+.jn:active { transform: scale(0.92); }
+
+/* 길을 따라 좌우로 흔들리게 */
+#journey > .jn:nth-of-type(4n + 1) { transform: translateX(-56px); }
+#journey > .jn:nth-of-type(4n + 3) { transform: translateX(56px); }
+#journey > .jn:nth-of-type(4n + 1):active { transform: translateX(-56px) scale(0.92); }
+#journey > .jn:nth-of-type(4n + 3):active { transform: translateX(56px) scale(0.92); }
+
+.jn .jstars {
+  position: absolute;
+  bottom: -9px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 2px;
+}
+.jn .jstars .star { width: 11px; height: 11px; }
+
+.jn.cleared {
+  background: linear-gradient(180deg, #bb8b1e, #8a6210);
+  border-color: rgba(255, 214, 110, 0.55);
+}
+.jn.current {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(255, 206, 58, 0.32), 0 0 18px rgba(255, 206, 58, 0.45);
+}
+
+/* 여정의 승객 — 아직 타고 있으면 졸고, 집에 오면 웃는다 */
+.jf {
+  position: relative;
+  flex: 0 0 auto;
+  width: 66px;
+  height: 66px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: radial-gradient(circle at 32% 30%, rgba(255, 255, 255, 0.5), var(--c) 42%, rgba(0, 0, 0, 0.35));
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.4);
+  filter: saturate(0.15) brightness(0.5);
+  transition: filter 0.4s;
+}
+.jf.freed {
+  filter: none;
+  box-shadow: 0 0 22px -2px var(--c), 0 6px 20px rgba(0, 0, 0, 0.4);
+}
+
+/* 얼굴 — 타고 있을 땐 졸고, 도착하면 웃는다 */
+.jf .eye {
+  position: absolute;
+  top: 26px;
+  width: 7px;
+  height: 8px;
+  border-radius: 50%;
+  background: rgba(28, 26, 48, 0.85);
+}
+.jf .eye.l { left: 20px; }
+.jf .eye.r { right: 20px; }
+.jf:not(.freed) .eye { height: 2px; border-radius: 2px; top: 30px; }
+
+.jf .mouth {
+  position: absolute;
+  top: 38px;
+  width: 20px;
+  height: 11px;
+  border: 2px solid rgba(28, 26, 48, 0.8);
+  border-top: 0;
+  border-radius: 0 0 20px 20px;
+}
+.jf:not(.freed) .mouth { width: 10px; height: 6px; }
+
+/* 마지막 승객은 왕관을 쓴다 */
+.jf .crown {
+  position: absolute;
+  top: -13px;
+  width: 30px;
+  height: 15px;
+  background: linear-gradient(180deg, #ffe27a, #ffb524);
+  clip-path: polygon(0 100%, 100% 100%, 100% 28%, 78% 58%, 50% 0, 22% 58%, 0 28%);
+}
+.jf:not(.freed) .crown { filter: grayscale(1) brightness(0.6); }
+
+/* 길(점선)이 글자를 관통하지 않게 배경을 깐다 */
+.jf-label {
+  position: relative;
+  flex: 0 0 auto;
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 700;
+  margin-top: -4px;
+  padding: 2px 9px;
+  border-radius: 8px;
+  background: var(--panel);
+}
+
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+.hidden { display: none !important; }
+
+</style>
+</head>
+<body>
+<div id="app">
+    <header id="topbar">
+      <div class="hud-left">
+        <div id="levelLabel">Level 1</div>
+        <div id="moveLabel">0 moves</div>
+      </div>
+      <div class="hud-right">
+        <button id="btnLevels" class="hud-btn" title="Journey map" aria-label="Journey map">☰</button>
+        <button id="btnHint" class="hud-btn" title="Hint" aria-label="Hint">💡</button>
+        <button id="btnUndo" class="hud-btn" title="Undo" aria-label="Undo">↩︎</button>
+        <button id="btnRestart" class="hud-btn" title="Restart level" aria-label="Restart level">⟳</button>
+        <button id="btnMute" class="hud-btn" title="Sound on/off" aria-label="Sound">🔊</button>
+      </div>
+    </header>
+
+    <canvas id="board"></canvas>
+
+    <div id="helper" class="hidden">
+      <p class="hp-title">🤔 Stuck?</p>
+      <p class="hp-sub">Every position can still be solved — want a nudge?</p>
+      <div class="hp-actions">
+        <button id="hpRestart" class="hp-btn" type="button">⟳ Start over</button>
+        <button id="hpHint" class="hp-btn primary" type="button">💡 Hint</button>
+      </div>
+    </div>
+
+    <div id="overlay" class="hidden">
+      <div class="overlay-card">
+        <h2 id="overlayTitle">Level Clear!</h2>
+        <div id="starRow" class="stars">
+          <span class="star"></span><span class="star"></span><span class="star"></span>
+        </div>
+        <p id="overlayInfo"></p>
+        <p id="overlayRescue" class="rescue-note hidden"></p>
+        <div class="overlay-actions">
+          <button id="btnLevelsFromWin" class="ghost-btn">Journey</button>
+          <button id="btnNext">Next Level ▶</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="signup" class="hidden">
+      <div class="su-card">
+        <div class="su-emoji">🚕</div>
+        <h2>Get new levels first</h2>
+        <p class="su-sub">Sign in with Google — one tap, no password.</p>
+        <div id="suGoogle" class="su-google"></div>
+        <button id="suSkip" class="su-skip" type="button">Not now</button>
+      </div>
+    </div>
+
+    <div id="adSlot" class="hidden">
+      <div class="ad-frame">
+        <div class="ad-head">
+          <span class="ad-tag">AD</span>
+          <button id="adClose" class="ad-close" disabled>5</button>
+        </div>
+        <div class="ad-body">
+          <p class="ad-title">Ad placeholder</p>
+          <p class="ad-sub">An interstitial ad will appear here once an ad network is connected.</p>
+        </div>
+      </div>
+    </div>
+
+    <div id="levelSelect" class="hidden">
+      <div class="ls-card">
+        <div class="ls-head">
+          <h2>Journey</h2>
+          <div id="journeyTotal" class="j-total"></div>
+          <button id="btnCloseLevels" class="hud-btn" title="Close" aria-label="Close">✕</button>
+        </div>
+        <div id="journey"></div>
+      </div>
+    </div>
+  </div>
+<script type="module">
+
+const safeStorage = (() => {
+  try {
+    localStorage.setItem('__probe', '1');
+    localStorage.removeItem('__probe');
+    return localStorage;
+  } catch {
+    const mem = new Map();
+    return {
+      getItem: (k) => (mem.has(k) ? mem.get(k) : null),
+      setItem: (k, v) => mem.set(k, String(v)),
+      removeItem: (k) => mem.delete(k),
+    };
+  }
+})();
+
+// ===== parking-escape/engine.js =====
+// 주차장 탈출 엔진 — 순수 로직. DOM 의존이 전혀 없어 브라우저와 Node 양쪽에서 돌아간다.
+//
+// 보드는 6×6. 차량은 {x, y, len, h}로 나타낸다 (h=true면 가로, 아니면 세로).
+// 차량 0번이 항상 플레이어(택시)다: 가로 2칸, 출구 행에 산다.
+// 차는 자기 축을 따라서만 미끄러진다. 한 번의 미끄러짐(거리 무관)이 한 수다.
+//
+// 소트 퍼즐과 달리 모든 수가 되돌릴 수 있어서 "막다른 길"이 존재하지 않는다 —
+// 시작이 풀리는 판이면 어떤 순서로 밀어도 영원히 풀 수 있다. 그래서 이 게임에는
+// 막다른 길 패널이 없고, 되돌리기는 오직 별점(수 아끼기)을 위해 존재한다.
+
+const W = 6;
+const H = 6;
+const EXIT_ROW = 2; // 출구는 이 행의 오른쪽 벽에 뚫려 있다
+const PLAYER = 0;
+
+// 시드 난수 — 같은 시드는 언제나 같은 레벨을 만든다
+function mulberry32(seed) {
+  let a = seed >>> 0;
+  return function () {
+    a |= 0;
+    a = (a + 0x6d2b79f5) | 0;
+    let t = Math.imul(a ^ (a >>> 15), 1 | a);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+// 점유 격자. 칸마다 차량 번호, 비었으면 -1.
+function occupancy(vehicles) {
+  const g = new Int8Array(W * H).fill(-1);
+  vehicles.forEach((v, i) => {
+    for (let k = 0; k < v.len; k++) {
+      const x = v.h ? v.x + k : v.x;
+      const y = v.h ? v.y : v.y + k;
+      g[y * W + x] = i;
+    }
+  });
+  return g;
+}
+
+// 차량 i가 축을 따라 갈 수 있는 변수 좌표(가로차는 x, 세로차는 y)의 구간
+function rangeOf(vehicles, i, g = occupancy(vehicles)) {
+  const v = vehicles[i];
+  const at = (x, y) => (x < 0 || y < 0 || x >= W || y >= H ? -2 : g[y * W + x]);
+  let min = v.h ? v.x : v.y;
+  let max = min;
+  if (v.h) {
+    while (at(min - 1, v.y) === -1) min--;
+    while (at(max + v.len, v.y) === -1) max++;
+  } else {
+    while (at(v.x, min - 1) === -1) min--;
+    while (at(v.x, max + v.len) === -1) max++;
+  }
+  return { min, max };
+}
+
+// 검사 없이 차량 i를 to로 옮긴 새 배열 (호출자가 rangeOf로 합법성을 보장한다)
+function moveVehicle(vehicles, i, to) {
+  return vehicles.map((v, k) => (k === i ? (v.h ? { ...v, x: to } : { ...v, y: to }) : v));
+}
+
+function coordOf(v) {
+  return v.h ? v.x : v.y;
+}
+
+// 플레이어가 오른쪽 벽에 닿으면 탈출이다
+function isWin(vehicles) {
+  const p = vehicles[PLAYER];
+  return p.x === W - p.len;
+}
+
+// 상태 키 — 고정 속성(축·길이·고정 좌표)은 변하지 않으므로 변수 좌표만 담으면 된다
+function keyOf(vehicles) {
+  let k = '';
+  for (const v of vehicles) k += coordOf(v);
+  return k;
+}
+
+function fromKey(template, key) {
+  return template.map((v, i) => {
+    const c = key.charCodeAt(i) - 48;
+    return v.h ? { ...v, x: c } : { ...v, y: c };
+  });
+}
+
+// BFS 솔버. 모든 이웃이 정확히 한 수 거리이므로 BFS가 곧 최소 수다.
+// 반환: { solved, moves: [{v, to}], par, nodes, exhausted }
+function solve(vehicles, { maxNodes = 500000 } = {}) {
+  if (isWin(vehicles)) return { solved: true, moves: [], par: 0, nodes: 0, exhausted: false };
+
+  const start = keyOf(vehicles);
+  const seen = new Map([[start, null]]); // key → { prev, move }
+  const queue = [start];
+  const goalX = W - vehicles[PLAYER].len;
+  let goalKey = null;
+  let nodes = 0;
+
+  for (let qi = 0; qi < queue.length && !goalKey; qi++) {
+    const key = queue[qi];
+    if (++nodes > maxNodes) return { solved: false, moves: [], par: 0, nodes, exhausted: false };
+    const vs = fromKey(vehicles, key);
+    const g = occupancy(vs);
+
+    for (let i = 0; i < vs.length && !goalKey; i++) {
+      const { min, max } = rangeOf(vs, i, g);
+      const cur = coordOf(vs[i]);
+      for (let to = min; to <= max; to++) {
+        if (to === cur) continue;
+        const nk = key.slice(0, i) + to + key.slice(i + 1);
+        if (seen.has(nk)) continue;
+        seen.set(nk, { prev: key, move: { v: i, to } });
+        if (i === PLAYER && to === goalX) {
+          goalKey = nk;
+          break;
+        }
+        queue.push(nk);
+      }
+    }
+  }
+
+  if (!goalKey) return { solved: false, moves: [], par: 0, nodes, exhausted: true };
+
+  const moves = [];
+  for (let k = goalKey; seen.get(k); k = seen.get(k).prev) moves.unshift(seen.get(k).move);
+  return { solved: true, moves, par: moves.length, nodes, exhausted: false };
+}
+
+function overlapsAny(g, v) {
+  for (let k = 0; k < v.len; k++) {
+    const x = v.h ? v.x + k : v.x;
+    const y = v.h ? v.y : v.y + k;
+    if (g[y * W + x] !== -1) return true;
+  }
+  return false;
+}
+
+// 레벨 생성: 차를 무작위로 깔고 솔버로 "풀 수 있음"을 확정한다.
+// 출구 행의 가로차는 플레이어 말고는 금지 — 그 행에서 절대 비킬 수 없어 판을 영구히 막는다.
+function generate({ seed, cars, maxNodes = 500000 }) {
+  const rng = mulberry32(seed);
+  const ri = (n) => Math.floor(rng() * n);
+
+  // 플레이어는 출구까지 최소 한 칸은 달리게 (x 0..3)
+  const vehicles = [{ x: ri(W - 2), y: EXIT_ROW, len: 2, h: true }];
+  const hRows = [0, 1, 3, 4, 5];
+
+  let guard = cars * 40;
+  while (vehicles.length < cars && guard-- > 0) {
+    const h = rng() < 0.45;
+    const len = rng() < 0.7 ? 2 : 3;
+    const v = h
+      ? { x: ri(W - len + 1), y: hRows[ri(hRows.length)], len, h: true }
+      : { x: ri(W), y: ri(H - len + 1), len, h: false };
+    if (overlapsAny(occupancy(vehicles), v)) continue;
+    vehicles.push(v);
+  }
+  if (vehicles.length < cars) return null;
+
+  const r = solve(vehicles, { maxNodes });
+  if (!r.solved || r.par < 1) return null;
+  return { vehicles, moves: r.moves, par: r.par };
+}
+
+// --- 직렬화 (levels-data.js 압축 형식) ---
+// 차량 하나 = 4글자 "xyLh"  (예: "0221" = x0 y2 len2 가로)
+// 수 하나  = 2글자, 차량 번호(base36) + 목표 좌표  (예: "a3" = 10번 차를 3으로)
+
+function encodeVehicles(vehicles) {
+  return vehicles.map((v) => `${v.x}${v.y}${v.len}${v.h ? 1 : 0}`).join('');
+}
+
+function decodeVehicles(str) {
+  const out = [];
+  for (let i = 0; i + 3 < str.length; i += 4) {
+    out.push({
+      x: Number(str[i]),
+      y: Number(str[i + 1]),
+      len: Number(str[i + 2]),
+      h: str[i + 3] === '1',
+    });
+  }
+  return out;
+}
+
+function encodeMoves(moves) {
+  return moves.map((m) => m.v.toString(36) + m.to).join('');
+}
+
+function decodeMoves(str) {
+  const out = [];
+  for (let i = 0; i + 1 < str.length; i += 2) {
+    out.push({ v: parseInt(str[i], 36), to: Number(str[i + 1]) });
+  }
+  return out;
+}
+
+// ===== parking-escape/levels-data.js =====
+// 자동 생성 파일 — 직접 수정하지 말 것.
+// 다시 만들려면: node parking-escape/tools/bake-levels.mjs
+// 원본 스펙: levels.js
+//
+// v   = 차량 목록. 4글자가 차 한 대 "xyLh" (x, y, 길이, 가로=1). 첫 차가 플레이어.
+// sol = 참고 해. 2글자가 한 수, 차량 번호(base36) + 목표 좌표 ("a3" = 10번 차를 3으로)
+// par = 참고 해의 길이 = 솔버가 찾은 최소 수 (별점 기준)
+
+const LEVEL_DATA = [
+ {par:1,v:"1221213120313421",sol:"04"},
+ {par:3,v:"0221223033215320312103211031152101213420502004214420",sol:"701304"},
+ {par:3,v:"3221202131314320232040213531103052300420332002200020",sol:"618304"},
+ {par:4,v:"0221412004205120342110200331212153203531302133212420",sol:"30a21004"},
+ {par:5,v:"2221102112300230402111314230232025215220002041214521",sol:"8093c26304"},
+ {par:5,v:"1221032134210420412043213020352114212321402115211121",sol:"61a0406004"},
+ {par:5,v:"0221302044212320002021204121332145210330142034201021",sol:"11c4105004"},
+ {par:6,v:"0221232120212431353110204021152142200330312151201320",sol:"02b3c2318304"},
+ {par:6,v:"0221002122204320502032205230133001213531242031213021",sol:"2053a3926304"},
+ {par:7,v:"0221332022303521312052200421402020210321002101211521",sol:"53738440c02304"},
+ {par:7,v:"1221313133201330522054204320012010310420232040211121",sol:"7280b3c0124004"},
+ {par:7,v:"0221332124210321412030215420102051200420142021302521",sol:"23524080c3b304"},
+ {par:8,v:"1221053142200331143144205120532020312121002010203220",sol:"4060c302b1812004"},
+ {par:8,v:"1221142040203420032110312121012033215030452124200420",sol:"5061843082a39304"},
+ {par:8,v:"0221253123213431032110214021513021210020042142200521",sol:"013273915062b004"},
+ {par:9,v:"0221142120203021512005214320312054202220032141200121",sol:"10407393213020b004"},
+ {par:9,v:"1221422015210130532030213320112144205120312110210421",sol:"90b052c13270a21004"},
+ {par:9,v:"0221232131205130243103201420452100202120102040204220",sol:"20723390026241c304"},
+ {par:10,v:"0221032044213220452114213031112151300020132125213121",sol:"01239160b04283c43004"},
+ {par:10,v:"0221542000213130033104313031352121204220053101215120",sol:"1374338093038162c004"},
+ {par:10,v:"3221302103202421133020202220313125214420522054200120",sol:"4080c02230645272a004"},
+ {par:11,v:"12211521343132202320452110205130403003201320",sol:"001030400252a221738304"},
+ {par:11,v:"02212421213103200020142022202021322035315030",sol:"133463014220708092a304"},
+ {par:11,v:"02212431202043212220033000205030452141203220",sol:"13438190a0033342117304"},
+ {par:11,v:"022152200330142021204021342141211021353100203030",sol:"334301226490b353711004"},
+ {par:11,v:"022100214030512024210420252101214421432103212021",sol:"013071a1514082a0922304"},
+ {par:11,v:"022145213120033010204421132124214130513020201420",sol:"1220023062b27052839304"},
+ {par:11,v:"222100202121332042201020142144212531042050300321",sol:"0132b192607243a3243004"},
+ {par:11,v:"022123200420542043203121253132300321142040211020",sol:"1054708223936044847304"},
+ {par:11,v:"022130213321102044201521412152202130002014310420",sol:"80204253a3831262407004"},
+ {par:11,v:"022130202431203003203521132151200521102042205420",sol:"70a063b22333033021b304"},
+ {par:11,v:"022115212421002033213121542013202030303104204420",sol:"127440b21323835191b004"},
+ {par:11,v:"122120214320323010204021032154201531042031315220",sol:"6190803302411153a2b004"},
+ {par:11,v:"022152201031243142201531042022205020212145213220",sol:"2033407390b00371311304"},
+ {par:11,v:"3221512053201321342104212120402101213020153133210220",sol:"5160c30061917010609004"},
+ {par:11,v:"1221132152300230142040210020342120213121242035314220",sol:"3361805291c013a3b22304"},
+ {par:11,v:"1221343123202031012105213521512043212131002103213220",sol:"0022103364c48373932004"},
+ {par:11,v:"2221002011211321243140214120102115210220542043210421",sol:"53b3a043c1931170526004"},
+ {par:11,v:"0221332122203120042013205130002145212421012144211531",sol:"203002425290b2c0836304"},
+ {par:11,v:"0221103121210320513013200020352122304421152132204120",sol:"219343a083016110b0c004"},
+ {par:11,v:"0221412152202521143110212321212043203030052103200020",sol:"23346191537001b2409304"},
+ {par:11,v:"0221452130300421342141201321332120200121522040211531",sol:"446083a174c023b050a004"},
+ {par:11,v:"1221352114314120303054200121032051202331052140210031",sol:"5314617120903343b38004"},
+ {par:11,v:"0221212000212321052153204420512003203030252140211431",sol:"1001316381a4c093b37004"},
+ {par:11,v:"0221052141201021503045210020222014213220113143203021",sol:"5243807301613093c22004"},
+ {par:12,v:"122123214030132024202121353110205230",sol:"002234105340123360238304"},
+ {par:12,v:"0221253103212021232050301420013144214030",sol:"304282539273402263109304"},
+ {par:12,v:"0221143135214321512003202030132140205420",sol:"334054709213630360119304"},
+ {par:12,v:"0221503042202320212115310320302100314421",sol:"011174816000329013233304"},
+ {par:12,v:"0221322052201020213124203421542040212220",sol:"438390526013540392422004"},
+ {par:12,v:"02215020143152301521103100203321212040201321",sol:"3311a0729353800381511004"},
+ {par:12,v:"22212031232044211121512034200521032041301220",sol:"425080a00022623023639304"},
+ {par:12,v:"02212121322000203431232051203531102141203021",sol:"013300108050416393a42004"},
+ {par:12,v:"222113303121452133200121033020205130442123202521",sol:"0042938224400212b1338304"},
+ {par:12,v:"122140203521332013204421302042200120052150302330",sol:"0240800032b0503373a3b304"},
+ {par:12,v:"022134210320522005314021013141205420303000212320",sol:"b21173935363b003b2603004"},
+ {par:12,v:"022120315020142135215220012103303130212000214230",sol:"415321138390b30391122004"},
+ {par:12,v:"022101210031232141205020302124311420032135315220",sol:"0212a2b43492817090324304"},
+ {par:12,v:"022144213121332030210320142125214220212010215220",sol:"244430a0900151601283b304"},
+ {par:12,v:"2221152104204321113123204020442150302021032101203320",sol:"01135490a1b240c033738304"},
+ {par:12,v:"3221353103203320142111311321302150304321442101200021",sol:"011124b2503193a383743004"},
+ {par:12,v:"1221353120204421322004201321002042205020312114202421",sol:"5292a4400262b0c032839304"},
+ {par:12,v:"0221232131200320452134204130002105212420302151201320",sol:"a4200231b3c1105393426304"},
+ {par:12,v:"1221022023203531152144211021503041203331212130210421",sol:"40325360a0b2800321917304"},
+ {par:12,v:"0221442142200521202113213130242125214021522010202120",sol:"50708463c302b1409220a004"},
+ {par:12,v:"1221503020213431312004202321242000210121403035314321",sol:"00607131b1c213a324407004"},
+ {par:12,v:"1221202015314330332052204021412101200421132154203120",sol:"20448000a01361c27150c004"},
+ {par:12,v:"0221532045211521243121200420102031205120032140212321",sol:"23145001b390c4a160408304"},
+ {par:12,v:"0221442010214120432114210331542031200020502021201521",sol:"2361b0019300b1203080b004"},
+ {par:13,v:"222153201331303141302420032034214521",sol:"31104023600051708054204304"},
+ {par:13,v:"022152201421252140212030413003203320",sol:"13308023530170005020536304"},
+ {par:13,v:"022125214521432051303121032123211420",sol:"02405230746280102260724304"},
+ {par:13,v:"22211421402134205130312103310021442145213321",sol:"00224050a4318390a343243004"},
+ {par:13,v:"22212021442140302420232110305220013005215020",sol:"53439263108300402252337304"},
+ {par:13,v:"12212021412000203120542013311521023010205020",sol:"2462a11440029301411140a004"},
+ {par:13,v:"02212220412130204420522003202421052100201121",sol:"4274130133816492a022405004"},
+ {par:13,v:"122101215220202104203130342135214120242002205420",sol:"112033a0009261715383139004"},
+ {par:13,v:"122145214421402032200521013024205030102111214220",sol:"13407351630090a0702183b304"},
+ {par:13,v:"0221102114204521412031202431213053203321512025210320",sol:"234050a08263b0730371628304"},
+ {par:13,v:"2221113103201021303133215330242005213421412035215120",sol:"20005072907301213042a3c004"},
+ {par:13,v:"2221513001314220242103301321102115314521442131213031",sol:"41528093a313b4215040a23304"},
+ {par:13,v:"0221242043201320002030202020402105213230522041203521",sol:"01430061a3c49351705060b004"},
+ {par:13,v:"2221232051303020032111201420402034314521252101204220",sol:"50b0001002426280a09223c304"},
+ {par:14,v:"1221342152201521502003304030103121212320",sol:"0023416173809011630391704004"},
+ {par:14,v:"02214020342131303521032000211521422021305220",sol:"446170930150009120338393a004"},
+ {par:14,v:"02213531032131215220323024200031442104202220",sol:"73a00121902063105303a1714004"},
+ {par:14,v:"022105213421303133315420242020201320012131204121",sol:"62136484405224a3037130b35004"},
+ {par:14,v:"022121205020542013212031313034214220242010200020",sol:"2140531092706383930311522004"},
+ {par:14,v:"022121201320302024214120352103200020512053203220",sol:"105090a244b3022000b241a3b304"},
+ {par:14,v:"3221542001203321032115210420102021303020512024214021",sol:"345380427440b3830191c090a004"},
+ {par:14,v:"0221143153204420202122202521412100200420102040212121",sol:"223213530282a240b2c072203004"},
+ {par:14,v:"0221412033211021012114201321442130310320352152202421",sol:"024290b12462516022c07213b304"},
+ {par:15,v:"0221302014314230522005215020003121200320",sol:"113343617380019020130381716004"},
+ {par:15,v:"02210320313020301321532043301421052110205020",sol:"206043733301100030407023336304"},
+ {par:15,v:"222123312121042151303420403000204521152110200220",sol:"013142b41062245011b29082436304"},
+ {par:15,v:"022105313021533014214121203032204420032101214220",sol:"324062205273b08313630362103304"},
+ {par:15,v:"022114313321002131200331442145214021513004201521",sol:"017382902451a11050236393844004"},
+ {par:15,v:"022131205020152154203321412010310121232034212120",sol:"213073b092a09450136303b1702004"},
+ {par:15,v:"122135211431152111213130432130310321542004200020",sol:"81b17050639014645171b0a2205304"},
+ {par:15,v:"0221002015314220452140211320442111315130232033201021",sol:"02204382c26000a2b2703393a3b304"},
+ {par:15,v:"2221442123203121052150301030422035210320202100303320",sol:"844263013170a1c002136240825304"},
+ {par:15,v:"1221522041202320152100310121212132303021442104204521",sol:"227461819451b00032a01323338304"},
+ {par:16,v:"02214420103150202120412014202331032024215420",sol:"31234002607380009043026121305004"},
+ {par:16,v:"22211130342150201031232021214130022035215230",sol:"1360830092a331435022730351403004"},
+ {par:16,v:"22215120002024200230423023211021532012303531",sol:"10435063930031625173300290a15304"},
+ {par:16,v:"122110215030242030201121332144210521403002303521",sol:"10335081a3003001617123a280b29304"},
+ {par:16,v:"022123211420532050202120242034213121352120314220",sol:"41a35002200010627063b30351a24004"},
+ {par:16,v:"2221242033204421412030203531112050300120432103201321",sol:"400370b4c010012231c1b36024a38304"},
+ {par:16,v:"1221232152205420032001203521202024204121302134213120",sol:"135042a4c00382b0840111c393a32004"},
+ {par:17,v:"02210031222025213021032143200420523041212421",sol:"3344116283a324015170005021a0236304"},
+ {par:17,v:"1221412032305220402105214420032123202020003030205420",sol:"3163c354238471a30091b140103090b004"},
+ {par:17,v:"2221302043204021102025313320202003305120132141200020",sol:"8250246494a4436351830011733110b004"},
+ {par:18,v:"12212320352110214130343105213120303111210230",sol:"306172a300125142931001a1506022437304"},
+ {par:19,v:"22210521133140300130302035215130103034212420",sol:"647023a312438300a002408010206273903304"},
+ {par:19,v:"122150302321022030214321342000211320442105213121",sol:"02812163a46422840121b0615392a213446004"},
+ {par:19,v:"1221103103205020213135314320132132302420142053200120",sol:"1024c2406080739352a3b4748241c123508304"},
+ {par:19,v:"1221212101302521522023203431332113202021002140300521",sol:"3340c12300105172b1935002228261c032b304"},
+ {par:21,v:"2221122045212321343141300020522024205020103104201420",sol:"a2100030812232427391a38002c241530381a29004"},
+ {par:22,v:"122103212320112114204130303135215320342131205120",sol:"246274b08294a402123240001022a27090235383a304"},
+ {par:28,v:"022150201321523000310420212015313130302142301421",sol:"2073a1b36401215120637033119441500061b063015140839310a304"}
+];
+
+// ===== parking-escape/render.js =====
+// 캔버스 렌더러 — 주차장, 차, 드래그 물리(스프링·러버밴드·쿵), 탈출 연출.
+// 게임 로직은 rangeOf 같은 순수 함수만 빌려 쓰고, 규칙 판단은 콜백으로 넘긴다.
+//
+// 이 게임의 규칙은 설명 대신 손끝으로 전달된다:
+// 차를 잡으면 살짝 떠오르고, 축을 따라서만 끌려오고, 막힌 곳에서 쿵 하고 멈춘다.
+// "차는 자기 방향으로만 움직인다"를 글로 읽을 필요가 없다 — 손이 먼저 배운다.
+//
+// 손맛의 재료: 칸을 지날 때마다 딸깍(디텐트), 놓으면 자리로 딱 붙는 스프링,
+// 벽에 부딪히면 화면이 미세하게 흔들리고 먼지가 튄다.
+
+
+const TAXI_HEX = '#ffce3a';
+const CAR_HEX = [
+  '#4a90ff', '#ff4d5a', '#35d07f', '#a96bff', '#ff6bd0',
+  '#2fd3d3', '#ff9838', '#7c8cff', '#9bd356', '#5ad0a5',
+  '#e06c9a', '#c9d1e8',
+];
+
+const rgbCache = new Map();
+function hexToRgb(hex) {
+  let c = rgbCache.get(hex);
+  if (!c) {
+    c = [parseInt(hex.slice(1, 3), 16), parseInt(hex.slice(3, 5), 16), parseInt(hex.slice(5, 7), 16)];
+    rgbCache.set(hex, c);
+  }
+  return c;
+}
+
+// amt > 0 이면 흰쪽, < 0 이면 검은쪽으로
+function shade(hex, amt) {
+  const [r, g, b] = hexToRgb(hex);
+  const t = Math.abs(amt);
+  const target = amt > 0 ? 255 : 0;
+  return `rgb(${Math.round(r + (target - r) * t)},${Math.round(g + (target - g) * t)},${Math.round(
+    b + (target - b) * t
+  )})`;
+}
+function rgba(hex, a) {
+  const [r, g, b] = hexToRgb(hex);
+  return `rgba(${r},${g},${b},${a})`;
+}
+
+const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+const easeOutCubic = (t) => 1 - Math.pow(1 - t, 3);
+const easeOutBack = (t) => 1 + 2.0 * Math.pow(t - 1, 3) + 1.3 * Math.pow(t - 1, 2);
+const easeInQuad = (t) => t * t;
+
+function rr(ctx, x, y, w, h, r) {
+  ctx.beginPath();
+  if (ctx.roundRect) {
+    ctx.roundRect(x, y, w, h, r);
+    return;
+  }
+  ctx.moveTo(x + r, y);
+  ctx.arcTo(x + w, y, x + w, y + h, r);
+  ctx.arcTo(x + w, y + h, x, y + h, r);
+  ctx.arcTo(x, y + h, x, y, r);
+  ctx.arcTo(x, y, x + w, y, r);
+  ctx.closePath();
+}
+
+// 러버밴드: 구간을 넘어간 만큼 저항이 붙는다 (최대 0.42칸)
+const overshoot = (d) => Math.sign(d) * Math.min(Math.abs(d) * 0.28, 0.42);
+
+class Renderer {
+  constructor(canvas) {
+    this.canvas = canvas;
+    this.ctx = canvas.getContext('2d');
+    this.dpr = Math.min(window.devicePixelRatio || 1, 3);
+    this.cssW = 0;
+    this.cssH = 0;
+
+    this.vehicles = null; // 논리 상태 (게임이 준다)
+    this.disp = []; // 차량별 표시 좌표 (float, 변수축)
+    this.vel = []; // 스프링 속도
+    this.settled = []; // 스프링이 자리에 붙었는지 (쿵 소리를 한 번만 내기 위해)
+    this.spawnAt = []; // 레벨 시작 등장 연출
+
+    this.drag = null; // { v, range, grab, cur, last, lastT, edge }
+    this.exitAnim = null; // 탈출 주행 { t0, from, dur, cb, confettied }
+    this.guide = null; // { v, to } — 첫 레벨 손가락 안내
+    this.nudges = new Map(); // v → t0 (안 움직이는 차를 흔들 때)
+    this.dust = [];
+    this.confetti = [];
+    this.streaks = [];
+    this.shakeFx = null;
+
+    // 입력 → 게임 콜백. 게임(컨트롤러)이 채운다.
+    this.handlers = {
+      canDrag: () => true,
+      onPick: () => {},
+      onDetent: () => {},
+      onBump: () => {},
+      onStuck: () => {},
+      onThunk: () => {},
+      onCommit: () => {},
+    };
+
+    this._loop = this._loop.bind(this);
+    this._lastT = performance.now();
+    requestAnimationFrame(this._loop);
+  }
+
+  resize() {
+    const r = this.canvas.getBoundingClientRect();
+    this.cssW = r.width;
+    this.cssH = r.height;
+    this.dpr = Math.min(window.devicePixelRatio || 1, 3);
+    this.canvas.width = Math.round(r.width * this.dpr);
+    this.canvas.height = Math.round(r.height * this.dpr);
+    this._metrics();
+  }
+
+  _metrics() {
+    const pad = 10;
+    const side = Math.max(60, Math.min(this.cssW, this.cssH) - pad * 2);
+    this.wall = Math.max(10, side * 0.045);
+    this.cell = (side - this.wall * 2) / W;
+    this.ox = (this.cssW - side) / 2 + this.wall; // 격자 원점 (칸 0,0의 왼쪽 위)
+    this.oy = (this.cssH - side) / 2 + this.wall;
+    this.side = side;
+  }
+
+  // --- 상태 ---
+
+  // 레벨 시작: 표시 좌표를 리셋하고 차들을 순서대로 등장시킨다
+  reset(vehicles) {
+    this.vehicles = vehicles;
+    this.disp = vehicles.map(coordOf);
+    this.vel = vehicles.map(() => 0);
+    this.settled = vehicles.map(() => true);
+    const now = performance.now();
+    this.spawnAt = vehicles.map((_, i) => now + i * 40);
+    this.drag = null;
+    this.exitAnim = null;
+    this.clearEffects();
+  }
+
+  // 수가 적용된 뒤: 논리 상태만 갈아끼우고 표시 좌표는 스프링이 따라가게 둔다
+  setState(vehicles) {
+    this.vehicles = vehicles;
+    vehicles.forEach((v, i) => {
+      if (Math.abs(this.disp[i] - coordOf(v)) > 0.004) this.settled[i] = false;
+    });
+  }
+
+  clearEffects() {
+    this.dust = [];
+    this.confetti = [];
+    this.streaks = [];
+    this.nudges.clear();
+    this.shakeFx = null;
+    this.guide = null;
+  }
+
+  setGuide(move) {
+    this.guide = move;
+  }
+
+  nudgeVehicle(i) {
+    this.nudges.set(i, performance.now());
+  }
+
+  shake(amp = 3) {
+    this.shakeFx = { amp, t0: performance.now(), dur: 240 };
+  }
+
+  // --- 좌표 ---
+
+  carRect(i, disp = this.disp[i]) {
+    const v = this.vehicles[i];
+    const gx = v.h ? disp : v.x;
+    const gy = v.h ? v.y : disp;
+    return {
+      x: this.ox + gx * this.cell,
+      y: this.oy + gy * this.cell,
+      w: (v.h ? v.len : 1) * this.cell,
+      h: (v.h ? 1 : v.len) * this.cell,
+    };
+  }
+
+  vehicleCenter(i) {
+    if (!this.vehicles || !this.vehicles[i]) return null;
+    const r = this.carRect(i);
+    return { x: r.x + r.w / 2, y: r.y + r.h / 2 };
+  }
+
+  hitTest(x, y) {
+    if (!this.vehicles) return null;
+    const slop = Math.min(8, this.cell * 0.12);
+    // 나중에 그려진(위에 보이는) 차가 우선
+    for (let i = this.vehicles.length - 1; i >= 0; i--) {
+      const r = this.carRect(i);
+      if (x >= r.x - slop && x <= r.x + r.w + slop && y >= r.y - slop && y <= r.y + r.h + slop) {
+        return i;
+      }
+    }
+    return null;
+  }
+
+  // --- 입력 (main.js가 포인터 좌표를 넘긴다) ---
+
+  pointerDown(x, y) {
+    if (!this.vehicles || this.exitAnim) return;
+    const i = this.hitTest(x, y);
+    if (i === null) return;
+    if (!this.handlers.canDrag(i)) {
+      this.nudgeVehicle(i);
+      this.handlers.onStuck(i);
+      return;
+    }
+    const v = this.vehicles[i];
+    const range = rangeOf(this.vehicles, i);
+    const axisPx = v.h ? x : y;
+    this.drag = {
+      v: i,
+      range,
+      // 손가락이 차의 어디를 잡았는지 (놓을 때까지 그 지점이 손을 따라온다)
+      grab: axisPx - (v.h ? this.ox : this.oy) - this.disp[i] * this.cell,
+      cur: this.disp[i],
+      last: axisPx,
+      lastT: performance.now(),
+      vel: 0,
+      edge: 0, // -1/1 = 지금 구간 끝에 눌려 있음
+      moved: false,
+      stuckTold: false,
+    };
+    this.handlers.onPick(i);
+  }
+
+  pointerMove(x, y) {
+    const d = this.drag;
+    if (!d) return;
+    const v = this.vehicles[d.v];
+    const axisPx = v.h ? x : y;
+    const now = performance.now();
+    const dt = Math.max(1, now - d.lastT);
+    d.vel = (axisPx - d.last) / dt; // px/ms
+    d.last = axisPx;
+    d.lastT = now;
+
+    const want = (axisPx - (v.h ? this.ox : this.oy) - d.grab) / this.cell;
+    const { min, max } = d.range;
+    let cur = want;
+    let edge = 0;
+    if (want < min) {
+      cur = min + overshoot(want - min);
+      edge = -1;
+    } else if (want > max) {
+      cur = max + overshoot(want - max);
+      edge = 1;
+    }
+
+    // 칸 경계를 지날 때마다 딸깍 — 손가락에 눈금이 느껴진다
+    const before = Math.round(clamp(d.cur, min, max));
+    const after = Math.round(clamp(cur, min, max));
+    if (before !== after) this.handlers.onDetent(d.v, after);
+
+    // 구간 끝에 처음 부딪히는 순간, 속도가 실려 있으면 쿵
+    if (edge !== 0 && d.edge === 0) {
+      const speed = Math.abs(d.vel);
+      if (min === max && !d.stuckTold && Math.abs(want - min) > 0.3) {
+        // 아예 움직일 수 없는 차 — 한 번만 알려준다
+        d.stuckTold = true;
+        this.nudgeVehicle(d.v);
+        this.handlers.onStuck(d.v);
+      } else if (speed > 0.25) {
+        this.shake(Math.min(4, speed * 6));
+        this._spawnDust(d.v, edge, Math.min(1, speed));
+        this.handlers.onBump(d.v, speed);
+      }
+    }
+    d.edge = edge;
+    if (Math.abs(cur - this.disp[d.v]) > 0.001) d.moved = true;
+    d.cur = cur;
+    this.disp[d.v] = cur;
+    this.settled[d.v] = false;
+  }
+
+  pointerUp() {
+    const d = this.drag;
+    if (!d) return;
+    this.drag = null;
+    const to = Math.round(clamp(d.cur, d.range.min, d.range.max));
+    const from = coordOf(this.vehicles[d.v]);
+    // 던지는 손맛: 놓는 순간의 속도를 스프링에 실어준다
+    this.vel[d.v] = d.vel * (16.7 / this.cell) * 14;
+    if (to !== from) this.handlers.onCommit(d.v, to);
+    // to === from 이면 스프링이 제자리로 데려간다
+  }
+
+  pointerCancel() {
+    if (this.drag) this.drag = null;
+  }
+
+  // --- 연출 ---
+
+  _spawnDust(i, edge, power) {
+    const v = this.vehicles[i];
+    const r = this.carRect(i);
+    // 부딪힌 쪽 끝
+    const px = v.h ? (edge > 0 ? r.x + r.w : r.x) : r.x + r.w / 2;
+    const py = v.h ? r.y + r.h / 2 : edge > 0 ? r.y + r.h : r.y;
+    const n = 3 + Math.round(power * 4);
+    for (let k = 0; k < n; k++) {
+      const a = Math.random() * Math.PI * 2;
+      const sp = (0.4 + Math.random() * 0.9) * power * 0.09 * this.cell;
+      this.dust.push({
+        x: px, y: py,
+        vx: Math.cos(a) * sp, vy: Math.sin(a) * sp - 0.02 * this.cell,
+        r: (0.05 + Math.random() * 0.06) * this.cell,
+        t0: performance.now(), dur: 380 + Math.random() * 220,
+      });
+    }
+  }
+
+  // 탈출: 택시가 출구로 가속해 화면 밖까지 달려 나간다
+  driveOut(cb) {
+    this.exitAnim = {
+      t0: performance.now(),
+      from: this.disp[PLAYER],
+      dur: 950,
+      cb,
+      confettied: false,
+    };
+    this.drag = null;
+  }
+
+  celebrate() {
+    const cx = this.ox + W * this.cell + this.wall;
+    const cy = this.oy + (EXIT_ROW + 0.5) * this.cell;
+    const hexes = [TAXI_HEX, ...CAR_HEX.slice(0, 6)];
+    for (let k = 0; k < 110; k++) {
+      const fromExit = k < 55;
+      const a = fromExit ? Math.PI * (1.15 + Math.random() * 0.7) : Math.PI * (0.25 + Math.random() * 0.5);
+      const sp = (0.25 + Math.random() * 0.5) * this.cell * (fromExit ? 0.34 : 0.2);
+      this.confetti.push({
+        x: fromExit ? cx : this.cssW * Math.random(),
+        y: fromExit ? cy : -10,
+        vx: Math.cos(a) * sp * (fromExit ? -1 : 1),
+        vy: Math.sin(a) * sp * (fromExit ? 1 : 0.4) + 0.04 * this.cell,
+        w: 4 + Math.random() * 5,
+        rot: Math.random() * Math.PI,
+        vr: (Math.random() - 0.5) * 0.28,
+        hex: hexes[k % hexes.length],
+        t0: performance.now(),
+        dur: 1400 + Math.random() * 700,
+      });
+    }
+  }
+
+  // --- 루프 ---
+
+  _loop(now) {
+    const dt = Math.min(0.05, (now - this._lastT) / 1000);
+    this._lastT = now;
+    this._physics(now, dt);
+    this._draw(now);
+    requestAnimationFrame(this._loop);
+  }
+
+  _physics(now, dt) {
+    if (!this.vehicles) return;
+    for (let i = 0; i < this.vehicles.length; i++) {
+      if (this.drag && this.drag.v === i) continue;
+      if (this.exitAnim && i === PLAYER) continue;
+      const target = coordOf(this.vehicles[i]);
+      const diff = target - this.disp[i];
+      if (Math.abs(diff) < 0.003 && Math.abs(this.vel[i]) < 0.06) {
+        if (!this.settled[i]) {
+          this.settled[i] = true;
+          const impact = Math.abs(this.vel[i]) + Math.abs(diff) * 8;
+          this.disp[i] = target;
+          this.vel[i] = 0;
+          this.handlers.onThunk(i, impact);
+        }
+        continue;
+      }
+      // 살짝 덜 감쇠된 스프링 — 미세한 오버슛이 "딱 붙는" 느낌을 만든다
+      this.vel[i] += diff * 320 * dt;
+      this.vel[i] *= Math.exp(-19 * dt);
+      this.disp[i] += this.vel[i] * dt;
+      this.settled[i] = false;
+    }
+
+    // 탈출 주행
+    const ea = this.exitAnim;
+    if (ea) {
+      const t = clamp((now - ea.t0) / ea.dur, 0, 1);
+      const dist = W + 3.4 - ea.from; // 화면 밖까지
+      this.disp[PLAYER] = ea.from + dist * easeInQuad(t);
+      // 속도선
+      if (t > 0.15 && Math.random() < 0.5) {
+        const r = this.carRect(PLAYER);
+        this.streaks.push({
+          x: r.x, y: r.y + Math.random() * r.h,
+          len: this.cell * (0.5 + Math.random() * 0.8),
+          t0: now, dur: 260,
+        });
+      }
+      if (!ea.confettied && this.disp[PLAYER] + 2 > W) {
+        ea.confettied = true;
+        this.celebrate();
+      }
+      if (t >= 1) {
+        this.exitAnim = null;
+        ea.cb?.();
+      }
+    }
+  }
+
+  _draw(now) {
+    const { ctx, dpr } = this;
+    if (!this.cssW) return;
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.clearRect(0, 0, this.cssW, this.cssH);
+
+    // 부딪힘 흔들림
+    if (this.shakeFx) {
+      const t = (now - this.shakeFx.t0) / this.shakeFx.dur;
+      if (t >= 1) this.shakeFx = null;
+      else {
+        const a = this.shakeFx.amp * (1 - t);
+        ctx.translate(Math.sin(t * 42) * a, Math.cos(t * 31) * a * 0.6);
+      }
+    }
+
+    this._drawLot(now);
+    if (this.vehicles) {
+      // 드래그 중인 차는 맨 위에
+      const order = this.vehicles.map((_, i) => i);
+      if (this.drag) {
+        order.splice(order.indexOf(this.drag.v), 1);
+        order.push(this.drag.v);
+      } else {
+        order.splice(order.indexOf(PLAYER), 1);
+        order.push(PLAYER);
+      }
+      for (const i of order) this._drawCar(i, now);
+    }
+    this._drawGuide(now);
+    this._drawParticles(now);
+  }
+
+  // 주차장 바닥과 벽, 출구
+  _drawLot(now) {
+    const { ctx, ox, oy, cell, wall } = this;
+    const bx = ox - wall;
+    const by = oy - wall;
+    const bs = this.side;
+
+    // 바닥
+    rr(ctx, bx, by, bs, bs, wall * 1.6);
+    const floor = ctx.createLinearGradient(0, by, 0, by + bs);
+    floor.addColorStop(0, '#252f4a');
+    floor.addColorStop(1, '#1b2338');
+    ctx.fillStyle = floor;
+    ctx.fill();
+
+    // 주차 칸 눈금
+    ctx.strokeStyle = 'rgba(255,255,255,0.055)';
+    ctx.lineWidth = 1;
+    for (let k = 1; k < W; k++) {
+      ctx.beginPath();
+      ctx.moveTo(ox + k * cell, oy + 3);
+      ctx.lineTo(ox + k * cell, oy + H * cell - 3);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(ox + 3, oy + k * cell);
+      ctx.lineTo(ox + W * cell - 3, oy + k * cell);
+      ctx.stroke();
+    }
+    // 칸 모서리 점 — 주차장 느낌
+    ctx.fillStyle = 'rgba(255,255,255,0.10)';
+    for (let gx = 0; gx <= W; gx++) {
+      for (let gy = 0; gy <= H; gy++) {
+        ctx.beginPath();
+        ctx.arc(ox + gx * cell, oy + gy * cell, 1.6, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
+
+    // 벽 — 오른쪽 벽만 출구 높이만큼 비워 둔다
+    const gapY0 = oy + EXIT_ROW * cell;
+    const wallFill = '#3a466b';
+    const wr = wall * 0.5;
+    ctx.fillStyle = wallFill;
+    rr(ctx, bx, by, bs, wall, wr); // 위
+    ctx.fill();
+    rr(ctx, bx, by + bs - wall, bs, wall, wr); // 아래
+    ctx.fill();
+    rr(ctx, bx, by, wall, bs, wr); // 왼쪽
+    ctx.fill();
+    rr(ctx, bx + bs - wall, by, wall, gapY0 - by, wr); // 오른쪽 위 조각
+    ctx.fill();
+    rr(ctx, bx + bs - wall, gapY0 + cell, wall, by + bs - gapY0 - cell, wr); // 오른쪽 아래 조각
+    ctx.fill();
+
+    // 출구는 검은 구멍이 아니라 밝은 진입로 — 바닥이 벽을 뚫고 이어진다
+    const drive = ctx.createLinearGradient(ox + W * cell, 0, ox + W * cell + wall, 0);
+    drive.addColorStop(0, '#222c47');
+    drive.addColorStop(1, '#2c3859');
+    ctx.fillStyle = drive;
+    ctx.fillRect(ox + W * cell - 1, gapY0, wall + 1, cell);
+
+    // 출구 칸 바닥 표시 + 밖으로 흐르는 갈매기 — 목표를 글자 없이 말한다
+    const pulse = (now / 900) % 1;
+    ctx.fillStyle = rgba(TAXI_HEX, 0.10);
+    ctx.fillRect(ox + (W - 1) * cell, gapY0, cell, cell);
+    for (let k = 0; k < 2; k++) {
+      const t = (pulse + k * 0.5) % 1;
+      const cx = ox + W * cell + wall * 0.1 + t * wall * 1.1;
+      const cy = gapY0 + cell / 2;
+      const s = cell * 0.16;
+      ctx.strokeStyle = rgba(TAXI_HEX, 0.85 * (1 - t));
+      ctx.lineWidth = Math.max(2.5, cell * 0.05);
+      ctx.lineCap = 'round';
+      ctx.beginPath();
+      ctx.moveTo(cx - s * 0.6, cy - s);
+      ctx.lineTo(cx + s * 0.4, cy);
+      ctx.lineTo(cx - s * 0.6, cy + s);
+      ctx.stroke();
+    }
+  }
+
+  _drawCar(i, now) {
+    const { ctx, cell } = this;
+    const v = this.vehicles[i];
+    const isPlayer = i === PLAYER;
+    const dragging = this.drag && this.drag.v === i;
+
+    // 등장 연출
+    let spawnScale = 1;
+    const st = (now - this.spawnAt[i]) / 260;
+    if (st < 0) return;
+    if (st < 1) spawnScale = easeOutBack(st);
+
+    // 잘못 건드렸을 때 도리도리
+    let nx = 0;
+    const nt = this.nudges.get(i);
+    if (nt !== undefined) {
+      const t = (now - nt) / 300;
+      if (t >= 1) this.nudges.delete(i);
+      else nx = Math.sin(t * Math.PI * 5) * (1 - t) * cell * 0.06;
+    }
+
+    const r = this.carRect(i);
+    const inset = cell * 0.07;
+    let x = r.x + inset + (v.h ? 0 : nx);
+    let y = r.y + inset + (v.h ? nx : 0);
+    let w = r.w - inset * 2;
+    let h = r.h - inset * 2;
+
+    // 드래그 중엔 살짝 커지고 떠오른다
+    const lift = dragging ? 1.035 : 1;
+    const s = spawnScale * lift;
+    const cx = x + w / 2;
+    const cy = y + h / 2;
+    x = cx - (w / 2) * s;
+    y = cy - (h / 2) * s;
+    w *= s;
+    h *= s;
+
+    const hex = isPlayer ? TAXI_HEX : CAR_HEX[(i - 1) % CAR_HEX.length];
+    const rad = Math.min(w, h) * 0.28;
+
+    // 그림자
+    ctx.fillStyle = `rgba(5,8,18,${dragging ? 0.5 : 0.34})`;
+    rr(ctx, x + (dragging ? 4 : 2), y + (dragging ? 6 : 3), w, h, rad);
+    ctx.fill();
+
+    // 차체
+    const body = ctx.createLinearGradient(x, y, v.h ? x : x + w, v.h ? y + h : y);
+    body.addColorStop(0, shade(hex, 0.22));
+    body.addColorStop(0.55, hex);
+    body.addColorStop(1, shade(hex, -0.18));
+    ctx.fillStyle = body;
+    rr(ctx, x, y, w, h, rad);
+    ctx.fill();
+    ctx.strokeStyle = shade(hex, -0.34);
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+
+    // 유리(캐빈) — 축 방향 중앙에 얹어 차라는 걸 말해준다
+    const along = v.h ? w : h;
+    const across = v.h ? h : w;
+    const cabLen = along * (v.len === 2 ? 0.46 : 0.5);
+    const cabAcross = across * 0.68;
+    const cabA = (along - cabLen) / 2;
+    const cabB = (across - cabAcross) / 2;
+    const cabX = v.h ? x + cabA : x + cabB;
+    const cabY = v.h ? y + cabB : y + cabA;
+    const cabW = v.h ? cabLen : cabAcross;
+    const cabH = v.h ? cabAcross : cabLen;
+    const glass = ctx.createLinearGradient(cabX, cabY, cabX, cabY + cabH);
+    glass.addColorStop(0, 'rgba(216,235,255,0.92)');
+    glass.addColorStop(1, 'rgba(130,165,215,0.9)');
+    ctx.fillStyle = glass;
+    rr(ctx, cabX, cabY, cabW, cabH, Math.min(cabW, cabH) * 0.3);
+    ctx.fill();
+    // 창틀 한 줄 — 앞창/뒷창 분리
+    ctx.strokeStyle = rgba(hex, 0.75);
+    ctx.lineWidth = Math.max(1.5, cell * 0.035);
+    ctx.beginPath();
+    if (v.h) {
+      ctx.moveTo(cabX + cabW / 2, cabY + 1);
+      ctx.lineTo(cabX + cabW / 2, cabY + cabH - 1);
+    } else {
+      ctx.moveTo(cabX + 1, cabY + cabH / 2);
+      ctx.lineTo(cabX + cabW - 1, cabY + cabH / 2);
+    }
+    ctx.stroke();
+
+    // 윗면 하이라이트
+    const hl = ctx.createLinearGradient(x, y, x, y + h * 0.5);
+    hl.addColorStop(0, 'rgba(255,255,255,0.28)');
+    hl.addColorStop(1, 'rgba(255,255,255,0)');
+    ctx.fillStyle = hl;
+    rr(ctx, x, y, w, h * 0.5, rad);
+    ctx.fill();
+
+    if (isPlayer) this._drawTaxiTrim(x, y, w, h, now);
+  }
+
+  // 택시 장식: 체커 밴드 + 지붕등. 출구로 달려 나갈 주인공이라는 표식.
+  _drawTaxiTrim(x, y, w, h, now) {
+    const { ctx } = this;
+    const band = h * 0.16;
+    const by = y + h / 2 - band / 2;
+    const seg = band; // 정사각 체커
+    ctx.save();
+    rr(ctx, x + w * 0.06, by, w * 0.88, band, band * 0.3);
+    ctx.clip();
+    for (let k = 0; k * seg < w; k++) {
+      ctx.fillStyle = k % 2 ? '#1d2233' : '#f4f6fb';
+      ctx.fillRect(x + w * 0.06 + k * seg, by, seg, band);
+    }
+    ctx.restore();
+
+    // 지붕등 — 은은하게 깜빡여 시선을 끈다
+    const blink = 0.65 + 0.35 * Math.sin(now / 320);
+    const lw = w * 0.1;
+    const lh = h * 0.16;
+    ctx.fillStyle = `rgba(255,244,200,${blink})`;
+    rr(ctx, x + w / 2 - lw / 2, y - lh * 0.32, lw, lh, lh * 0.4);
+    ctx.fill();
+  }
+
+  // 첫 레벨 안내: 잡을 차를 링으로 짚고, 유령 손이 미는 방향을 반복해서 보여준다
+  _drawGuide(now) {
+    const g = this.guide;
+    if (!g || !this.vehicles || this.exitAnim) return;
+    const { ctx, cell } = this;
+    const v = this.vehicles[g.v];
+    const r = this.carRect(g.v);
+
+    const pulse = 0.5 + 0.5 * Math.sin(now / 260);
+    ctx.strokeStyle = `rgba(255,255,255,${0.35 + 0.4 * pulse})`;
+    ctx.lineWidth = 3;
+    rr(ctx, r.x - 4, r.y - 4, r.w + 8, r.h + 8, cell * 0.3);
+    ctx.stroke();
+
+    if (this.drag && this.drag.v === g.v) return; // 이미 잡았으면 손은 치운다
+    // 유령 손끝 — 이모지는 폰트가 없는 기기에서 깨지므로 도형으로 그린다
+    const t = easeOutCubic((now / 1500) % 1);
+    const from = { x: r.x + r.w * 0.6, y: r.y + r.h * 0.62 };
+    const delta = (g.to - coordOf(v)) * cell * t;
+    const hx = from.x + (v.h ? delta : 0);
+    const hy = from.y + (v.h ? 0 : delta);
+    ctx.globalAlpha = t < 0.12 ? t / 0.12 : t > 0.82 ? (1 - t) / 0.18 : 1;
+    const fr = cell * 0.17;
+    ctx.beginPath();
+    ctx.arc(hx, hy, fr * (1.7 - 0.5 * t), 0, Math.PI * 2);
+    ctx.strokeStyle = 'rgba(255,255,255,0.75)';
+    ctx.lineWidth = 2.5;
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.arc(hx, hy, fr, 0, Math.PI * 2);
+    ctx.fillStyle = 'rgba(255,255,255,0.92)';
+    ctx.fill();
+    ctx.globalAlpha = 1;
+  }
+
+  _drawParticles(now) {
+    const { ctx } = this;
+
+    for (let i = this.dust.length - 1; i >= 0; i--) {
+      const p = this.dust[i];
+      const t = (now - p.t0) / p.dur;
+      if (t >= 1) {
+        this.dust.splice(i, 1);
+        continue;
+      }
+      p.x += p.vx;
+      p.y += p.vy;
+      p.vx *= 0.92;
+      p.vy *= 0.92;
+      ctx.fillStyle = `rgba(200,210,235,${0.3 * (1 - t)})`;
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, p.r * (1 + t * 1.6), 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    for (let i = this.streaks.length - 1; i >= 0; i--) {
+      const s = this.streaks[i];
+      const t = (now - s.t0) / s.dur;
+      if (t >= 1) {
+        this.streaks.splice(i, 1);
+        continue;
+      }
+      ctx.strokeStyle = `rgba(255,240,180,${0.5 * (1 - t)})`;
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(s.x - s.len * t, s.y);
+      ctx.lineTo(s.x - s.len * t - s.len * 0.6, s.y);
+      ctx.stroke();
+    }
+
+    for (let i = this.confetti.length - 1; i >= 0; i--) {
+      const c = this.confetti[i];
+      const t = (now - c.t0) / c.dur;
+      if (t >= 1) {
+        this.confetti.splice(i, 1);
+        continue;
+      }
+      c.x += c.vx;
+      c.y += c.vy;
+      c.vy += 0.05 * (this.cell / 60);
+      c.rot += c.vr;
+      ctx.save();
+      ctx.translate(c.x, c.y);
+      ctx.rotate(c.rot);
+      ctx.globalAlpha = t > 0.7 ? (1 - t) / 0.3 : 1;
+      ctx.fillStyle = c.hex;
+      ctx.fillRect(-c.w / 2, -c.w / 2, c.w, c.w * 0.62);
+      ctx.restore();
+      ctx.globalAlpha = 1;
+    }
+  }
+}
+
+// ===== parking-escape/audio.js =====
+// WebAudio 신시사이저 — 오디오 파일 없이 코드로만 효과음을 만든다.
+// 모바일 정책상 첫 사용자 제스처에서 컨텍스트가 열린다.
+
+const STORAGE_MUTED = 'pke.muted';
+
+class Sound {
+  constructor() {
+    this.muted = safeStorage.getItem(STORAGE_MUTED) === '1';
+    this._ctx = null;
+  }
+
+  get ctx() {
+    if (typeof AudioContext === 'undefined' && typeof webkitAudioContext === 'undefined') return null;
+    if (!this._ctx) {
+      try {
+        this._ctx = new (window.AudioContext || window.webkitAudioContext)();
+      } catch {
+        return null;
+      }
+    }
+    if (this._ctx.state === 'suspended') this._ctx.resume().catch(() => {});
+    return this._ctx;
+  }
+
+  setMuted(m) {
+    this.muted = m;
+    safeStorage.setItem(STORAGE_MUTED, m ? '1' : '0');
+  }
+
+  _tone(freq, { type = 'sine', dur = 0.12, gain = 0.1, delay = 0, slide = 0 } = {}) {
+    if (this.muted) return;
+    const ctx = this.ctx;
+    if (!ctx) return;
+    try {
+      const t0 = ctx.currentTime + delay;
+      const osc = ctx.createOscillator();
+      const g = ctx.createGain();
+      osc.type = type;
+      osc.frequency.setValueAtTime(freq, t0);
+      if (slide) osc.frequency.exponentialRampToValueAtTime(Math.max(40, freq + slide), t0 + dur);
+      g.gain.setValueAtTime(0, t0);
+      g.gain.linearRampToValueAtTime(gain, t0 + 0.008);
+      g.gain.exponentialRampToValueAtTime(0.0008, t0 + dur);
+      osc.connect(g).connect(ctx.destination);
+      osc.start(t0);
+      osc.stop(t0 + dur + 0.05);
+    } catch {}
+  }
+
+  _click({ dur = 0.05, freq = 2200, gain = 0.13, delay = 0 } = {}) {
+    if (this.muted) return;
+    const ctx = this.ctx;
+    if (!ctx) return;
+    try {
+      const t0 = ctx.currentTime + delay;
+      const len = Math.max(1, Math.floor(ctx.sampleRate * dur));
+      const buf = ctx.createBuffer(1, len, ctx.sampleRate);
+      const data = buf.getChannelData(0);
+      for (let i = 0; i < len; i++) data[i] = (Math.random() * 2 - 1) * (1 - i / len);
+      const src = ctx.createBufferSource();
+      src.buffer = buf;
+      const filter = ctx.createBiquadFilter();
+      filter.type = 'bandpass';
+      filter.frequency.value = freq;
+      filter.Q.value = 1.4;
+      const g = ctx.createGain();
+      g.gain.setValueAtTime(gain, t0);
+      g.gain.exponentialRampToValueAtTime(0.0008, t0 + dur);
+      src.connect(filter).connect(g).connect(ctx.destination);
+      src.start(t0);
+    } catch {}
+  }
+
+  // 진동. 안드로이드 크롬은 지원하고 iOS 사파리는 무시한다 — 있으면 손맛이 확 올라간다.
+  buzz(pattern) {
+    if (this.muted) return;
+    try {
+      navigator.vibrate?.(pattern);
+    } catch {}
+  }
+
+  // 차를 잡는 소리 — 낮게 툭
+  pick() {
+    this._tone(150, { type: 'sine', dur: 0.07, gain: 0.07, slide: 60 });
+    this._click({ freq: 1600, gain: 0.05, dur: 0.03 });
+    this.buzz(8);
+  }
+
+  // 드래그 중 칸 경계를 지날 때의 딸깍 — 손가락에 눈금이 생긴다
+  detent(pos) {
+    this._click({ freq: 2100 + pos * 160, gain: 0.045, dur: 0.025 });
+    this.buzz(5);
+  }
+
+  // 자리에 딱 붙는 소리. 세게 던질수록 굵어진다.
+  thunk(impact = 0.5) {
+    const p = Math.min(1, impact);
+    this._tone(120 + p * 40, { type: 'sine', dur: 0.09, gain: 0.05 + p * 0.06, slide: -50 });
+    this._click({ freq: 900, gain: 0.04 + p * 0.05, dur: 0.04 });
+    this.buzz(Math.round(8 + p * 10));
+  }
+
+  // 벽·차에 쿵 부딪히는 소리
+  bump(speed = 0.5) {
+    const p = Math.min(1, speed);
+    this._tone(75, { type: 'sine', dur: 0.12, gain: 0.07 + p * 0.07, slide: -30 });
+    this._click({ freq: 480, gain: 0.09, dur: 0.06 });
+    this.buzz([0, 18]);
+  }
+
+  // 아예 못 움직이는 차를 밀었을 때
+  stuck() {
+    this._tone(140, { type: 'square', dur: 0.08, gain: 0.04 });
+    this._tone(110, { type: 'square', dur: 0.1, gain: 0.04, delay: 0.09 });
+    this.buzz(24);
+  }
+
+  // 탈출! 빵빵 + 부릉
+  win() {
+    this._tone(440, { type: 'square', dur: 0.13, gain: 0.06 });
+    this._tone(440, { type: 'square', dur: 0.2, gain: 0.07, delay: 0.18 });
+    this._tone(90, { type: 'sawtooth', dur: 0.7, gain: 0.05, slide: 160, delay: 0.1 });
+    [523, 659, 784, 1047].forEach((f, i) =>
+      this._tone(f, { type: 'triangle', dur: 0.24, gain: 0.1, delay: 0.45 + i * 0.09 })
+    );
+    this.buzz([0, 40, 60, 40, 60, 70]);
+  }
+}
+
+// ===== parking-escape/ads.js =====
+// 전면 광고(인터스티셜) 자리와 노출 빈도 관리.
+//
+// 광고 네트워크는 갈아끼울 수 있게 provider 로 분리했다. 기본값은 자리만 보여주는
+// 플레이스홀더고, 실제 SDK를 붙일 때는 provider 하나만 바꾸면 된다 (README 참고).
+//
+// 빈도 규칙이 이 파일의 핵심이다. 광고는 수익보다 리텐션을 더 빨리 망가뜨릴 수 있어서
+// "언제 안 띄울지"가 "언제 띄울지"보다 중요하다:
+//   - 초반 몇 판은 무조건 안 띄운다 (재미를 느끼기 전에 끊으면 그대로 이탈한다)
+//   - 퍼즐 도중에는 절대 안 띄운다. 레벨을 깬 뒤 "다음 레벨"을 누를 때만 띄운다
+//   - 다시하기(재도전)에는 안 띄운다. 재도전에 벌을 주면 아무도 안 한다
+//   - 레벨 수 조건과 시간 간격을 함께 본다 (빨리 깨는 사람에게 연속으로 뜨지 않게)
+
+const STORAGE_AD = 'pke.ads';
+
+const AD_CONFIG = {
+  // 이 판수를 깨기 전에는 광고를 띄우지 않는다
+  freeLevels: 3,
+  // 그 뒤로는 이 판수마다
+  everyNLevels: 2,
+  // 아무리 빨리 깨도 이 시간(초) 안에는 두 번 띄우지 않는다
+  minSecondsBetween: 45,
+  // 닫기 버튼이 열리기까지의 시간(초). 실제 전면 광고와 비슷한 호흡을 준다
+  countdownSeconds: 5,
+};
+
+// 광고 자리만 보여주는 기본 제공자. 실제 광고를 넣지 않아도 흐름과 호흡을 확인할 수 있다.
+// config 는 값이 아니라 객체째로 받는다 — 매니저와 같은 객체를 공유해야 설정이 엇갈리지 않는다.
+function createPlaceholderProvider({ root, closeBtn, config = AD_CONFIG }) {
+  return {
+    name: 'placeholder',
+    isReady: () => true,
+    show() {
+      return new Promise((resolve) => {
+        let left = config.countdownSeconds;
+        root.classList.remove('hidden');
+        closeBtn.disabled = true;
+        closeBtn.textContent = String(left);
+
+        const tick = setInterval(() => {
+          left -= 1;
+          if (left > 0) {
+            closeBtn.textContent = String(left);
+            return;
+          }
+          clearInterval(tick);
+          closeBtn.disabled = false;
+          closeBtn.textContent = '✕';
+          closeBtn.setAttribute('aria-label', 'Close ad');
+        }, 1000);
+
+        const done = () => {
+          clearInterval(tick);
+          closeBtn.removeEventListener('click', done);
+          root.classList.add('hidden');
+          resolve();
+        };
+        closeBtn.addEventListener('click', done);
+      });
+    },
+  };
+}
+
+class AdManager {
+  constructor({ provider, config = AD_CONFIG, enabled = true }) {
+    this.provider = provider;
+    this.config = config;
+    this.enabled = enabled;
+    this.showing = false;
+
+    let saved = {};
+    try {
+      saved = JSON.parse(safeStorage.getItem(STORAGE_AD) || '{}');
+    } catch {
+      saved = {};
+    }
+    this.clearedTotal = Number(saved.clearedTotal) || 0;
+    this.clearedSinceAd = Number(saved.clearedSinceAd) || 0;
+    // 마지막 광고 시각은 저장하지 않는다 — 앱을 다시 열었을 때
+    // "너무 이르다"는 이유로 건너뛰는 게 더 이상하다.
+    this.lastShownAt = 0;
+  }
+
+  _save() {
+    try {
+      safeStorage.setItem(
+        STORAGE_AD,
+        JSON.stringify({ clearedTotal: this.clearedTotal, clearedSinceAd: this.clearedSinceAd })
+      );
+    } catch {}
+  }
+
+  // 레벨을 하나 깼다. 광고를 띄울지는 여기서 세고, 실제 노출은 maybeShow에서 한다.
+  noteLevelCleared() {
+    this.clearedTotal += 1;
+    this.clearedSinceAd += 1;
+    this._save();
+  }
+
+  shouldShow(now = Date.now()) {
+    if (!this.enabled || this.showing) return false;
+    if (this.clearedTotal <= this.config.freeLevels) return false;
+    if (this.clearedSinceAd < this.config.everyNLevels) return false;
+    if (this.lastShownAt && now - this.lastShownAt < this.config.minSecondsBetween * 1000) {
+      return false;
+    }
+    return this.provider.isReady();
+  }
+
+  // 조건이 맞으면 광고를 띄우고, 닫힐 때까지 기다린다. 조건이 안 맞으면 즉시 넘어간다.
+  async maybeShow(now = Date.now()) {
+    if (!this.shouldShow(now)) return false;
+    this.showing = true;
+    try {
+      await this.provider.show();
+    } catch {
+      // 광고를 못 띄워도 게임 흐름은 멈추지 않는다
+    }
+    this.showing = false;
+    this.clearedSinceAd = 0;
+    this.lastShownAt = Date.now();
+    this._save();
+    return true;
+  }
+}
+
+// ===== parking-escape/signup.js =====
+// 이메일 수집 — 구글 로그인(Google Identity Services)으로 탭 한 번에 가입.
+//
+// 정적 사이트라 서버가 없으므로 두 가지를 밖에서 빌려 쓴다:
+//   1) 구글 OAuth 클라이언트 ID — 로그인 버튼/원탭이 이메일이 담긴 토큰을 준다
+//   2) 수집 엔드포인트 — 받은 이메일을 구글 시트에 쌓는 Apps Script 웹앱
+//      (tools/collect-emails.gs 에 코드와 배포 순서가 있다)
+//
+// 두 값이 비어 있으면 패널 자체가 뜨지 않는다 — 설정 전에도 게임은 멀쩡히 돌아간다.
+// ?signup 을 붙이면 설정 없이도 패널 UI를 미리 볼 수 있다.
+//
+// UX 원칙: 가입은 문이 아니라 초대다. 건너뛰기가 항상 보이고, 거절하면
+// 하루 동안 다시 묻지 않는다. 하이퍼캐주얼에서 강제 가입 게이트는 이탈 1순위다.
+
+const SIGNUP_CONFIG = {
+  // console.cloud.google.com → API 및 서비스 → 사용자 인증 정보 → OAuth 클라이언트 ID(웹).
+  // 승인된 자바스크립트 원본에 게임이 열리는 주소(https://hugoseong0721.github.io 등)를 등록한다.
+  googleClientId: '',
+  // Apps Script 웹앱 배포 URL (README와 tools/collect-emails.gs 참고)
+  collectEndpoint: '',
+  // 건너뛴 사람에게 다시 물을 때까지의 시간
+  askAgainHours: 24,
+};
+
+const KEY_EMAIL = 'pke.signup.email';
+const KEY_ASKED = 'pke.signup.askedAt';
+
+// JWT의 payload를 읽는다. 서명 검증은 하지 않는다 — 여기서 얻는 건
+// "메일링 리스트에 넣을 주소"뿐이고, 권한을 주는 게 아니기 때문이다.
+function decodeJwtPayload(token) {
+  try {
+    const b64 = token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/');
+    return JSON.parse(atob(b64));
+  } catch {
+    return null;
+  }
+}
+
+class Signup {
+  // dom: { root, googleSlot, skip }
+  constructor({ dom, config = SIGNUP_CONFIG, force = false }) {
+    this.dom = dom;
+    this.config = config;
+    this.force = force; // ?signup — 설정 없이 UI 미리보기
+    this.dom.skip.addEventListener('click', () => this.dismiss());
+    this.dom.root.addEventListener('click', (e) => {
+      if (e.target === this.dom.root) this.dismiss();
+    });
+  }
+
+  get email() {
+    return safeStorage.getItem(KEY_EMAIL) || null;
+  }
+
+  get configured() {
+    return Boolean(this.config.googleClientId && this.config.collectEndpoint);
+  }
+
+  shouldAsk(now = Date.now()) {
+    if (this.force) return true;
+    if (!this.configured || this.email) return false;
+    const asked = Number(safeStorage.getItem(KEY_ASKED)) || 0;
+    return now - asked > this.config.askAgainHours * 3600 * 1000;
+  }
+
+  maybeShow() {
+    if (!this.shouldAsk()) return false;
+    safeStorage.setItem(KEY_ASKED, String(Date.now()));
+    this.dom.root.classList.remove('hidden');
+    this._mountGoogle();
+    return true;
+  }
+
+  dismiss() {
+    this.dom.root.classList.add('hidden');
+  }
+
+  // GIS 스크립트를 그때그때 불러온다. 광고 차단기 등으로 못 불러오면
+  // 조용히 안내 문구만 남긴다 — 가입 패널이 게임을 인질로 잡으면 안 된다.
+  _mountGoogle() {
+    if (!this.config.googleClientId) {
+      this.dom.googleSlot.textContent = 'Google sign-in not configured yet';
+      this.dom.googleSlot.classList.add('su-placeholder');
+      return;
+    }
+    const boot = () => {
+      try {
+        window.google.accounts.id.initialize({
+          client_id: this.config.googleClientId,
+          callback: (res) => this._onCredential(res.credential),
+        });
+        window.google.accounts.id.renderButton(this.dom.googleSlot, {
+          theme: 'filled_blue',
+          size: 'large',
+          shape: 'pill',
+          text: 'continue_with',
+          width: 260,
+        });
+        // 원탭 — 화면 구석에 "내 이메일" 칩이 떠서 한 번 누르면 끝난다
+        window.google.accounts.id.prompt();
+      } catch {
+        this.dom.googleSlot.textContent = 'Google sign-in unavailable';
+        this.dom.googleSlot.classList.add('su-placeholder');
+      }
+    };
+    if (window.google?.accounts?.id) {
+      boot();
+      return;
+    }
+    const s = document.createElement('script');
+    s.src = 'https://accounts.google.com/gsi/client';
+    s.async = true;
+    s.onload = boot;
+    s.onerror = () => {
+      this.dom.googleSlot.textContent = 'Google sign-in unavailable';
+      this.dom.googleSlot.classList.add('su-placeholder');
+    };
+    document.head.appendChild(s);
+  }
+
+  _onCredential(credential) {
+    const p = decodeJwtPayload(credential);
+    if (!p?.email) return;
+    safeStorage.setItem(KEY_EMAIL, p.email);
+    this._send({ email: p.email, name: p.name || '', sub: p.sub || '' });
+    this.dismiss();
+  }
+
+  // Apps Script는 정적 사이트에서 CORS 응답을 안 주므로 no-cors로 보낸다.
+  // 응답은 못 읽지만 기록은 된다. 실패해도 게임 흐름은 절대 막지 않는다.
+  _send(data) {
+    if (!this.config.collectEndpoint) return;
+    try {
+      fetch(this.config.collectEndpoint, {
+        method: 'POST',
+        mode: 'no-cors',
+        headers: { 'Content-Type': 'text/plain' },
+        body: JSON.stringify({ ...data, game: 'parking-escape', ts: new Date().toISOString() }),
+      }).catch(() => {});
+    } catch {}
+  }
+
+  // 디버그/테스트용 — 실제 구글 팝업 없이 가입 흐름을 재현한다
+  mockSignup(email) {
+    safeStorage.setItem(KEY_EMAIL, email);
+    this._send({ email, name: 'mock', sub: 'mock' });
+    this.dismiss();
+  }
+}
+
+// ===== parking-escape/game.js =====
+// 게임 컨트롤러 — 렌더러의 드래그 콜백을 규칙 판단으로 바꾸고, HUD/오버레이/여정을 관리한다.
+//
+// 규칙은 언블록 클래식이다: 차는 자기 축을 따라서만 미끄러지고, 택시가 출구로 나가면 끝.
+// 목표는 화면만 봐도 안다 — 꽉 막힌 주차장, 벽에 뚫린 구멍, 깜빡이는 택시. 그래서 설명 문구가 없다.
+//
+// 소트 퍼즐과 달리 모든 수가 되돌릴 수 있어 막다른 길이 없다.
+// 되돌리기는 오직 별점(수 아끼기) 재도전을 위해 있다.
+
+
+
+
+const STORAGE_LEVEL = 'pke.level';
+const STORAGE_CLEARED = 'pke.cleared'; // 레벨당 '0'/'1' 한 글자
+const STORAGE_STARS = 'pke.stars'; // 레벨당 '0'~'3' 한 글자
+
+// 첫 판만 손가락으로 짚어준다. "차를 끌 수 있다"는 것만 손이 배우면 끝이다.
+const GUIDED_LEVELS = new Set([0]);
+
+// 여정: 5레벨마다 승객 한 명이 집에 도착한다. 마지막 승객은 왕관을 쓰고 있다.
+const CHAPTER = 5;
+const PASSENGER_HEX = [CAR_HEX[0], CAR_HEX[2], CAR_HEX[3], CAR_HEX[4], CAR_HEX[5], CAR_HEX[1], CAR_HEX[6], TAXI_HEX];
+
+// 별점 기준. 참고 답안(솔버가 찾은 최소 수) 안에 풀면 3개.
+function starsFor(moves, par) {
+  if (moves <= par) return 3;
+  if (moves <= Math.round(par * 1.4)) return 2;
+  return 1;
+}
+
+class Game {
+  // onCleared: 레벨을 깰 때마다 불린다. 광고 빈도 계산 같은 게임 밖 관심사를 여기로 뺀다.
+  constructor({ renderer, sound, dom, onCleared }) {
+    this.renderer = renderer;
+    this.sound = sound;
+    this.dom = dom;
+    this.onCleared = onCleared;
+
+    const saved = parseInt(safeStorage.getItem(STORAGE_LEVEL) || '0', 10);
+    this.levelIndex = Number.isFinite(saved) ? Math.min(Math.max(saved, 0), LEVEL_DATA.length - 1) : 0;
+    const marks = safeStorage.getItem(STORAGE_CLEARED) || '';
+    this.cleared = LEVEL_DATA.map((_, i) => marks[i] === '1');
+    const starMarks = safeStorage.getItem(STORAGE_STARS) || '';
+    this.stars = LEVEL_DATA.map((_, i) => {
+      const n = parseInt(starMarks[i] || '0', 10);
+      return Number.isFinite(n) ? Math.min(Math.max(n, 0), 3) : 0;
+    });
+    this.won = false;
+
+    // 렌더러의 손끝 이벤트 → 규칙과 소리
+    renderer.handlers = {
+      canDrag: (v) => this.canDrag(v),
+      onPick: () => this.sound.pick(),
+      onDetent: (v, pos) => this.sound.detent(pos),
+      onBump: (v, speed) => this.sound.bump(speed),
+      onStuck: () => this.sound.stuck(),
+      onThunk: (v, impact) => {
+        if (impact > 0.12) this.sound.thunk(impact);
+      },
+      onCommit: (v, to) => this.commitMove(v, to),
+    };
+  }
+
+  get level() {
+    return LEVEL_DATA[this.levelIndex];
+  }
+
+  saveProgress() {
+    safeStorage.setItem(STORAGE_CLEARED, this.cleared.map((c) => (c ? '1' : '0')).join(''));
+    safeStorage.setItem(STORAGE_STARS, this.stars.join(''));
+  }
+
+  get totalStars() {
+    return this.stars.reduce((a, b) => a + b, 0);
+  }
+
+  // 승객 여정 — 챕터(5레벨)를 다 깨면 그 승객이 집에 도착한다.
+  passengerHome(chapterIndex) {
+    const last = (chapterIndex + 1) * CHAPTER - 1;
+    for (let i = chapterIndex * CHAPTER; i <= Math.min(last, LEVEL_DATA.length - 1); i++) {
+      if (!this.cleared[i]) return false;
+    }
+    return true;
+  }
+
+  get chapterCount() {
+    return Math.ceil(LEVEL_DATA.length / CHAPTER);
+  }
+
+  get homeCount() {
+    let n = 0;
+    for (let c = 0; c < this.chapterCount; c++) if (this.passengerHome(c)) n++;
+    return n;
+  }
+
+  loadLevel(i) {
+    this.levelIndex = Math.min(Math.max(i, 0), LEVEL_DATA.length - 1);
+    safeStorage.setItem(STORAGE_LEVEL, String(this.levelIndex));
+    const lv = this.level;
+    this.state = decodeVehicles(lv.v);
+    this.solution = decodeMoves(lv.sol);
+    this.history = [];
+    this.won = false;
+    this.guided = GUIDED_LEVELS.has(this.levelIndex);
+    this.helperShown = false;
+    clearTimeout(this._winT);
+
+    this.renderer.reset(this.state);
+    this.dom.overlay.classList.add('hidden');
+    this.closeLevels();
+    this.hideHelper();
+    this.updateHud();
+    this.updateGuide();
+  }
+
+  // --- 튜토리얼 ---
+  nextGuideMove() {
+    if (!this.guided || this.won) return null;
+    return this.solution[this.history.length] || null;
+  }
+
+  // 힌트: 지금 상태에서 솔버가 찾은 다음 최적 수를 손끝으로 짚어준다.
+  // 막다른 길이 없는 게임이라 힌트는 언제나 존재한다. 다음 수를 두면 저절로 사라진다.
+  hint() {
+    if (this.won) return;
+    this.hideHelper();
+    const g = this.nextGuideMove();
+    if (g) {
+      this.renderer.setGuide(g);
+      return;
+    }
+    const r = solve(this.state);
+    if (!r.solved || !r.moves.length) return; // 이론상 불가능하지만 방어
+    this.renderer.setGuide(r.moves[0]);
+    this.sound.pick();
+  }
+
+  // 오래 헤매면 먼저 손을 내민다 — 참고 답안의 두 배(최소 +6수)를 넘기면 한 번만.
+  maybeOfferHelp() {
+    if (this.helperShown || this.won || this.guided) return;
+    const threshold = Math.max(this.level.par * 2, this.level.par + 6);
+    if (this.history.length >= threshold) {
+      this.helperShown = true;
+      this.dom.helper.classList.remove('hidden');
+    }
+  }
+
+  hideHelper() {
+    this.dom.helper.classList.add('hidden');
+  }
+
+  updateGuide() {
+    this.renderer.setGuide(this.nextGuideMove());
+  }
+
+  // 안내 중에는 짚어준 차만 잡을 수 있다 (다른 차를 잡으면 도리도리)
+  canDrag(v) {
+    if (this.won) return false;
+    const g = this.nextGuideMove();
+    return !g || g.v === v;
+  }
+
+  // 렌더러가 "이 차를 여기 놓았다"고 알려온다. 합법성은 rangeOf가 이미 보장했다.
+  commitMove(v, to) {
+    if (this.won) return;
+    const from = coordOf(this.state[v]);
+    if (to === from) return;
+    // 드래그 범위는 잡는 순간 계산되므로, 그 사이 상태가 바뀌었을 수 있다 — 한 번 더 확인
+    const { min, max } = rangeOf(this.state, v);
+    if (to < min || to > max) return;
+
+    this.history.push(this.state);
+    this.state = moveVehicle(this.state, v, to);
+    this.renderer.setState(this.state);
+    this.updateHud();
+    this.updateGuide();
+
+    if (isWin(this.state)) this.win();
+    else this.maybeOfferHelp();
+  }
+
+  undo() {
+    if (this.won || !this.history.length) return;
+    this.state = this.history.pop();
+    this.renderer.setState(this.state);
+    this.updateHud();
+    this.updateGuide();
+    this.sound.pick();
+  }
+
+  restart() {
+    if (this.won && this.renderer.exitAnim) return;
+    this.loadLevel(this.levelIndex);
+  }
+
+  next() {
+    const last = this.levelIndex >= LEVEL_DATA.length - 1;
+    this.loadLevel(last ? 0 : this.levelIndex + 1);
+  }
+
+  win() {
+    this.won = true;
+    this.sound.win();
+    this.renderer.setGuide(null);
+    this.hideHelper();
+
+    const chapter = Math.floor(this.levelIndex / CHAPTER);
+    const wasHome = this.passengerHome(chapter);
+    const earned = starsFor(this.history.length, this.level.par);
+    this.cleared[this.levelIndex] = true;
+    this.stars[this.levelIndex] = Math.max(this.stars[this.levelIndex], earned);
+    this.saveProgress();
+    const nowHome = this.passengerHome(chapter);
+
+    if (this.levelIndex + 1 < LEVEL_DATA.length) {
+      safeStorage.setItem(STORAGE_LEVEL, String(this.levelIndex + 1));
+    }
+
+    const last = this.levelIndex >= LEVEL_DATA.length - 1;
+    this.dom.overlayTitle.textContent = last ? '🎉 Everyone got home!' : `Level ${this.levelIndex + 1} Clear!`;
+    this.dom.overlayInfo.textContent = `${this.history.length} moves · Par ${this.level.par}`;
+    this.dom.btnNext.textContent = last ? 'Play Again ↻' : 'Next Level ▶';
+
+    // 별은 오버레이가 뜰 때 하나씩 튀어나오게 (클래스를 다시 붙여 애니메이션 재생)
+    [...this.dom.starRow.children].forEach((el, i) => {
+      el.classList.remove('on');
+      if (i < earned) void el.offsetWidth, el.classList.add('on');
+    });
+
+    if (nowHome && !wasHome) {
+      this.dom.overlayRescue.textContent = `A passenger made it home! (${this.homeCount}/${this.chapterCount})`;
+      this.dom.overlayRescue.classList.remove('hidden');
+    } else {
+      this.dom.overlayRescue.classList.add('hidden');
+    }
+
+    // 택시가 실제로 달려 나간 뒤에 카드가 뜬다 — 연출이 보상보다 먼저
+    this.renderer.driveOut(() => {
+      this._winT = setTimeout(() => this.dom.overlay.classList.remove('hidden'), 350);
+    });
+    this.onCleared?.(this.levelIndex);
+  }
+
+  updateHud() {
+    this.dom.levelLabel.textContent = `Level ${this.levelIndex + 1}`;
+    this.dom.moveLabel.textContent = `${this.history.length} moves · Par ${this.level.par}`;
+    this.dom.btnUndo.disabled = !this.history.length;
+  }
+
+  // --- 여정 지도 ---
+  // 프로토타입이라 전부 열어둔다. 실제 출시 때는 클리어한 다음 레벨까지만 여는 게 맞다.
+  openLevels() {
+    this.buildJourney();
+    this.dom.levelSelect.classList.remove('hidden');
+    const cur = this.dom.journey.querySelector('.jn.current');
+    if (cur) cur.scrollIntoView({ block: 'center' });
+  }
+
+  closeLevels() {
+    this.dom.levelSelect.classList.add('hidden');
+  }
+
+  toggleLevels() {
+    if (this.dom.levelSelect.classList.contains('hidden')) this.openLevels();
+    else this.closeLevels();
+  }
+
+  // 길을 따라 늘어선 레벨들과, 5레벨마다 내려주는 승객.
+  // 목표가 지도에 그려져 있으니 "왜 하는지"를 글로 설명할 필요가 없다.
+  buildJourney() {
+    const road = this.dom.journey;
+    road.innerHTML = '';
+
+    this.dom.journeyTotal.innerHTML = `<span class="star on"></span>${this.totalStars} / ${
+      LEVEL_DATA.length * 3
+    }`;
+
+    LEVEL_DATA.forEach((lv, i) => {
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className =
+        'jn' + (this.cleared[i] ? ' cleared' : '') + (i === this.levelIndex ? ' current' : '');
+      btn.textContent = String(i + 1);
+      btn.setAttribute(
+        'aria-label',
+        `Level ${i + 1} — ${decodeVehicles(lv.v).length} cars, par ${lv.par}, ${this.stars[i]} stars`
+      );
+
+      if (this.stars[i] > 0) {
+        const row = document.createElement('span');
+        row.className = 'jstars';
+        for (let s = 0; s < 3; s++) {
+          const st = document.createElement('span');
+          st.className = 'star' + (s < this.stars[i] ? ' on' : '');
+          row.appendChild(st);
+        }
+        btn.appendChild(row);
+      }
+
+      btn.addEventListener('click', () => this.loadLevel(i));
+      road.appendChild(btn);
+
+      const chapter = Math.floor(i / CHAPTER);
+      const isChapterEnd = (i + 1) % CHAPTER === 0 || i === LEVEL_DATA.length - 1;
+      if (!isChapterEnd) return;
+
+      const home = this.passengerHome(chapter);
+      const isLast = chapter === this.chapterCount - 1;
+      const rider = document.createElement('div');
+      rider.className = 'jf' + (home ? ' freed' : '');
+      rider.style.setProperty('--c', PASSENGER_HEX[chapter % PASSENGER_HEX.length]);
+      rider.setAttribute(
+        'aria-label',
+        `${isLast ? 'Final passenger' : `Passenger ${chapter + 1}`} — ${home ? 'home' : 'still riding'}`
+      );
+      rider.innerHTML =
+        (isLast ? '<span class="crown"></span>' : '') +
+        '<span class="eye l"></span><span class="eye r"></span><span class="mouth"></span>';
+      road.appendChild(rider);
+
+      const label = document.createElement('div');
+      label.className = 'jf-label';
+      label.textContent = home ? 'Home!' : isLast ? 'Final passenger' : 'Riding along';
+      road.appendChild(label);
+    });
+  }
+
+  // 디버그/검증용: 즉석 솔버로 현재 상태에서 끝까지 민다
+  autoWin() {
+    if (this.won) return true;
+    const r = solve(this.state);
+    if (!r.solved) return false;
+    for (const mv of r.moves) {
+      if (isWin(this.state)) break;
+      this.history.push(this.state);
+      this.state = moveVehicle(this.state, mv.v, mv.to);
+    }
+    this.renderer.setState(this.state);
+    this.updateHud();
+    if (isWin(this.state)) {
+      this.win();
+      return true;
+    }
+    return false;
+  }
+
+  // 디버그/검증용: 드래그 없이 수를 둔다
+  applyMove(v, to) {
+    this.commitMove(v, to);
+  }
+}
+
+
+// ===== parking-escape/main.js =====
+// 부트스트랩 — DOM 연결, 포인터 입력, 리사이즈, 디버그 API.
+
+
+
+
+
+
+const $ = (id) => document.getElementById(id);
+const dom = {
+  board: $('board'),
+  levelLabel: $('levelLabel'),
+  moveLabel: $('moveLabel'),
+  btnUndo: $('btnUndo'),
+  btnRestart: $('btnRestart'),
+  btnMute: $('btnMute'),
+  btnNext: $('btnNext'),
+  helper: $('helper'),
+  levelSelect: $('levelSelect'),
+  journey: $('journey'),
+  journeyTotal: $('journeyTotal'),
+  overlay: $('overlay'),
+  overlayTitle: $('overlayTitle'),
+  overlayInfo: $('overlayInfo'),
+  overlayRescue: $('overlayRescue'),
+  starRow: $('starRow'),
+};
+
+const params = new URLSearchParams(location.search);
+
+const renderer = new Renderer(dom.board);
+const sound = new Sound();
+
+// ?noads 로 광고를 끌 수 있다 (개발·자동화 테스트용)
+const ads = new AdManager({
+  enabled: !params.has('noads'),
+  provider: createPlaceholderProvider({
+    root: $('adSlot'),
+    closeBtn: $('adClose'),
+    config: AD_CONFIG,
+  }),
+});
+
+const game = new Game({
+  renderer,
+  sound,
+  dom,
+  onCleared: () => ads.noteLevelCleared(),
+});
+
+function updateMuteIcon() {
+  dom.btnMute.textContent = sound.muted ? '🔇' : '🔊';
+}
+
+// 드래그는 포인터 캡처로 — 손가락이 캔버스를 벗어나도 끌던 차를 놓치지 않는다
+const boardXY = (e) => {
+  const r = dom.board.getBoundingClientRect();
+  return { x: e.clientX - r.left, y: e.clientY - r.top };
+};
+dom.board.addEventListener('pointerdown', (e) => {
+  e.preventDefault();
+  dom.board.setPointerCapture(e.pointerId);
+  game.hideHelper(); // 다시 만지기 시작하면 도우미는 조용히 비켜준다
+  const { x, y } = boardXY(e);
+  renderer.pointerDown(x, y);
+});
+dom.board.addEventListener('pointermove', (e) => {
+  const { x, y } = boardXY(e);
+  renderer.pointerMove(x, y);
+});
+dom.board.addEventListener('pointerup', () => renderer.pointerUp());
+dom.board.addEventListener('pointercancel', () => renderer.pointerCancel());
+dom.board.addEventListener('contextmenu', (e) => e.preventDefault());
+// iOS 사파리: touch-action/overflow 설정을 뚫고 오는 고무줄 스크롤의 마지막 방어선.
+// passive: false 가 핵심 — 기본값(passive)으로는 preventDefault가 무시된다.
+dom.board.addEventListener('touchmove', (e) => e.preventDefault(), { passive: false });
+
+dom.btnUndo.addEventListener('click', () => game.undo());
+dom.btnRestart.addEventListener('click', () => game.restart());
+$('btnHint').addEventListener('click', () => game.hint());
+$('hpHint').addEventListener('click', () => game.hint());
+$('hpRestart').addEventListener('click', () => game.restart());
+// 광고는 레벨을 깬 뒤 "다음 레벨"을 누를 때만 띄운다.
+// 퍼즐 도중이나 다시하기에는 절대 띄우지 않는다.
+dom.btnNext.addEventListener('click', async () => {
+  dom.btnNext.disabled = true;
+  try {
+    await ads.maybeShow();
+  } finally {
+    dom.btnNext.disabled = false;
+  }
+  game.next();
+});
+dom.btnMute.addEventListener('click', () => {
+  sound.setMuted(!sound.muted);
+  updateMuteIcon();
+});
+
+$('btnLevels').addEventListener('click', () => game.toggleLevels());
+$('btnCloseLevels').addEventListener('click', () => game.closeLevels());
+$('btnLevelsFromWin').addEventListener('click', () => game.openLevels());
+dom.levelSelect.addEventListener('click', (e) => {
+  if (e.target === dom.levelSelect) game.closeLevels();
+});
+window.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') game.closeLevels();
+});
+
+new ResizeObserver(() => renderer.resize()).observe(dom.board);
+window.addEventListener('resize', () => renderer.resize());
+
+updateMuteIcon();
+renderer.resize();
+game.loadLevel(game.levelIndex);
+
+// 이메일 가입 초대 — 설정(SIGNUP_CONFIG)이 채워져 있을 때만 뜬다.
+// ?signup 으로 설정 없이 UI를 미리 볼 수 있다.
+const signup = new Signup({
+  dom: { root: $('signup'), googleSlot: $('suGoogle'), skip: $('suSkip') },
+  force: params.has('signup'),
+});
+signup.maybeShow();
+
+// ?debug — 자동화 테스트/개발용 훅
+if (params.has('debug')) {
+  window.__pke = {
+    game,
+    renderer,
+    sound,
+    ads,
+    signup,
+    signupModule: { Signup, SIGNUP_CONFIG },
+    adsModule: { AdManager, AD_CONFIG },
+    levelCount: LEVEL_DATA.length,
+    state: () => game.state,
+    loadLevel: (i) => game.loadLevel(i),
+    move: (v, to) => game.applyMove(v, to),
+    hint: () => game.hint(),
+    autoWin: () => game.autoWin(),
+    center: (i) => {
+      const r = dom.board.getBoundingClientRect();
+      const c = renderer.vehicleCenter(i);
+      return c ? { x: r.left + c.x, y: r.top + c.y } : null;
+    },
+  };
+}
+
+</script>
+</body>
+</html>
