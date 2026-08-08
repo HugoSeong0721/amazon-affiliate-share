@@ -17,9 +17,15 @@
   -webkit-user-select: none;
 }
 
-html, body { height: 100%; }
+/* iOS 사파리의 고무줄 스크롤(당겨서 새로고침 포함)이 드래그를 가로채지 않게.
+   overflow: hidden 만으로는 사파리가 바운스를 계속 허용한다 —
+   overscroll-behavior + 아래 position: fixed + main.js 의 touchmove 차단까지 세 겹이다. */
+html, body { height: 100%; overscroll-behavior: none; }
 
 body {
+  position: fixed;
+  inset: 0;
+  width: 100%;
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Apple SD Gothic Neo", "Noto Sans KR", sans-serif;
   background: var(--board-bg);
   color: var(--text);
