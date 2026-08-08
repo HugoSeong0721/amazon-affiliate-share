@@ -8,6 +8,10 @@
 #   ANDROID_KEYSTORE_PASSWORD 키스토어 비밀번호
 #   ANDROID_KEY_ALIAS         키 별칭
 #   ANDROID_KEY_PASSWORD      키 비밀번호
+#
+# Firebase 시크릿 (구글 로그인·이메일 수집, 등록하면 자동으로 켜진다):
+#   GOOGLE_SERVICES_JSON_B64  Firebase 콘솔에서 받은 google-services.json 의 base64
+#                             (공개 레포라 파일을 직접 커밋하지 않는다)
 
 name: Android build
 
@@ -31,6 +35,7 @@ jobs:
     runs-on: ubuntu-latest
     env:
       KEYSTORE_B64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+      GOOGLE_SERVICES_B64: ${{ secrets.GOOGLE_SERVICES_JSON_B64 }}
     defaults:
       run:
         working-directory: magnet-balls-app
@@ -54,6 +59,12 @@ jobs:
 
       - name: Sync web assets into Android project
         run: npx cap sync android
+
+      # Firebase 설정이 있으면 넣는다 — 이게 있어야 앱에서 구글 로그인이 켜진다.
+      # 없어도 빌드는 그대로 성공하고, 게임의 로그인 UI만 숨겨진다.
+      - name: Add Firebase config (if provided)
+        if: ${{ env.GOOGLE_SERVICES_B64 != '' }}
+        run: echo "$GOOGLE_SERVICES_B64" | base64 -d > android/app/google-services.json
 
       - name: Build debug APK
         run: cd android && chmod +x gradlew && ./gradlew assembleDebug --no-daemon
@@ -82,14 +93,14 @@ jobs:
         if: ${{ env.KEYSTORE_B64 != '' }}
         run: echo "$KEYSTORE_B64" | base64 -d > /tmp/upload-keystore.jks
 
-      - name: Build signed release AAB
+      - name: Build signed release AAB + APK
         if: ${{ env.KEYSTORE_B64 != '' }}
         env:
           ANDROID_KEYSTORE_PATH: /tmp/upload-keystore.jks
           ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
           ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
           ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
-        run: cd android && ./gradlew bundleRelease --no-daemon
+        run: cd android && ./gradlew bundleRelease assembleRelease --no-daemon
 
       - name: Upload release AAB
         if: ${{ env.KEYSTORE_B64 != '' }}
@@ -97,3 +108,15 @@ jobs:
         with:
           name: magnet-balls-release-aab
           path: magnet-balls-app/android/app/build/outputs/bundle/release/app-release.aab
+
+      # 구글 로그인은 Firebase 에 등록된 서명(SHA-1)이 있는 빌드에서만 된다.
+      # 디버그 APK는 러너가 만든 임시 키로 서명돼 로그인이 안 되므로, 키가 있으면
+      # 업로드 키로 서명한 APK를 테스터 링크에 함께 올린다:
+      # https://github.com/HugoSeong0721/amazon-affiliate-share/releases/download/app-latest/magnet-balls.apk
+      - name: Publish signed APK to the public release
+        if: ${{ env.KEYSTORE_B64 != '' && github.ref == 'refs/heads/main' }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          cp android/app/build/outputs/apk/release/app-release.apk magnet-balls.apk
+          gh release upload app-latest magnet-balls.apk --clobber

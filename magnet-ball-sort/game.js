@@ -404,6 +404,36 @@ export class Game {
     this.dom.deadEnd.classList.add('hidden');
   }
 
+  // 클라우드 저장용 스냅샷 — 로컬 저장과 같은 레벨당-한-글자 형식이다
+  getProgressData() {
+    return {
+      level: this.levelIndex,
+      cleared: this.cleared.map((c) => (c ? '1' : '0')).join(''),
+      stars: this.stars.join(''),
+    };
+  }
+
+  // 병합된 진행을 반영한다. 항상 "더 나아간 쪽"으로만 움직이므로 잃는 것이 없다.
+  // 다른 기기가 더 멀리 갔으면 그 레벨로 점프하고 true 를 돌려준다 —
+  // 호출한 쪽은 이어지는 next() 진행을 건너뛰어야 한다(이중 이동 방지).
+  applyProgressData(d) {
+    const cleared = String(d?.cleared || '');
+    const stars = String(d?.stars || '');
+    for (let i = 0; i < LEVEL_DATA.length; i++) {
+      if (cleared[i] === '1') this.cleared[i] = true;
+      const s = parseInt(stars[i] || '0', 10);
+      if (Number.isFinite(s)) this.stars[i] = Math.max(this.stars[i], Math.min(s, 3));
+    }
+    this.saveProgress();
+    const lv = Math.min(Number(d?.level) || 0, LEVEL_DATA.length - 1);
+    if (lv > this.levelIndex) {
+      this.loadLevel(lv);
+      return true;
+    }
+    this.updateHud();
+    return false;
+  }
+
   // 디버그/검증용
   autoWin() {
     if (this.won) return true;
