@@ -115,6 +115,13 @@ export class Sound {
     this.buzz(24);
   }
 
+  // 출구까지 길이 뚫렸다 — 밝게 딩동. "지금 나가면 된다"는 신호.
+  exitOpen() {
+    this._tone(1047, { type: 'triangle', dur: 0.12, gain: 0.09 });
+    this._tone(1568, { type: 'triangle', dur: 0.18, gain: 0.08, delay: 0.09 });
+    this.buzz([0, 20, 30, 20]);
+  }
+
   // 탈출! 빵빵 + 부릉
   win() {
     this._tone(440, { type: 'square', dur: 0.13, gain: 0.06 });

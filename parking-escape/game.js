@@ -67,6 +67,10 @@ export class Game {
       onThunk: (v, impact) => {
         if (impact > 0.12) this.sound.thunk(impact);
       },
+      // 출구까지 길이 뻥 뚫리는 순간 — 게이트가 밝아지며 "딩"
+      onExitOpen: () => {
+        if (!this.won) this.sound.exitOpen();
+      },
       onCommit: (v, to) => this.commitMove(v, to),
     };
   }

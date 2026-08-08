@@ -135,6 +135,9 @@ export class Renderer {
     this.drag = null;
     this.exitAnim = null;
     this.clearEffects();
+    // "누가 주인공이고 어디로 가는지"를 첫 터치 전까지 바닥 차선으로 보여준다
+    this.intro = { t0: now };
+    this._wasClear = false;
   }
 
   // 수가 적용된 뒤: 논리 상태만 갈아끼우고 표시 좌표는 스프링이 따라가게 둔다
@@ -151,7 +154,19 @@ export class Renderer {
     this.streaks = [];
     this.nudges.clear();
     this.shakeFx = null;
+    this.flashFx = null;
     this.guide = null;
+  }
+
+  // 택시 앞이 출구까지 뻥 뚫렸는가 — 게이트 연출과 "지금이야!" 신호의 근거
+  _pathClear() {
+    if (!this.vehicles) return false;
+    const p = this.vehicles[PLAYER];
+    const g = occupancy(this.vehicles);
+    for (let x = p.x + p.len; x < W; x++) {
+      if (g[EXIT_ROW * W + x] !== -1) return false;
+    }
+    return true;
   }
 
   setGuide(move) {
@@ -203,6 +218,7 @@ export class Renderer {
 
   pointerDown(x, y) {
     if (!this.vehicles || this.exitAnim) return;
+    this.intro = null; // 만지기 시작하면 안내 차선은 치운다
     const i = this.hitTest(x, y);
     if (i === null) return;
     if (!this.handlers.canDrag(i)) {
@@ -320,11 +336,12 @@ export class Renderer {
     this.exitAnim = {
       t0: performance.now(),
       from: this.disp[PLAYER],
-      dur: 950,
+      dur: 1100,
       cb,
       confettied: false,
     };
     this.drag = null;
+    this.intro = null;
   }
 
   celebrate() {
@@ -384,24 +401,42 @@ export class Renderer {
       this.settled[i] = false;
     }
 
-    // 탈출 주행
+    // 탈출 주행 — 움찔(발진 준비) → 배기 연기를 뿜으며 가속 → 게이트 섬광
     const ea = this.exitAnim;
     if (ea) {
       const t = clamp((now - ea.t0) / ea.dur, 0, 1);
-      const dist = W + 3.4 - ea.from; // 화면 밖까지
-      this.disp[PLAYER] = ea.from + dist * easeInQuad(t);
+      const dist = W + 3.4 - ea.from;
+      const REV = 0.16; // 이 구간 동안 뒤로 살짝 움츠렸다가 튀어나간다
+      if (t < REV) {
+        this.disp[PLAYER] = ea.from - 0.07 * Math.sin((t / REV) * Math.PI);
+      } else {
+        this.disp[PLAYER] = ea.from + dist * easeInQuad((t - REV) / (1 - REV));
+      }
+      const r = this.carRect(PLAYER);
       // 속도선
-      if (t > 0.15 && Math.random() < 0.5) {
-        const r = this.carRect(PLAYER);
+      if (t > REV && Math.random() < 0.55) {
         this.streaks.push({
           x: r.x, y: r.y + Math.random() * r.h,
           len: this.cell * (0.5 + Math.random() * 0.8),
           t0: now, dur: 260,
         });
       }
+      // 배기 연기 — 꽁무니에서 몽글몽글
+      if (Math.random() < (t < REV ? 0.5 : 0.3)) {
+        this.dust.push({
+          x: r.x - this.cell * 0.05,
+          y: r.y + r.h * (0.35 + Math.random() * 0.3),
+          vx: -0.02 * this.cell - Math.random() * 0.015 * this.cell,
+          vy: (Math.random() - 0.5) * 0.01 * this.cell,
+          r: (0.07 + Math.random() * 0.07) * this.cell,
+          t0: now, dur: 450 + Math.random() * 250,
+        });
+      }
       if (!ea.confettied && this.disp[PLAYER] + 2 > W) {
         ea.confettied = true;
         this.celebrate();
+        // 게이트 통과 섬광
+        this.flashFx = { t0: now };
       }
       if (t >= 1) {
         this.exitAnim = null;
@@ -426,7 +461,17 @@ export class Renderer {
       }
     }
 
+    // 길이 뚫리는 순간을 잡아 게이트를 밝히고 "딩" 신호를 보낸다
+    this._exitClear = this._pathClear();
+    if (this._exitClear && !this._wasClear) {
+      this._wasClear = true;
+      if (!this.exitAnim) this.handlers.onExitOpen?.();
+    } else if (!this._exitClear) {
+      this._wasClear = false;
+    }
+
     this._drawLot(now);
+    this._drawIntroLane(now); // 차 밑에 깔리는 안내 차선
     if (this.vehicles) {
       // 드래그 중인 차는 맨 위에
       const order = this.vehicles.map((_, i) => i);
@@ -439,8 +484,66 @@ export class Renderer {
       }
       for (const i of order) this._drawCar(i, now);
     }
+    this._drawIntroMarker(now);
     this._drawGuide(now);
     this._drawParticles(now);
+  }
+
+  // 레벨 시작 안내: 택시에서 출구로 흐르는 점선 차선. 첫 터치나 4초 뒤에 사라진다.
+  _introAlpha(now) {
+    if (!this.intro || !this.vehicles || this.exitAnim) return 0;
+    const age = now - this.intro.t0;
+    if (age > 4100) {
+      this.intro = null;
+      return 0;
+    }
+    if (age < 400) return age / 400;
+    if (age > 3600) return 1 - (age - 3600) / 500;
+    return 1;
+  }
+
+  _drawIntroLane(now) {
+    const a = this._introAlpha(now);
+    if (a <= 0) return;
+    const { ctx, cell } = this;
+    const r = this.carRect(PLAYER);
+    const y = this.oy + (EXIT_ROW + 0.5) * cell;
+    ctx.save();
+    ctx.globalAlpha = 0.4 * a;
+    ctx.strokeStyle = TAXI_HEX;
+    ctx.lineWidth = cell * 0.09;
+    ctx.lineCap = 'round';
+    ctx.setLineDash([cell * 0.24, cell * 0.2]);
+    ctx.lineDashOffset = -((now / 26) % (cell * 0.44)); // 출구 쪽으로 흐른다
+    ctx.beginPath();
+    ctx.moveTo(r.x + r.w * 0.55, y);
+    ctx.lineTo(this.ox + W * cell + this.wall * 0.7, y);
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  // 택시 위에서 통통 튀는 마커 — 차들 위에 그려야 가려지지 않는다
+  _drawIntroMarker(now) {
+    const a = this._introAlpha(now);
+    if (a <= 0) return;
+    const { ctx, cell } = this;
+    const r = this.carRect(PLAYER);
+    const bob = Math.sin(now / 220) * cell * 0.07;
+    const mx = r.x + r.w / 2;
+    const my = r.y - cell * 0.3 + bob;
+    const s = cell * 0.17;
+    ctx.globalAlpha = a;
+    ctx.fillStyle = TAXI_HEX;
+    ctx.strokeStyle = 'rgba(40,30,0,0.55)';
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.moveTo(mx - s, my - s * 1.2);
+    ctx.lineTo(mx + s, my - s * 1.2);
+    ctx.lineTo(mx, my);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+    ctx.globalAlpha = 1;
   }
 
   // 주차장 바닥과 벽, 출구
@@ -537,22 +640,62 @@ export class Renderer {
       ctx.fill();
     }
 
-    // 출구 칸 바닥 표시 + 밖으로 흐르는 갈매기 — 목표를 글자 없이 말한다
-    const pulse = (now / 900) % 1;
-    ctx.fillStyle = rgba(TAXI_HEX, 0.10);
+    // --- 골인 게이트 ---
+    // 길이 뚫리면 게이트가 확 밝아지고 갈매기가 빨라진다 — "지금이야!"를 빛으로 말한다
+    const open = this._exitClear;
+    const gx = ox + W * cell;
+    const gy = gapY0 + cell / 2;
+
+    // 따뜻한 빛이 주차장 안으로 새어 들어온다
+    const breathe = open ? 0.3 + 0.1 * Math.sin(now / 170) : 0.1 + 0.04 * Math.sin(now / 520);
+    const glow = ctx.createRadialGradient(gx, gy, 0, gx, gy, cell * 1.9);
+    glow.addColorStop(0, rgba(TAXI_HEX, breathe));
+    glow.addColorStop(1, rgba(TAXI_HEX, 0));
+    ctx.fillStyle = glow;
+    ctx.fillRect(gx - cell * 1.9, gy - cell * 1.9, cell * 3.8, cell * 3.8);
+
+    // 출구 칸 바닥 표시
+    ctx.fillStyle = rgba(TAXI_HEX, open ? 0.16 : 0.09);
     ctx.fillRect(ox + (W - 1) * cell, gapY0, cell, cell);
+
+    // 체커 깃발 두 개 — 골인 지점이라는 만국 공용어
+    const flag = (fx, fy, phase) => {
+      const poleH = cell * 0.5;
+      ctx.strokeStyle = '#c9d1e8';
+      ctx.lineWidth = Math.max(2, cell * 0.045);
+      ctx.lineCap = 'round';
+      ctx.beginPath();
+      ctx.moveTo(fx, fy);
+      ctx.lineTo(fx, fy - poleH);
+      ctx.stroke();
+      const fw = cell * 0.34;
+      const fh = cell * 0.22;
+      const wave = Math.sin(now / 260 + phase) * fh * 0.18;
+      const sq = fw / 3;
+      for (let cxk = 0; cxk < 3; cxk++) {
+        for (let cyk = 0; cyk < 2; cyk++) {
+          ctx.fillStyle = (cxk + cyk) % 2 ? '#f4f6fb' : '#1d2233';
+          const lean = (cxk / 3) * wave;
+          ctx.fillRect(fx + cxk * sq, fy - poleH + cyk * (fh / 2) + lean, sq + 0.5, fh / 2 + 0.5);
+        }
+      }
+    };
+    flag(gx + wall * 0.22, gapY0 - wall * 0.28, 0);
+    flag(gx + wall * 0.22, gapY0 + cell + wall * 0.75, 2.1);
+
+    // 밖으로 흐르는 갈매기 — 길이 뚫리면 두 배로 빨라진다
+    const pulse = (now / (open ? 380 : 900)) % 1;
     for (let k = 0; k < 2; k++) {
       const t = (pulse + k * 0.5) % 1;
-      const cx = ox + W * cell + wall * 0.1 + t * wall * 1.1;
-      const cy = gapY0 + cell / 2;
+      const cx = gx + wall * 0.1 + t * wall * 1.1;
       const s = cell * 0.16;
-      ctx.strokeStyle = rgba(TAXI_HEX, 0.85 * (1 - t));
+      ctx.strokeStyle = rgba(TAXI_HEX, (open ? 1 : 0.8) * (1 - t));
       ctx.lineWidth = Math.max(2.5, cell * 0.05);
       ctx.lineCap = 'round';
       ctx.beginPath();
-      ctx.moveTo(cx - s * 0.6, cy - s);
-      ctx.lineTo(cx + s * 0.4, cy);
-      ctx.lineTo(cx - s * 0.6, cy + s);
+      ctx.moveTo(cx - s * 0.6, gy - s);
+      ctx.lineTo(cx + s * 0.4, gy);
+      ctx.lineTo(cx - s * 0.6, gy + s);
       ctx.stroke();
     }
   }
@@ -596,6 +739,17 @@ export class Renderer {
     h *= s;
 
     const hex = isPlayer ? TAXI_HEX : CAR_HEX[(i - 1) % CAR_HEX.length];
+
+    // 주인공 표식 — 택시 밑에서 숨쉬는 빛무리. 길이 뚫리면 확 밝아진다.
+    if (isPlayer && !this.exitAnim) {
+      const strength = (this._exitClear ? 0.42 : 0.2) * (0.75 + 0.25 * Math.sin(now / 380));
+      const hr = Math.max(w, h) * 0.78;
+      const halo = ctx.createRadialGradient(cx, cy, 0, cx, cy, hr);
+      halo.addColorStop(0, rgba(TAXI_HEX, strength));
+      halo.addColorStop(1, rgba(TAXI_HEX, 0));
+      ctx.fillStyle = halo;
+      ctx.fillRect(cx - hr, cy - hr, hr * 2, hr * 2);
+    }
 
     // 그림자 — 회전과 무관하게 항상 오른쪽 아래로 진다
     ctx.fillStyle = `rgba(5,8,18,${dragging ? 0.5 : 0.34})`;
@@ -812,6 +966,22 @@ export class Renderer {
       ctx.moveTo(s.x - s.len * t, s.y);
       ctx.lineTo(s.x - s.len * t - s.len * 0.6, s.y);
       ctx.stroke();
+    }
+
+    // 게이트 통과 섬광 — 짧고 환하게
+    if (this.flashFx) {
+      const t = (now - this.flashFx.t0) / 320;
+      if (t >= 1) this.flashFx = null;
+      else {
+        const gx = this.ox + W * this.cell;
+        const gy = this.oy + (EXIT_ROW + 0.5) * this.cell;
+        const fr = this.cell * (1 + t * 2.2);
+        const g = ctx.createRadialGradient(gx, gy, 0, gx, gy, fr);
+        g.addColorStop(0, `rgba(255,248,220,${0.55 * (1 - t)})`);
+        g.addColorStop(1, 'rgba(255,248,220,0)');
+        ctx.fillStyle = g;
+        ctx.fillRect(gx - fr, gy - fr, fr * 2, fr * 2);
+      }
     }
 
     for (let i = this.confetti.length - 1; i >= 0; i--) {
