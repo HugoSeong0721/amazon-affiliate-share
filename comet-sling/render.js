@@ -2,7 +2,7 @@
 // 깊은 우주 배경, 패럴랙스 별, 네온 글로우, 코멧 트레일, 파티클, 화면 흔들림.
 // 월드 좌표(y 위로 증가)를 화면 좌표로 뒤집어 그린다. 카메라는 y만 따라간다.
 
-import { WORLD } from './engine.js';
+import { WORLD, aim } from './engine.js';
 
 const COL = {
   bgTop: '#0a0618',
@@ -122,6 +122,7 @@ export class Renderer {
     this._drawAnchors(ctx, state, ui);
     this._drawHazards(ctx, state);
     this._drawTrail(ctx);
+    if (!state.dead && state.orbit) this._drawAimLine(ctx, state);
     if (!state.dead && ui.mode !== 'ready') this._drawComet(ctx, state);
     this._drawParticles(ctx, dt);
     if (ui.mode === 'ready') this._drawReadyComet(ctx, state);
@@ -283,6 +284,54 @@ export class Renderer {
       ctx.stroke();
     }
     ctx.globalAlpha = 1;
+  }
+
+  // 조준선 — 지금 놓으면 날아갈 방향. 근처 앵커에 스냅되면 금색으로 잠긴다.
+  // "옆으로 튕겨나갔다"가 아니라 "옆을 향할 때 놓았다"를 눈으로 알게 해 준다.
+  _drawAimLine(ctx, state) {
+    const a = aim(state);
+    const x0 = this.sx(state.x), y0 = this.sy(state.y);
+    let lenW = 85;
+    if (a.snapped !== null) {
+      const t = state.anchors[a.snapped];
+      lenW = Math.hypot(t.x - state.x, t.y - state.y);
+    }
+    const x1 = this.sx(state.x + a.dx * lenW), y1 = this.sy(state.y + a.dy * lenW);
+    const locked = a.snapped !== null;
+    const col = locked ? 'rgba(255,211,77,0.9)' : 'rgba(142,246,255,0.45)';
+
+    ctx.save();
+    ctx.setLineDash(locked ? [7, 5] : [4, 7]);
+    ctx.lineDashOffset = -this._t * 40; // 점선이 진행 방향으로 흐른다
+    ctx.strokeStyle = col;
+    ctx.lineWidth = locked ? 2.5 : 1.5;
+    ctx.beginPath();
+    ctx.moveTo(x0, y0);
+    ctx.lineTo(x1, y1);
+    ctx.stroke();
+    ctx.setLineDash([]);
+
+    // 화살촉
+    const ang = Math.atan2(y1 - y0, x1 - x0);
+    ctx.fillStyle = col;
+    ctx.beginPath();
+    ctx.moveTo(x1, y1);
+    ctx.lineTo(x1 - 9 * Math.cos(ang - 0.42), y1 - 9 * Math.sin(ang - 0.42));
+    ctx.lineTo(x1 - 9 * Math.cos(ang + 0.42), y1 - 9 * Math.sin(ang + 0.42));
+    ctx.closePath();
+    ctx.fill();
+
+    // 스냅된 앵커에 잠금 링
+    if (locked) {
+      const t = state.anchors[a.snapped];
+      const pulse = 0.85 + 0.15 * Math.sin(this._t * 8);
+      ctx.strokeStyle = 'rgba(255,211,77,0.85)';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.arc(this.sx(t.x), this.sy(t.y), 10 * pulse, 0, Math.PI * 2);
+      ctx.stroke();
+    }
+    ctx.restore();
   }
 
   _drawComet(ctx, state) {

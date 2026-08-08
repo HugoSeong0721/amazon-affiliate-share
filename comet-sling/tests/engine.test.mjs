@@ -7,7 +7,7 @@
 
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { DT, WORLD, newRun, step, score, paramsAt, assistAt, ensureTrack, makeRng } from '../engine.js';
+import { DT, WORLD, newRun, step, score, paramsAt, assistAt, aim, ensureTrack, makeRng } from '../engine.js';
 
 function runScript(seed, script, steps) {
   // script(i) → hold 여부
@@ -123,22 +123,44 @@ test('계속 잡고 있으면 첫 앵커 궤도에 들어가고, 영원히 죽�
   assert.equal(s.mode, 'orbit');
 });
 
-test('놓으면 접선 + 초반 위쪽 어시스트 방향으로 날아간다', () => {
+test('놓으면 조준선(aim)이 보여준 그대로 날아간다', () => {
   const s = newRun(42);
   // 궤도에 들어갈 때까지 홀드
   let i = 0;
   while (s.mode !== 'orbit' && i++ < 2000) step(s, { hold: true });
   assert.equal(s.mode, 'orbit');
-  const o = s.orbit;
-  const tx = -Math.sin(o.theta) * o.dir;
-  const ty = Math.cos(o.theta) * o.dir + assistAt(s.height);
-  const len = Math.hypot(tx, ty);
+  const a = aim(s);
   step(s, { hold: false });
-  // 릴리즈 직후 방향 == 릴리즈 시점의 접선+어시스트 (한 스텝 안에서 theta가 더 돌지 않았는지)
-  assert.ok(Math.hypot(s.dirX - tx / len, s.dirY - ty / len) < 1e-9);
+  // 릴리즈 직후 방향 == 릴리즈 시점의 aim (한 스텝 안에서 theta가 더 돌지 않았는지)
+  assert.ok(Math.hypot(s.dirX - a.dx, s.dirY - a.dy) < 1e-9);
   assert.equal(s.mode, 'flying');
   // 단위벡터
   assert.ok(Math.abs(Math.hypot(s.dirX, s.dirY) - 1) < 1e-9);
+});
+
+test('자석 조준: 얼추 맞으면 앵커로 스냅, 많이 어긋나면 그대로', () => {
+  // 높이 5000 → 어시스트 0, 접선이 정확히 위(+y)를 향하는 궤도 상태를 만든다
+  const base = {
+    x: 0, y: 5000, height: 5000, dirX: 0, dirY: 1,
+    orbit: { i: 0, r: 20, theta: 0, dir: 1 }, // rel=(r,0), dir=+1 → 접선 (0,1)
+  };
+
+  // 접선에서 10° 어긋난 위치의 앵커 → 스냅되어 정확히 앵커를 향한다
+  const off10 = { x: 100 * Math.sin(10 * Math.PI / 180), y: 5000 + 100 * Math.cos(10 * Math.PI / 180) };
+  let a = aim({ ...base, anchors: [{ x: -20, y: 5000 }, off10] });
+  assert.equal(a.snapped, 1);
+  const d = Math.hypot(off10.x - base.x, off10.y - base.y);
+  assert.ok(Math.hypot(a.dx - (off10.x - base.x) / d, a.dy - (off10.y - base.y) / d) < 1e-9);
+
+  // 40° 어긋난 앵커 → 스냅 없음, 순수 접선(0,1)
+  const off40 = { x: 100 * Math.sin(40 * Math.PI / 180), y: 5000 + 100 * Math.cos(40 * Math.PI / 180) };
+  a = aim({ ...base, anchors: [{ x: -20, y: 5000 }, off40] });
+  assert.equal(a.snapped, null);
+  assert.ok(Math.hypot(a.dx - 0, a.dy - 1) < 1e-9);
+
+  // 지금 돌고 있는 앵커(i=0)에는 절대 스냅하지 않는다
+  a = aim({ ...base, anchors: [{ x: 0, y: 5100 }] , orbit: { ...base.orbit, i: 0 } });
+  assert.equal(a.snapped, null);
 });
 
 test('잡는 순간 회전 방향은 진행 방향을 잇는다 (접선·속도 내적 > 0)', () => {
