@@ -51,6 +51,6 @@ test('makeRecord — 이메일은 소문자로 접고, 게임과 날짜가 찍�
   assert.equal(r.email, 'diver@example.com');
   assert.equal(r.via, 'google');
   assert.equal(r.day, '2026-08-06');
-  assert.equal(r.game, 'torch-dive');
+  assert.equal(r.game, 'sky-stack');
   assert.ok(!Number.isNaN(Date.parse(r.at)));
 });

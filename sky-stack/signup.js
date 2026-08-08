@@ -21,8 +21,8 @@ export const SIGNUP_CONFIG = {
   formEntry: '',
 };
 
-const STORAGE_USER = 'tdv.user';
-const STORAGE_QUEUE = 'tdv.signupQueue';
+const STORAGE_USER = 'sky.user';
+const STORAGE_QUEUE = 'sky.signupQueue';
 const GIS_SRC = 'https://accounts.google.com/gsi/client';
 
 // ----- 순수 헬퍼 (테스트 대상) -----
@@ -50,7 +50,7 @@ export function decodeJwtPayload(jwt) {
 }
 
 export function makeRecord(email, via, dayKey) {
-  return { game: 'torch-dive', email: String(email).trim().toLowerCase(), via, day: dayKey, at: new Date().toISOString() };
+  return { game: 'sky-stack', email: String(email).trim().toLowerCase(), via, day: dayKey, at: new Date().toISOString() };
 }
 
 // 수집 요청의 본문을 만든다 — 구글 폼이면 urlencoded, Apps Script면 JSON.
