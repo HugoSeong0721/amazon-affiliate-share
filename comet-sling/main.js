@@ -35,7 +35,8 @@ const dom = {
 const params = new URLSearchParams(location.search);
 
 const renderer = new Renderer(dom.board);
-const sound = new Sound();
+// ?html5audio 로 iOS 경로(무음 스위치에 안 막히는 <audio> 재생)를 어디서든 강제할 수 있다
+const sound = new Sound({ forceHtml5: params.has('html5audio') });
 
 // ?noads 로 광고를 끌 수 있다 (개발·자동화 테스트용)
 const ads = new AdManager({
