@@ -11,7 +11,7 @@ function stripModuleSyntax(src) {
   return src
     .replace(/^import\s[\s\S]*?from\s*'[^']*';\s*$/gm, '')
     .replace(/^export\s*\{[^}]*\}\s*;?\s*$/gm, '')
-    .replace(/^export\s+(?=(const|let|var|function|class))/gm, '');
+    .replace(/^export\s+(?=(async\s+function|const|let|var|function|class))/gm, '');
 }
 
 // 샌드박스(iframe 등)에서 localStorage 접근이 차단돼도 게임이 죽지 않도록 폴백을 끼운다.

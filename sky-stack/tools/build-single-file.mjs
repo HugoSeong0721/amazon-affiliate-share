@@ -22,6 +22,8 @@ buildSingleFile({
     'sky-stack/audio.js',
     'sky-stack/ads.js',
     'sky-stack/signup.js',
+    'sky-stack/leaderboard.js',
+    'sky-stack/share.js',
     'sky-stack/game.js',
     'sky-stack/main.js',
   ],

@@ -19,6 +19,9 @@ export class Game {
     this.acc = 0;
     this.last = 0;
     this.runStartedAt = 0;
+    this.pausedAt = 0; // 일시정지 중에는 런 시간이 흐르지 않는다 (광고 판정이 왜곡되지 않게)
+    this.paused = false;
+    this.lastScore = 0;
     this._ending = false;
     this._forcedSeed = null; // ?seed= 테스트용
 
@@ -30,7 +33,11 @@ export class Game {
     this.state = newRun(seed);
     this.r.reset(this.state);
     this._ending = false;
+    this.paused = false;
+    this.acc = 0;
     this.runStartedAt = performance.now();
+    this.dom.pause.classList.add('hidden');
+    this.dom.btnPause.textContent = '⏸';
     this.dom.overlay.classList.add('hidden');
     this._updateHud();
   }
@@ -40,10 +47,37 @@ export class Game {
     this.dom.bestLabel.textContent = `BEST ${this.best}`;
   }
 
+  // ----- 일시정지 -----
+  // 블록이 멈춘다. 화면 밖으로 나가거나(탭 전환·홈 버튼) 랭킹·공유를 열 때도 자동으로 멈춘다.
+
+  pause() {
+    if (this.paused || !this.state || this.state.over || this._ending) return false;
+    this.paused = true;
+    this.pausedAt = performance.now();
+    this.dom.pause.classList.remove('hidden');
+    this.dom.btnPause.textContent = '▶';
+    return true;
+  }
+
+  resume() {
+    if (!this.paused) return;
+    this.paused = false;
+    // 멈춰 있던 시간만큼 시작 시각을 밀어 준다 — 런 길이는 실제 플레이 시간만 센다
+    this.runStartedAt += performance.now() - this.pausedAt;
+    this.acc = 0; // 밀린 물리 스텝을 몰아서 실행하지 않는다
+    this.dom.pause.classList.add('hidden');
+    this.dom.btnPause.textContent = '⏸';
+  }
+
+  togglePause() {
+    if (this.paused) this.resume();
+    else this.pause();
+  }
+
   // 탭 — 이 게임의 유일한 입력
   tap() {
     const s = this.state;
-    if (!s || s.over || this._ending) return;
+    if (!s || s.over || this._ending || this.paused) return;
     const res = drop(s);
     if (!res) return;
 
@@ -85,13 +119,14 @@ export class Game {
       setTimeout(() => this.sound.best(), 500);
     }
     this.runs += 1;
+    this.lastScore = sc;
     try {
       localStorage.setItem(STORAGE_RUNS, String(this.runs));
     } catch {}
 
     // 광고는 런이 끝난 이 전환 순간에만 — 플레이 도중에는 절대 안 뜬다
     const runSeconds = (performance.now() - this.runStartedAt) / 1000;
-    await this.onRunEnded?.(runSeconds);
+    await this.onRunEnded?.(runSeconds, { score: sc, isBest });
 
     this.dom.overlayScore.textContent = String(sc);
     this.dom.overlayBest.textContent = isBest ? 'NEW BEST!' : `BEST ${this.best}`;
@@ -109,12 +144,15 @@ export class Game {
     if (!this.state) return;
     const dtMs = Math.min(100, t - (this.last || t));
     this.last = t;
-    this.acc += dtMs / 1000;
-    while (this.acc >= DT) {
-      step(this.state);
-      this.acc -= DT;
+    // 일시정지 중에도 그리기는 계속한다 (멈춘 화면이 보여야 하니까) — 물리만 멈춘다
+    if (!this.paused) {
+      this.acc += dtMs / 1000;
+      while (this.acc >= DT) {
+        step(this.state);
+        this.acc -= DT;
+      }
+      this.r.tick(this.state, dtMs / 1000);
     }
-    this.r.tick(this.state, dtMs / 1000);
     this.r.draw(this.state);
   }
 }
