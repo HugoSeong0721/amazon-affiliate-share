@@ -1,9 +1,8 @@
 // 게임 껍데기 — 엔진(순수 물리)을 화면·소리·저장과 잇는다.
 // 모드: ready(출발대) → running(런) → dead(결과) → ready…
 
-import { DT, WORLD, newRun, step, score, drainEvents, aim, revive } from './engine.js';
+import { DT, WORLD, newRun, step, score, drainEvents, aim } from './engine.js';
 import { submitScore } from './signup.js';
-import { SKUS } from './payments.js';
 
 const STORE = {
   best: 'cms.best',
@@ -14,16 +13,11 @@ const STORE = {
 const COACH_UNTIL_RELEASES = 3;
 
 export class Game {
-  constructor({ renderer, sound, dom, onRunEnded, challengeScore = null, payments = null }) {
+  constructor({ renderer, sound, dom, onRunEnded, challengeScore = null }) {
     this.renderer = renderer;
     this.sound = sound;
     this.dom = dom;
     this.onRunEnded = onRunEnded || (() => {});
-    this.payments = payments;           // 회생 결제 제공자 (null 이면 제안 안 뜸)
-    this._revivedThisRun = false;       // 회생은 한 판에 한 번
-
-    this.dom.btnRevive.addEventListener('click', () => this._acceptRevive());
-    this.dom.btnNoRevive.addEventListener('click', () => this._declineRevive());
 
     this.paused = false;
     this._resuming = false;
@@ -94,7 +88,6 @@ export class Game {
     this.state = newRun(this._forcedSeed ?? this._seed());
     this.mode = 'ready';
     this._newBest = false;
-    this._revivedThisRun = false;
     this.renderer.reset(this.state);
     this.dom.overlay.classList.add('hidden');
     this._syncHud();
@@ -248,51 +241,7 @@ export class Game {
     this.renderer.shake(cause === 'wall' ? 10 : 14);
     this.renderer.explode(this.state.x, this.state.y);
 
-    // 회생 제안 — 한 판에 한 번, 폭발이 눈에 들어온 뒤에
-    if (this.payments && !this._revivedThisRun) {
-      setTimeout(() => this._offerRevive(), 550);
-      return;
-    }
     setTimeout(() => this._finalizeDeath(), 650);
-  }
-
-  // ----- 회생 (죽음 직후 5초 카운트다운) -----
-
-  _offerRevive() {
-    this.dom.revive.classList.remove('hidden');
-    let left = 5;
-    this.dom.reviveCount.textContent = String(left);
-    this._reviveTimer = setInterval(() => {
-      left -= 1;
-      this.dom.reviveCount.textContent = String(Math.max(0, left));
-      if (left <= 0) this._declineRevive();
-    }, 1000);
-  }
-
-  _closeReviveOffer() {
-    clearInterval(this._reviveTimer);
-    this.dom.revive.classList.add('hidden');
-  }
-
-  async _acceptRevive() {
-    this._closeReviveOffer();
-    const ok = await this.payments.purchase(SKUS.rescue);
-    if (!ok) {
-      this._finalizeDeath();
-      return;
-    }
-    this._revivedThisRun = true;
-    revive(this.state);
-    drainEvents(this.state); // revive 이벤트 소비
-    this.renderer.clearTrail();
-    this.sound.revive();
-    this._syncHud();
-  }
-
-  _declineRevive() {
-    if (this.dom.revive.classList.contains('hidden')) return;
-    this._closeReviveOffer();
-    this._finalizeDeath();
   }
 
   _finalizeDeath() {

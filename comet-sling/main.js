@@ -3,7 +3,6 @@
 import { Renderer } from './render.js';
 import { Sound } from './audio.js';
 import { AdManager, AD_CONFIG, createPlaceholderProvider } from './ads.js';
-import { createDemoPayProvider } from './payments.js';
 import { Game } from './game.js';
 import { SignupGate, SIGNUP_CONFIG } from './signup.js';
 import { newRun, step, WORLD, paramsAt, aim } from './engine.js';
@@ -25,10 +24,6 @@ const dom = {
   pauseNote: $('pauseNote'),
   btnResume: $('btnResume'),
   btnPause: $('btnPause'),
-  revive: $('revive'),
-  reviveCount: $('reviveCount'),
-  btnRevive: $('btnRevive'),
-  btnNoRevive: $('btnNoRevive'),
   signup: $('signup'),
   emailForm: $('emailForm'),
   emailInput: $('emailInput'),
@@ -52,22 +47,10 @@ const ads = new AdManager({
   }),
 });
 
-// 회생 결제 — 데모 제공자 (TEST MODE 라벨, 실제 과금 없음). ?nopay 로 끈다.
-const payments = params.has('nopay')
-  ? null
-  : createDemoPayProvider({
-      root: $('paySheet'),
-      titleEl: $('payTitle'),
-      priceEl: $('payPrice'),
-      payBtn: $('btnPay'),
-      cancelBtn: $('btnPayCancel'),
-    });
-
 const game = new Game({
   renderer,
   sound,
   dom,
-  payments,
   // 도전장 링크(?beat=N) — 친구 기록이 결승선으로 그려진다
   challengeScore: Number(params.get('beat')) || null,
   // 광고는 죽은 뒤 "다시" 전환 순간에만. 런 도중에는 절대 안 뜬다.
