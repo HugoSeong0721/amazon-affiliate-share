@@ -7,7 +7,7 @@
 
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { DT, WORLD, newRun, step, score, paramsAt, assistAt, aim, ensureTrack, makeRng } from '../engine.js';
+import { DT, WORLD, newRun, step, score, paramsAt, assistAt, aim, orbitOmega, ensureTrack, makeRng } from '../engine.js';
 
 function runScript(seed, script, steps) {
   // script(i) → hold 여부
@@ -102,6 +102,19 @@ test('난이도 곡선은 단조 증가한다', () => {
     prev = p;
   }
   assert.ok(paramsAt(0).speed >= 25 && paramsAt(1e6).speed <= 100.001);
+});
+
+test('궤도 회전: 작은 원이 빠르되 얌전하게 — 차이는 1.3~1.7배, 시작 속도에서 한 바퀴 3~5.5초', () => {
+  const speed = paramsAt(0).speed;
+  const wSmall = orbitOmega(speed, WORLD.orbitMin);
+  const wBig = orbitOmega(speed, WORLD.orbitMax);
+  assert.ok(wSmall > wBig, '작은 원이 더 빨라야 한다');
+  const ratio = wSmall / wBig;
+  assert.ok(ratio >= 1.3 && ratio <= 1.7, `비율 ${ratio.toFixed(2)}가 범위를 벗어났다`);
+  for (const r of [WORLD.orbitMin, WORLD.orbitMax]) {
+    const period = (2 * Math.PI) / orbitOmega(speed, r);
+    assert.ok(period >= 3 && period <= 5.5, `r=${r} 한 바퀴 ${period.toFixed(1)}s`);
+  }
 });
 
 test('에임 어시스트는 초반에만 있고 단조 감소하며 800에서 사라진다', () => {

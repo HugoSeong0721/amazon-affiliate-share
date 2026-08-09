@@ -500,6 +500,13 @@ function assistAt(height) {
   return Math.max(0, 0.38 * (1 - Math.max(0, height) / 800));
 }
 
+// 궤도 회전 각속도 — 순수하게 speed/r 로 하면 작은 원이 정신없이 빨라진다
+// (반지름 11 vs 26 이 2.4배 차이). 유효 반지름을 눌러서 차이는 남기되 얌전하게:
+// 작은 원은 '살짝 빠르고', 큰 원은 '여유로운' 정도 (약 1.5배 차이).
+function orbitOmega(speed, r) {
+  return speed / (0.55 * r + 10);
+}
+
 // 자석 조준 — 릴리즈 방향이 근처 앵커와 이 각도 이내로 맞으면 그 앵커로 스냅한다.
 // "옆으로 튕겨나간다"는 느낌의 해독제: 얼추 맞으면 정확히 맞은 걸로 쳐 준다.
 const SNAP_DEG = 25;
@@ -668,7 +675,7 @@ function step(state, input) {
   if (state.mode === 'orbit') {
     const o = state.orbit;
     const a = state.anchors[o.i];
-    o.theta += o.dir * (p.speed / o.r) * DT;
+    o.theta += o.dir * orbitOmega(p.speed, o.r) * DT;
     state.x = a.x + Math.cos(o.theta) * o.r;
     state.y = a.y + Math.sin(o.theta) * o.r;
   } else {
