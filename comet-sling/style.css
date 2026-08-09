@@ -39,7 +39,8 @@ body {
   height: 100dvh;
   width: 100%;
   max-width: 540px;
-  background: var(--bg);
+  /* 게임 배경 — 캔버스가 매 프레임 칠하지 않도록 여기서 한 번만 칠한다 */
+  background: linear-gradient(180deg, #0a0618 0%, #03030a 100%);
   overflow: hidden;
 }
 
