@@ -18,7 +18,16 @@
         <div id="bestLabel">BEST 0</div>
       </div>
       <button id="btnMute" class="hud-btn" title="Sound on/off" aria-label="Sound">🔊</button>
+      <button id="btnPause" class="hud-btn" title="Pause" aria-label="Pause">⏸</button>
     </header>
+
+    <div id="pause" class="hidden">
+      <div class="pause-card">
+        <div id="pauseTitle">PAUSED</div>
+        <p id="pauseNote" class="pause-note hidden">hold to stay in orbit</p>
+        <button id="btnResume" type="button">▶ Resume</button>
+      </div>
+    </div>
 
     <div id="overlay" class="hidden">
       <div class="overlay-card">

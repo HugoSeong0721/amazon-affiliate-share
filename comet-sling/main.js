@@ -20,6 +20,11 @@ const dom = {
   overlayChallenge: $('overlayChallenge'),
   btnShare: $('btnShare'),
   toast: $('toast'),
+  pause: $('pause'),
+  pauseTitle: $('pauseTitle'),
+  pauseNote: $('pauseNote'),
+  btnResume: $('btnResume'),
+  btnPause: $('btnPause'),
   revive: $('revive'),
   reviveCount: $('reviveCount'),
   btnRevive: $('btnRevive'),
@@ -110,6 +115,7 @@ dom.board.addEventListener('contextmenu', (e) => e.preventDefault());
 window.addEventListener('keydown', (e) => {
   if (e.repeat || gateOpen) return;
   if (e.key === ' ' || e.key === 'ArrowUp') game.press();
+  if (e.key === 'Escape' || e.key === 'p') game.pause();
 });
 window.addEventListener('keyup', (e) => {
   if (e.key === ' ' || e.key === 'ArrowUp') game.releasePress();

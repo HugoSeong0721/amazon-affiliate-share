@@ -112,6 +112,73 @@ body {
 
 .hud-btn:active { transform: scale(0.94); }
 
+#btnPause { right: 62px; }
+
+/* ----- 일시정지 ----- */
+
+#pause {
+  position: absolute;
+  inset: 0;
+  z-index: 22;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(3, 3, 8, 0.72);
+  backdrop-filter: blur(2px);
+}
+
+#pause.hidden { display: none; }
+
+/* 재개 카운트다운 중: 터치가 게임으로 통과하고 배경도 얇아진다 */
+#pause.counting {
+  pointer-events: none;
+  background: rgba(3, 3, 8, 0.35);
+  backdrop-filter: none;
+}
+
+.pause-card {
+  text-align: center;
+  padding: 28px 44px;
+  border: 1px solid rgba(142, 246, 255, 0.22);
+  border-radius: 20px;
+  background: var(--panel);
+  animation: cardIn 0.25s cubic-bezier(0.2, 1.4, 0.4, 1);
+}
+
+#pauseTitle {
+  font-size: 34px;
+  font-weight: 900;
+  letter-spacing: 0.14em;
+  color: var(--text);
+  text-shadow: 0 0 20px var(--neon-dim);
+  font-variant-numeric: tabular-nums;
+}
+
+.pause-note {
+  margin-top: 8px;
+  font-size: 12.5px;
+  letter-spacing: 0.08em;
+  color: var(--muted);
+  animation: fadePulse 1.2s ease-in-out infinite;
+}
+
+.pause-note.hidden { display: none; }
+
+#btnResume {
+  display: block;
+  margin: 18px auto 0;
+  padding: 12px 30px;
+  border: none;
+  border-radius: 14px;
+  background: var(--neon);
+  color: #04121a;
+  font-size: 16px;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+#btnResume:active { transform: scale(0.96); }
+
 /* ----- 결과 카드 ----- */
 
 #overlay {
@@ -558,7 +625,16 @@ body {
         <div id="bestLabel">BEST 0</div>
       </div>
       <button id="btnMute" class="hud-btn" title="Sound on/off" aria-label="Sound">🔊</button>
+      <button id="btnPause" class="hud-btn" title="Pause" aria-label="Pause">⏸</button>
     </header>
+
+    <div id="pause" class="hidden">
+      <div class="pause-card">
+        <div id="pauseTitle">PAUSED</div>
+        <p id="pauseNote" class="pause-note hidden">hold to stay in orbit</p>
+        <button id="btnResume" type="button">▶ Resume</button>
+      </div>
+    </div>
 
     <div id="overlay" class="hidden">
       <div class="overlay-card">
@@ -1980,6 +2056,18 @@ class Game {
     this.dom.btnRevive.addEventListener('click', () => this._acceptRevive());
     this.dom.btnNoRevive.addEventListener('click', () => this._declineRevive());
 
+    this.paused = false;
+    this._resuming = false;
+    this.dom.btnPause.addEventListener('click', (e) => {
+      e.stopPropagation();
+      this.pause();
+    });
+    this.dom.btnResume.addEventListener('click', () => this._resume());
+    // 백그라운드로 가면 자동 일시정지 — 전화 한 통에 런을 잃지 않게
+    document.addEventListener('visibilitychange', () => {
+      if (document.hidden) this.pause();
+    });
+
     // 도전장: 공유 링크(?beat=N)로 들어오면 친구 기록이 결승선으로 그려진다
     this.challenge = challengeScore > 0
       ? { score: challengeScore, height: challengeScore * 4, beaten: false }
@@ -2014,6 +2102,8 @@ class Game {
   // ----- 입력 -----
 
   press() {
+    // 일시정지 중에는 입력 무시 — 단, 재개 카운트다운 중의 홀드는 허용 (궤도 유지용)
+    if (this.paused && !this._resuming) return;
     this.holding = true;
     if (this.mode === 'ready') {
       this.mode = 'running';
@@ -2043,7 +2133,48 @@ class Game {
 
   // ----- 프레임 -----
 
+  // ----- 일시정지 -----
+
+  pause() {
+    if (this.mode !== 'running' || this.state.dead || this.paused) return;
+    this.paused = true;
+    this._resuming = false;
+    clearInterval(this._resumeTimer);
+    this.dom.pause.classList.remove('counting');
+    this.dom.pauseTitle.textContent = 'PAUSED';
+    this.dom.pauseNote.classList.add('hidden');
+    this.dom.btnResume.classList.remove('hidden');
+    this.dom.pause.classList.remove('hidden');
+  }
+
+  _resume() {
+    if (!this.paused || this._resuming) return;
+    this._resuming = true;
+    this.dom.pause.classList.add('counting'); // 터치가 게임으로 통과한다 (홀드 준비용)
+    this.dom.btnResume.classList.add('hidden');
+    // 궤도 중이었다면 "누르고 있으면 계속 돈다"를 알려준다
+    this.dom.pauseNote.classList.toggle('hidden', this.state.mode !== 'orbit');
+    let left = 3;
+    this.dom.pauseTitle.textContent = String(left);
+    this._resumeTimer = setInterval(() => {
+      left -= 1;
+      if (left > 0) {
+        this.dom.pauseTitle.textContent = String(left);
+        return;
+      }
+      clearInterval(this._resumeTimer);
+      this.dom.pause.classList.add('hidden');
+      this.dom.pause.classList.remove('counting');
+      this.paused = false;
+      this._resuming = false;
+    }, 700);
+  }
+
   frame(dtMs) {
+    if (this.paused) {
+      this.renderer.draw(this.state, { mode: this.mode, holding: this.holding, challenge: this.challenge });
+      return;
+    }
     if (this.mode === 'running' && !this.state.dead) {
       this._acc += Math.min(dtMs, 100) / 1000;
       this._runSeconds += Math.min(dtMs, 100) / 1000;
@@ -2252,6 +2383,11 @@ const dom = {
   overlayChallenge: $('overlayChallenge'),
   btnShare: $('btnShare'),
   toast: $('toast'),
+  pause: $('pause'),
+  pauseTitle: $('pauseTitle'),
+  pauseNote: $('pauseNote'),
+  btnResume: $('btnResume'),
+  btnPause: $('btnPause'),
   revive: $('revive'),
   reviveCount: $('reviveCount'),
   btnRevive: $('btnRevive'),
@@ -2342,6 +2478,7 @@ dom.board.addEventListener('contextmenu', (e) => e.preventDefault());
 window.addEventListener('keydown', (e) => {
   if (e.repeat || gateOpen) return;
   if (e.key === ' ' || e.key === 'ArrowUp') game.press();
+  if (e.key === 'Escape' || e.key === 'p') game.pause();
 });
 window.addEventListener('keyup', (e) => {
   if (e.key === ' ' || e.key === 'ArrowUp') game.releasePress();
