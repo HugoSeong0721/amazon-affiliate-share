@@ -2,6 +2,7 @@
 // 모드: ready(출발대) → running(런) → dead(결과) → ready…
 
 import { DT, WORLD, newRun, step, score, drainEvents, aim } from './engine.js';
+import { submitScore } from './signup.js';
 
 const STORE = {
   best: 'cms.best',
@@ -12,11 +13,21 @@ const STORE = {
 const COACH_UNTIL_RELEASES = 3;
 
 export class Game {
-  constructor({ renderer, sound, dom, onRunEnded }) {
+  constructor({ renderer, sound, dom, onRunEnded, challengeScore = null }) {
     this.renderer = renderer;
     this.sound = sound;
     this.dom = dom;
     this.onRunEnded = onRunEnded || (() => {});
+
+    // 도전장: 공유 링크(?beat=N)로 들어오면 친구 기록이 결승선으로 그려진다
+    this.challenge = challengeScore > 0
+      ? { score: challengeScore, height: challengeScore * 4, beaten: false }
+      : null;
+
+    this.dom.btnShare.addEventListener('click', (e) => {
+      e.stopPropagation();
+      this._share();
+    });
 
     this.best = Number(localStorage.getItem(STORE.best) || 0);
     this.runs = Number(localStorage.getItem(STORE.runs) || 0);
@@ -79,6 +90,7 @@ export class Game {
         this._acc -= DT;
       }
       this._handleEvents();
+      this._checkChallenge();
       this._syncHud();
     }
     this.renderer.draw(this.state, {
@@ -86,7 +98,47 @@ export class Game {
       holding: this.holding,
       demo: this.releases === 0,
       coach: this._coach(),
+      challenge: this.challenge,
     });
+  }
+
+  // 결승선(친구 기록 높이)을 넘는 순간 한 번 축하한다
+  _checkChallenge() {
+    const c = this.challenge;
+    if (!c || c.beaten || this.state.height < c.height) return;
+    c.beaten = true;
+    this.sound.fanfare();
+    this.renderer.burst(this.state.x, this.state.y);
+  }
+
+  // 결과 공유 — 공유 시트가 있으면 그걸로, 없으면 클립보드 복사
+  async _share() {
+    const s = Math.max(score(this.state), this.best);
+    const url = new URL(location.href);
+    url.search = `?beat=${s}`;
+    const text = `☄️ I scored ${s} in Comet Sling — can you beat me?`;
+    try {
+      if (navigator.share) {
+        await navigator.share({ text, url: url.toString() });
+        return;
+      }
+    } catch {
+      return; // 사용자가 공유 시트를 닫음 — 조용히
+    }
+    try {
+      await navigator.clipboard.writeText(`${text} ${url}`);
+      this._toast('Link copied!');
+    } catch {
+      this._toast(url.toString());
+    }
+  }
+
+  _toast(msg) {
+    const t = this.dom.toast;
+    t.textContent = msg;
+    t.classList.remove('hidden');
+    clearTimeout(this._toastTimer);
+    this._toastTimer = setTimeout(() => t.classList.add('hidden'), 1800);
   }
 
   // 아직 손에 익기 전(릴리즈 3회 미만)에는 지금 뭘 해야 하는지 손가락이 짚어준다
@@ -140,6 +192,7 @@ export class Game {
       this.best = s;
       this._newBest = true;
       localStorage.setItem(STORE.best, String(s));
+      submitScore(s); // 랭킹 시트로 (endpoint 설정 시) — 신기록만 보낸다
     }
 
     this.sound.crash(cause);
@@ -152,6 +205,13 @@ export class Game {
       this.dom.overlayScore.textContent = String(s);
       this.dom.overlayBest.textContent = this._newBest ? 'NEW BEST!' : `BEST ${this.best}`;
       this.dom.overlayBest.classList.toggle('newbest', this._newBest);
+      const c = this.challenge;
+      this.dom.overlayChallenge.classList.toggle('hidden', !c);
+      if (c) {
+        this.dom.overlayChallenge.textContent = c.beaten
+          ? `🏆 You beat your friend's ${c.score}!`
+          : `🏁 ${c.score} to beat`;
+      }
       this.dom.overlay.classList.remove('hidden');
       this._syncHud();
     }, 650);

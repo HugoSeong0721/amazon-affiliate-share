@@ -170,6 +170,49 @@ body {
   50% { transform: scale(1.08); }
 }
 
+.challenge-note {
+  margin-top: 10px;
+  font-size: 13.5px;
+  font-weight: 800;
+  color: var(--gold);
+}
+
+.challenge-note.hidden { display: none; }
+
+#btnShare {
+  margin-top: 16px;
+  padding: 11px 22px;
+  border: 1px solid rgba(255, 211, 77, 0.5);
+  border-radius: 12px;
+  background: rgba(255, 211, 77, 0.12);
+  color: var(--gold);
+  font-size: 14px;
+  font-weight: 800;
+  cursor: pointer;
+  pointer-events: auto; /* 오버레이는 탭을 흘려보내지만 이 버튼은 받는다 */
+}
+
+#btnShare:active { transform: scale(0.96); }
+
+#toast {
+  position: absolute;
+  bottom: calc(40px + env(safe-area-inset-bottom));
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 50;
+  padding: 10px 18px;
+  border-radius: 20px;
+  background: rgba(14, 12, 30, 0.95);
+  border: 1px solid rgba(142, 246, 255, 0.3);
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 700;
+  white-space: nowrap;
+  animation: cardIn 0.25s;
+}
+
+#toast.hidden { display: none; }
+
 .retry-note {
   margin-top: 18px;
   font-size: 13px;
@@ -395,9 +438,13 @@ body {
       <div class="overlay-card">
         <div id="overlayScore">0</div>
         <div id="overlayBest">BEST 0</div>
+        <p id="overlayChallenge" class="challenge-note hidden"></p>
+        <button id="btnShare" type="button">📤 Challenge a friend</button>
         <p class="retry-note">tap to fly again</p>
       </div>
     </div>
+
+    <div id="toast" class="hidden"></div>
 
     <div id="signup" class="hidden">
       <div class="signup-card">
@@ -834,6 +881,7 @@ class Renderer {
 
     this._drawStars(ctx);
     this._drawWalls(ctx, state);
+    if (ui.challenge) this._drawFinishLine(ctx, ui.challenge);
     this._drawAnchors(ctx, state, ui);
     this._drawHazards(ctx, state);
     this._drawTrail(ctx);
@@ -892,6 +940,32 @@ class Renderer {
         ctx.stroke();
       }
     }
+  }
+
+  // 도전장 결승선 — 친구 기록의 높이에 금색 선. 넘으면 초록으로 남는다.
+  _drawFinishLine(ctx, c) {
+    if (!this._visible(c.height, 40)) return;
+    const y = this.sy(c.height);
+    const col = c.beaten ? 'rgba(120, 240, 160, 0.75)' : 'rgba(255, 211, 77, 0.75)';
+    ctx.save();
+    ctx.setLineDash([12, 8]);
+    ctx.lineDashOffset = -this._t * 25;
+    ctx.strokeStyle = col;
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(this.sx(-WORLD.halfW), y);
+    ctx.lineTo(this.sx(WORLD.halfW), y);
+    ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.font = '800 13px system-ui';
+    ctx.textAlign = 'right';
+    ctx.textBaseline = 'bottom';
+    ctx.fillStyle = col;
+    ctx.shadowColor = 'rgba(0,0,0,0.8)';
+    ctx.shadowBlur = 5;
+    ctx.fillText(c.beaten ? `🏆 ${c.score}` : `🏁 ${c.score}`, this.sx(WORLD.halfW) - 8, y - 5);
+    ctx.shadowBlur = 0;
+    ctx.restore();
   }
 
   _visible(wy, pad = 80) {
@@ -1512,6 +1586,25 @@ async function flushQueue(config) {
   saveQueue(remain);
 }
 
+// 랭킹용 점수 제출 — 이메일과 같은 endpoint 로 보낸다 (시트의 scores 탭에 쌓임).
+// 신기록일 때만 부르면 시트가 깔끔하다. 실패분은 이메일과 같은 큐로 재시도.
+function submitScore(score, config = SIGNUP_CONFIG) {
+  const entry = {
+    type: 'score',
+    score,
+    email: safeStorage.getItem(SIGNUP_STORE.email) || '',
+    game: 'comet-sling',
+    at: new Date().toISOString(),
+  };
+  send(entry, config).then((ok) => {
+    if (!ok && config.endpoint) {
+      const q = loadQueue();
+      q.push(entry);
+      saveQueue(q);
+    }
+  });
+}
+
 function decodeJwtEmail(credential) {
   try {
     const payload = JSON.parse(
@@ -1613,6 +1706,7 @@ class SignupGate {
 // 모드: ready(출발대) → running(런) → dead(결과) → ready…
 
 
+
 const STORE = {
   best: 'cms.best',
   runs: 'cms.runs',
@@ -1622,11 +1716,21 @@ const STORE = {
 const COACH_UNTIL_RELEASES = 3;
 
 class Game {
-  constructor({ renderer, sound, dom, onRunEnded }) {
+  constructor({ renderer, sound, dom, onRunEnded, challengeScore = null }) {
     this.renderer = renderer;
     this.sound = sound;
     this.dom = dom;
     this.onRunEnded = onRunEnded || (() => {});
+
+    // 도전장: 공유 링크(?beat=N)로 들어오면 친구 기록이 결승선으로 그려진다
+    this.challenge = challengeScore > 0
+      ? { score: challengeScore, height: challengeScore * 4, beaten: false }
+      : null;
+
+    this.dom.btnShare.addEventListener('click', (e) => {
+      e.stopPropagation();
+      this._share();
+    });
 
     this.best = Number(safeStorage.getItem(STORE.best) || 0);
     this.runs = Number(safeStorage.getItem(STORE.runs) || 0);
@@ -1689,6 +1793,7 @@ class Game {
         this._acc -= DT;
       }
       this._handleEvents();
+      this._checkChallenge();
       this._syncHud();
     }
     this.renderer.draw(this.state, {
@@ -1696,7 +1801,47 @@ class Game {
       holding: this.holding,
       demo: this.releases === 0,
       coach: this._coach(),
+      challenge: this.challenge,
     });
+  }
+
+  // 결승선(친구 기록 높이)을 넘는 순간 한 번 축하한다
+  _checkChallenge() {
+    const c = this.challenge;
+    if (!c || c.beaten || this.state.height < c.height) return;
+    c.beaten = true;
+    this.sound.fanfare();
+    this.renderer.burst(this.state.x, this.state.y);
+  }
+
+  // 결과 공유 — 공유 시트가 있으면 그걸로, 없으면 클립보드 복사
+  async _share() {
+    const s = Math.max(score(this.state), this.best);
+    const url = new URL(location.href);
+    url.search = `?beat=${s}`;
+    const text = `☄️ I scored ${s} in Comet Sling — can you beat me?`;
+    try {
+      if (navigator.share) {
+        await navigator.share({ text, url: url.toString() });
+        return;
+      }
+    } catch {
+      return; // 사용자가 공유 시트를 닫음 — 조용히
+    }
+    try {
+      await navigator.clipboard.writeText(`${text} ${url}`);
+      this._toast('Link copied!');
+    } catch {
+      this._toast(url.toString());
+    }
+  }
+
+  _toast(msg) {
+    const t = this.dom.toast;
+    t.textContent = msg;
+    t.classList.remove('hidden');
+    clearTimeout(this._toastTimer);
+    this._toastTimer = setTimeout(() => t.classList.add('hidden'), 1800);
   }
 
   // 아직 손에 익기 전(릴리즈 3회 미만)에는 지금 뭘 해야 하는지 손가락이 짚어준다
@@ -1750,6 +1895,7 @@ class Game {
       this.best = s;
       this._newBest = true;
       safeStorage.setItem(STORE.best, String(s));
+      submitScore(s); // 랭킹 시트로 (endpoint 설정 시) — 신기록만 보낸다
     }
 
     this.sound.crash(cause);
@@ -1762,6 +1908,13 @@ class Game {
       this.dom.overlayScore.textContent = String(s);
       this.dom.overlayBest.textContent = this._newBest ? 'NEW BEST!' : `BEST ${this.best}`;
       this.dom.overlayBest.classList.toggle('newbest', this._newBest);
+      const c = this.challenge;
+      this.dom.overlayChallenge.classList.toggle('hidden', !c);
+      if (c) {
+        this.dom.overlayChallenge.textContent = c.beaten
+          ? `🏆 You beat your friend's ${c.score}!`
+          : `🏁 ${c.score} to beat`;
+      }
       this.dom.overlay.classList.remove('hidden');
       this._syncHud();
     }, 650);
@@ -1791,6 +1944,9 @@ const dom = {
   overlay: $('overlay'),
   overlayScore: $('overlayScore'),
   overlayBest: $('overlayBest'),
+  overlayChallenge: $('overlayChallenge'),
+  btnShare: $('btnShare'),
+  toast: $('toast'),
   signup: $('signup'),
   emailForm: $('emailForm'),
   emailInput: $('emailInput'),
@@ -1818,6 +1974,8 @@ const game = new Game({
   renderer,
   sound,
   dom,
+  // 도전장 링크(?beat=N) — 친구 기록이 결승선으로 그려진다
+  challengeScore: Number(params.get('beat')) || null,
   // 광고는 죽은 뒤 "다시" 전환 순간에만. 런 도중에는 절대 안 뜬다.
   onRunEnded: async (runSeconds) => {
     ads.noteRunEnded();

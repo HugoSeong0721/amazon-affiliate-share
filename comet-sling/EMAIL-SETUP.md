@@ -17,10 +17,17 @@
 3. 열린 편집기에 원래 있던 코드를 지우고 아래를 통째로 붙여넣기:
 
 ```javascript
+// 이메일은 emails 탭에, 랭킹 점수는 scores 탭에 쌓인다
 function doPost(e) {
-  var sheet = SpreadsheetApp.getActiveSpreadsheet().getSheets()[0];
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
   var d = JSON.parse(e.postData.contents);
-  sheet.appendRow([new Date(), d.email, d.via || '', d.game || '']);
+  var name = d.type === 'score' ? 'scores' : 'emails';
+  var sheet = ss.getSheetByName(name) || ss.insertSheet(name);
+  if (d.type === 'score') {
+    sheet.appendRow([new Date(), d.email || '(anonymous)', d.score, d.game || '']);
+  } else {
+    sheet.appendRow([new Date(), d.email, d.via || '', d.game || '']);
+  }
   return ContentService.createTextOutput('ok');
 }
 ```
@@ -48,6 +55,15 @@ function doPost(e) {
 → 이 값이 `SIGNUP_CONFIG.googleClientId` 값이다.
 
 ---
+
+## 랭킹은 어떻게 되나
+
+1. **지금 바로 (서버 불필요)** — 결과 카드의 "📤 Challenge a friend"가 `?beat=점수` 링크를
+   공유한다. 친구가 열면 그 높이에 **결승선**이 그려지고, 넘으면 팡파레가 울린다.
+2. **endpoint 연결 후** — 신기록이 날 때마다 `scores` 탭에 (시각, 이메일, 점수)가 쌓인다.
+   시트에서 점수 내림차순 정렬만 해도 랭킹표다.
+3. **게임 안 랭킹판** — scores 데이터가 쌓이기 시작하면, 게임 안에 Top 10 보드를
+   붙일 수 있다 (Apps Script `doGet` + JSONP). endpoint URL이 생기면 요청할 것.
 
 ## 동작 방식
 
