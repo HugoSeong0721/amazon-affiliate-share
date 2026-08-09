@@ -358,6 +358,132 @@ body {
   line-height: 1.4;
 }
 
+/* ----- 회생 제안 + 데모 결제 시트 ----- */
+
+#revive {
+  position: absolute;
+  inset: 0;
+  z-index: 25;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: radial-gradient(80% 60% at 50% 45%, rgba(5, 4, 12, 0.25) 0%, rgba(5, 4, 12, 0.8) 100%);
+}
+
+#revive.hidden { display: none; }
+
+.revive-card {
+  text-align: center;
+  padding: 24px 36px 18px;
+  border: 1px solid rgba(255, 211, 77, 0.4);
+  border-radius: 20px;
+  background: var(--panel);
+  box-shadow: 0 0 42px rgba(255, 211, 77, 0.15), 0 18px 50px rgba(0, 0, 0, 0.55);
+  animation: cardIn 0.28s cubic-bezier(0.2, 1.4, 0.4, 1);
+}
+
+#reviveCount {
+  width: 54px;
+  height: 54px;
+  margin: 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 3px solid var(--gold);
+  border-radius: 50%;
+  font-size: 26px;
+  font-weight: 900;
+  color: var(--gold);
+  animation: bestPulse 1s ease-in-out infinite;
+}
+
+.revive-title {
+  margin-top: 12px;
+  font-size: 21px;
+  font-weight: 900;
+  color: var(--text);
+}
+
+#btnRevive {
+  display: block;
+  margin: 16px auto 0;
+  padding: 13px 26px;
+  border: none;
+  border-radius: 14px;
+  background: var(--gold);
+  color: #241a00;
+  font-size: 16px;
+  font-weight: 900;
+  cursor: pointer;
+  box-shadow: 0 0 24px rgba(255, 211, 77, 0.35);
+}
+
+#btnRevive:active { transform: scale(0.96); }
+
+#revive .skip-btn { margin-top: 12px; }
+
+#paySheet {
+  position: absolute;
+  inset: 0;
+  z-index: 45;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  background: rgba(3, 3, 8, 0.6);
+}
+
+#paySheet.hidden { display: none; }
+
+.pay-card {
+  width: 100%;
+  max-width: 540px;
+  padding: 22px 24px calc(26px + env(safe-area-inset-bottom));
+  border-radius: 22px 22px 0 0;
+  background: #14172e;
+  border-top: 1px solid rgba(255, 255, 255, 0.14);
+  text-align: center;
+  animation: sheetUp 0.28s cubic-bezier(0.2, 1.2, 0.4, 1);
+}
+
+@keyframes sheetUp {
+  from { transform: translateY(60%); }
+  to { transform: none; }
+}
+
+.pay-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 16px;
+  font-weight: 800;
+}
+
+.pay-test {
+  margin-top: 8px;
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  font-weight: 800;
+  color: var(--gold);
+}
+
+#btnPay {
+  display: block;
+  width: 100%;
+  margin-top: 16px;
+  padding: 14px;
+  border: none;
+  border-radius: 14px;
+  background: var(--text);
+  color: #10122a;
+  font-size: 16px;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+#btnPay:disabled { opacity: 0.7; cursor: default; }
+
+#paySheet .skip-btn { margin-top: 12px; }
+
 /* ----- 광고 자리 (형제 게임들과 같은 구조) ----- */
 
 #adSlot {
@@ -445,6 +571,24 @@ body {
     </div>
 
     <div id="toast" class="hidden"></div>
+
+    <div id="revive" class="hidden">
+      <div class="revive-card">
+        <div id="reviveCount">5</div>
+        <h2 class="revive-title">Keep flying?</h2>
+        <button id="btnRevive" type="button">⚡ Continue — $0.99</button>
+        <button id="btnNoRevive" type="button" class="skip-btn">no thanks</button>
+      </div>
+    </div>
+
+    <div id="paySheet" class="hidden">
+      <div class="pay-card">
+        <div class="pay-row"><span id="payTitle">☄️ Comet Rescue</span><b id="payPrice">$0.99</b></div>
+        <p class="pay-test">TEST MODE — no real charge</p>
+        <button id="btnPay" type="button">Pay $0.99</button>
+        <button id="btnPayCancel" type="button" class="skip-btn">cancel</button>
+      </div>
+    </div>
 
     <div id="signup" class="hidden">
       <div class="signup-card">
@@ -646,6 +790,7 @@ function newRun(seed) {
     sparks: 0,               // 니어미스 횟수
     dead: false,
     deathCause: null,        // 'wall' | 'hazard' | 'fell'
+    invincible: 0,           // 부활 직후 보호막 남은 시간(초)
     anchors: [{ x: 0, y: 64 }],
     hazards: [],
     _credited: new Set(),    // 니어미스 중복 방지 (hazard 인덱스)
@@ -708,6 +853,22 @@ function die(state, cause) {
   state.events.push({ type: 'death', cause });
 }
 
+// 부활(회생) — 죽음을 되돌리고, 도달했던 최고 높이에서 위로 다시 날린다.
+// 잠깐의 보호막 동안은 벽/소행성/추락 판정이 전부 꺼져서 숨 돌릴 틈이 생긴다.
+function revive(state) {
+  state.dead = false;
+  state.deathCause = null;
+  state.mode = 'flying';
+  state.orbit = null;
+  state.x = Math.max(-20, Math.min(20, state.x));
+  state.y = state.height;
+  state.dirX = 0;
+  state.dirY = 1;
+  state.invincible = 2.5;
+  state.events.push({ type: 'revive' });
+  return state;
+}
+
 // 한 물리 스텝. input = { hold: boolean }
 function step(state, input) {
   if (state.dead) return state;
@@ -733,6 +894,14 @@ function step(state, input) {
 
   if (state.y > state.height) state.height = state.y;
   ensureTrack(state, state.y + WORLD.genMargin);
+
+  // 보호막 중에는 죽지 않는다 — 벽은 안쪽으로 밀어내 준다
+  if (state.invincible > 0) {
+    state.invincible = Math.max(0, state.invincible - DT);
+    const lim = WORLD.halfW - WORLD.cometR - 1;
+    if (Math.abs(state.x) > lim) state.x = Math.sign(state.x) * lim;
+    return state;
+  }
 
   // 죽음 판정
   if (Math.abs(state.x) > WORLD.halfW - WORLD.cometR) return die(state, 'wall'), state;
@@ -830,6 +999,8 @@ class Renderer {
   sy(y) { return this.h * 0.68 - (y - this.camY) * this.scale; }
 
   shake(power) { this._shake = Math.max(this._shake, power); }
+
+  clearTrail() { this.trail = []; }
 
   burst(wx, wy) {
     for (let i = 0; i < 14; i++) {
@@ -1126,6 +1297,18 @@ class Renderer {
   _drawComet(ctx, state) {
     const x = this.sx(state.x), y = this.sy(state.y);
     const r = WORLD.cometR * this.scale;
+    // 부활 보호막 — 남은 시간이 줄수록 빠르게 깜빡인다
+    if (state.invincible > 0) {
+      const blink = 0.55 + 0.45 * Math.sin(this._t * (state.invincible < 1 ? 18 : 8));
+      ctx.strokeStyle = `rgba(255, 211, 77, ${0.5 * blink + 0.2})`;
+      ctx.lineWidth = 2.5;
+      ctx.shadowColor = '#ffd34d';
+      ctx.shadowBlur = 16;
+      ctx.beginPath();
+      ctx.arc(x, y, r * 2.6, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.shadowBlur = 0;
+    }
     ctx.shadowColor = COL.comet;
     ctx.shadowBlur = 26;
     ctx.fillStyle = COL.comet;
@@ -1383,6 +1566,26 @@ class Sound {
     }
   }
 
+  // 부활 — 아래에서 위로 감아올리는 반짝임
+  revive() {
+    this._tone(300, { type: 'sine', dur: 0.35, gain: 0.09, slide: 600 });
+    this._tone(900, { type: 'triangle', dur: 0.25, gain: 0.06, delay: 0.15 });
+    this._tone(1400, { type: 'sine', dur: 0.2, gain: 0.05, delay: 0.28 });
+  }
+
+  // 첫 제스처에서 미리 컨텍스트를 깨워 둔다 — 런 시작 프레임의 버벅임 방지
+  warm() {
+    const ctx = this.ctx;
+    if (!ctx) return;
+    try {
+      const buf = ctx.createBuffer(1, 1, 22050);
+      const src = ctx.createBufferSource();
+      src.buffer = buf;
+      src.connect(ctx.destination);
+      src.start(0);
+    } catch {}
+  }
+
   // 최고 기록 갱신
   fanfare() {
     const notes = [523, 659, 784, 1047];
@@ -1512,6 +1715,55 @@ class AdManager {
     this._save();
     return true;
   }
+}
+
+// ===== comet-sling/payments.js =====
+// 인앱 결제 자리 — ads.js 와 같은 철학: 제공자(provider)만 갈아끼우면 된다.
+//
+// 기본 제공자는 "TEST MODE" 라벨이 붙은 데모 결제 시트다. 실제 과금은 없고,
+// 결제 흐름(시트가 올라오고 → 처리 중 → 완료)의 호흡만 그대로 체험할 수 있다.
+// 실제 연동 지점:
+//   - 앱(Capacitor): Google Play Billing / Apple StoreKit 플러그인으로 purchase() 구현
+//   - 웹: Stripe Checkout 등으로 교체
+// 어느 쪽이든 purchase(sku)가 Promise<boolean>(구매 성공 여부)을 지키면 게임 코드는 그대로다.
+
+const SKUS = {
+  rescue: { id: 'comet.rescue', title: '☄️ Comet Rescue', price: '$0.99' },
+};
+
+function createDemoPayProvider({ root, titleEl, priceEl, payBtn, cancelBtn }) {
+  return {
+    name: 'demo',
+    // sku 를 받아 데모 결제 시트를 띄운다. 성공 시 true, 취소 시 false.
+    purchase(sku) {
+      return new Promise((resolve) => {
+        titleEl.textContent = sku.title;
+        priceEl.textContent = sku.price;
+        payBtn.disabled = false;
+        payBtn.textContent = `Pay ${sku.price}`;
+        root.classList.remove('hidden');
+
+        const cleanup = (ok) => {
+          payBtn.removeEventListener('click', onPay);
+          cancelBtn.removeEventListener('click', onCancel);
+          root.classList.add('hidden');
+          resolve(ok);
+        };
+        const onCancel = () => cleanup(false);
+        const onPay = () => {
+          payBtn.disabled = true;
+          payBtn.textContent = 'Processing…';
+          // 실제 결제망 왕복과 비슷한 호흡
+          setTimeout(() => {
+            payBtn.textContent = '✓ Paid';
+            setTimeout(() => cleanup(true), 450);
+          }, 1100);
+        };
+        payBtn.addEventListener('click', onPay);
+        cancelBtn.addEventListener('click', onCancel);
+      });
+    },
+  };
 }
 
 // ===== comet-sling/signup.js =====
@@ -1707,6 +1959,7 @@ class SignupGate {
 
 
 
+
 const STORE = {
   best: 'cms.best',
   runs: 'cms.runs',
@@ -1716,11 +1969,16 @@ const STORE = {
 const COACH_UNTIL_RELEASES = 3;
 
 class Game {
-  constructor({ renderer, sound, dom, onRunEnded, challengeScore = null }) {
+  constructor({ renderer, sound, dom, onRunEnded, challengeScore = null, payments = null }) {
     this.renderer = renderer;
     this.sound = sound;
     this.dom = dom;
     this.onRunEnded = onRunEnded || (() => {});
+    this.payments = payments;           // 회생 결제 제공자 (null 이면 제안 안 뜸)
+    this._revivedThisRun = false;       // 회생은 한 판에 한 번
+
+    this.dom.btnRevive.addEventListener('click', () => this._acceptRevive());
+    this.dom.btnNoRevive.addEventListener('click', () => this._declineRevive());
 
     // 도전장: 공유 링크(?beat=N)로 들어오면 친구 기록이 결승선으로 그려진다
     this.challenge = challengeScore > 0
@@ -1777,6 +2035,7 @@ class Game {
     this.state = newRun(this._forcedSeed ?? this._seed());
     this.mode = 'ready';
     this._newBest = false;
+    this._revivedThisRun = false;
     this.renderer.reset(this.state);
     this.dom.overlay.classList.add('hidden');
     this._syncHud();
@@ -1884,9 +2143,61 @@ class Game {
   }
 
   _onDeath(cause) {
+    this.holding = false;
+    this.sound.crash(cause);
+    this.renderer.shake(cause === 'wall' ? 10 : 14);
+    this.renderer.explode(this.state.x, this.state.y);
+
+    // 회생 제안 — 한 판에 한 번, 폭발이 눈에 들어온 뒤에
+    if (this.payments && !this._revivedThisRun) {
+      setTimeout(() => this._offerRevive(), 550);
+      return;
+    }
+    setTimeout(() => this._finalizeDeath(), 650);
+  }
+
+  // ----- 회생 (죽음 직후 5초 카운트다운) -----
+
+  _offerRevive() {
+    this.dom.revive.classList.remove('hidden');
+    let left = 5;
+    this.dom.reviveCount.textContent = String(left);
+    this._reviveTimer = setInterval(() => {
+      left -= 1;
+      this.dom.reviveCount.textContent = String(Math.max(0, left));
+      if (left <= 0) this._declineRevive();
+    }, 1000);
+  }
+
+  _closeReviveOffer() {
+    clearInterval(this._reviveTimer);
+    this.dom.revive.classList.add('hidden');
+  }
+
+  async _acceptRevive() {
+    this._closeReviveOffer();
+    const ok = await this.payments.purchase(SKUS.rescue);
+    if (!ok) {
+      this._finalizeDeath();
+      return;
+    }
+    this._revivedThisRun = true;
+    revive(this.state);
+    drainEvents(this.state); // revive 이벤트 소비
+    this.renderer.clearTrail();
+    this.sound.revive();
+    this._syncHud();
+  }
+
+  _declineRevive() {
+    if (this.dom.revive.classList.contains('hidden')) return;
+    this._closeReviveOffer();
+    this._finalizeDeath();
+  }
+
+  _finalizeDeath() {
     this.mode = 'dead';
     this._deadAt = performance.now();
-    this.holding = false;
     this.runs += 1;
     safeStorage.setItem(STORE.runs, String(this.runs));
 
@@ -1897,27 +2208,20 @@ class Game {
       safeStorage.setItem(STORE.best, String(s));
       submitScore(s); // 랭킹 시트로 (endpoint 설정 시) — 신기록만 보낸다
     }
+    if (this._newBest) this.sound.fanfare();
 
-    this.sound.crash(cause);
-    this.renderer.shake(cause === 'wall' ? 10 : 14);
-    this.renderer.explode(this.state.x, this.state.y);
-    if (this._newBest) setTimeout(() => this.sound.fanfare(), 550);
-
-    // 폭발이 눈에 들어온 다음에 결과 카드를 올린다
-    setTimeout(() => {
-      this.dom.overlayScore.textContent = String(s);
-      this.dom.overlayBest.textContent = this._newBest ? 'NEW BEST!' : `BEST ${this.best}`;
-      this.dom.overlayBest.classList.toggle('newbest', this._newBest);
-      const c = this.challenge;
-      this.dom.overlayChallenge.classList.toggle('hidden', !c);
-      if (c) {
-        this.dom.overlayChallenge.textContent = c.beaten
-          ? `🏆 You beat your friend's ${c.score}!`
-          : `🏁 ${c.score} to beat`;
-      }
-      this.dom.overlay.classList.remove('hidden');
-      this._syncHud();
-    }, 650);
+    this.dom.overlayScore.textContent = String(s);
+    this.dom.overlayBest.textContent = this._newBest ? 'NEW BEST!' : `BEST ${this.best}`;
+    this.dom.overlayBest.classList.toggle('newbest', this._newBest);
+    const c = this.challenge;
+    this.dom.overlayChallenge.classList.toggle('hidden', !c);
+    if (c) {
+      this.dom.overlayChallenge.textContent = c.beaten
+        ? `🏆 You beat your friend's ${c.score}!`
+        : `🏁 ${c.score} to beat`;
+    }
+    this.dom.overlay.classList.remove('hidden');
+    this._syncHud();
   }
 
   _syncHud() {
@@ -1928,6 +2232,7 @@ class Game {
 
 // ===== comet-sling/main.js =====
 // 부트스트랩 — DOM 연결, 입력(홀드/릴리즈), 루프, 리사이즈, 디버그 API.
+
 
 
 
@@ -1947,6 +2252,10 @@ const dom = {
   overlayChallenge: $('overlayChallenge'),
   btnShare: $('btnShare'),
   toast: $('toast'),
+  revive: $('revive'),
+  reviveCount: $('reviveCount'),
+  btnRevive: $('btnRevive'),
+  btnNoRevive: $('btnNoRevive'),
   signup: $('signup'),
   emailForm: $('emailForm'),
   emailInput: $('emailInput'),
@@ -1970,10 +2279,22 @@ const ads = new AdManager({
   }),
 });
 
+// 회생 결제 — 데모 제공자 (TEST MODE 라벨, 실제 과금 없음). ?nopay 로 끈다.
+const payments = params.has('nopay')
+  ? null
+  : createDemoPayProvider({
+      root: $('paySheet'),
+      titleEl: $('payTitle'),
+      priceEl: $('payPrice'),
+      payBtn: $('btnPay'),
+      cancelBtn: $('btnPayCancel'),
+    });
+
 const game = new Game({
   renderer,
   sound,
   dom,
+  payments,
   // 도전장 링크(?beat=N) — 친구 기록이 결승선으로 그려진다
   challengeScore: Number(params.get('beat')) || null,
   // 광고는 죽은 뒤 "다시" 전환 순간에만. 런 도중에는 절대 안 뜬다.
@@ -1991,6 +2312,7 @@ new SignupGate({
   config: SIGNUP_CONFIG,
   onDone: () => {
     gateOpen = false;
+    sound.warm(); // 게이트 버튼 클릭이 제스처이므로 여기서 오디오를 미리 깨운다
   },
 });
 
@@ -2008,6 +2330,7 @@ function updateMuteIcon() {
 // 입력 — 화면 아무 데나 누르면 잡고, 떼면 놓는다. 한 손가락이 전부다.
 dom.board.addEventListener('pointerdown', (e) => {
   e.preventDefault();
+  sound.warm(); // 첫 제스처에서 오디오를 미리 깨워 런 시작 프레임이 끊기지 않게
   game.press();
 });
 window.addEventListener('pointerup', () => game.releasePress());
@@ -2035,6 +2358,12 @@ window.addEventListener('resize', () => renderer.resize());
 
 updateMuteIcon();
 renderer.resize();
+
+// 물리 워밍업 — 버려지는 시뮬레이션을 미리 돌려 JIT을 데운다 (첫 런 끊김 방지)
+{
+  const warm = newRun(1);
+  for (let i = 0; i < 900; i++) step(warm, { hold: i % 300 < 200 });
+}
 
 // 메인 루프 — 렌더는 rAF, 물리는 game.frame 안에서 고정 스텝으로 돈다
 let last = performance.now();

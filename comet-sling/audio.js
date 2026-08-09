@@ -106,6 +106,26 @@ export class Sound {
     }
   }
 
+  // 부활 — 아래에서 위로 감아올리는 반짝임
+  revive() {
+    this._tone(300, { type: 'sine', dur: 0.35, gain: 0.09, slide: 600 });
+    this._tone(900, { type: 'triangle', dur: 0.25, gain: 0.06, delay: 0.15 });
+    this._tone(1400, { type: 'sine', dur: 0.2, gain: 0.05, delay: 0.28 });
+  }
+
+  // 첫 제스처에서 미리 컨텍스트를 깨워 둔다 — 런 시작 프레임의 버벅임 방지
+  warm() {
+    const ctx = this.ctx;
+    if (!ctx) return;
+    try {
+      const buf = ctx.createBuffer(1, 1, 22050);
+      const src = ctx.createBufferSource();
+      src.buffer = buf;
+      src.connect(ctx.destination);
+      src.start(0);
+    } catch {}
+  }
+
   // 최고 기록 갱신
   fanfare() {
     const notes = [523, 659, 784, 1047];

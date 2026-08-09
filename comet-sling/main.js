@@ -3,9 +3,10 @@
 import { Renderer } from './render.js';
 import { Sound } from './audio.js';
 import { AdManager, AD_CONFIG, createPlaceholderProvider } from './ads.js';
+import { createDemoPayProvider } from './payments.js';
 import { Game } from './game.js';
 import { SignupGate, SIGNUP_CONFIG } from './signup.js';
-import { newRun, WORLD, paramsAt, aim } from './engine.js';
+import { newRun, step, WORLD, paramsAt, aim } from './engine.js';
 
 const $ = (id) => document.getElementById(id);
 const dom = {
@@ -19,6 +20,10 @@ const dom = {
   overlayChallenge: $('overlayChallenge'),
   btnShare: $('btnShare'),
   toast: $('toast'),
+  revive: $('revive'),
+  reviveCount: $('reviveCount'),
+  btnRevive: $('btnRevive'),
+  btnNoRevive: $('btnNoRevive'),
   signup: $('signup'),
   emailForm: $('emailForm'),
   emailInput: $('emailInput'),
@@ -42,10 +47,22 @@ const ads = new AdManager({
   }),
 });
 
+// 회생 결제 — 데모 제공자 (TEST MODE 라벨, 실제 과금 없음). ?nopay 로 끈다.
+const payments = params.has('nopay')
+  ? null
+  : createDemoPayProvider({
+      root: $('paySheet'),
+      titleEl: $('payTitle'),
+      priceEl: $('payPrice'),
+      payBtn: $('btnPay'),
+      cancelBtn: $('btnPayCancel'),
+    });
+
 const game = new Game({
   renderer,
   sound,
   dom,
+  payments,
   // 도전장 링크(?beat=N) — 친구 기록이 결승선으로 그려진다
   challengeScore: Number(params.get('beat')) || null,
   // 광고는 죽은 뒤 "다시" 전환 순간에만. 런 도중에는 절대 안 뜬다.
@@ -63,6 +80,7 @@ new SignupGate({
   config: SIGNUP_CONFIG,
   onDone: () => {
     gateOpen = false;
+    sound.warm(); // 게이트 버튼 클릭이 제스처이므로 여기서 오디오를 미리 깨운다
   },
 });
 
@@ -80,6 +98,7 @@ function updateMuteIcon() {
 // 입력 — 화면 아무 데나 누르면 잡고, 떼면 놓는다. 한 손가락이 전부다.
 dom.board.addEventListener('pointerdown', (e) => {
   e.preventDefault();
+  sound.warm(); // 첫 제스처에서 오디오를 미리 깨워 런 시작 프레임이 끊기지 않게
   game.press();
 });
 window.addEventListener('pointerup', () => game.releasePress());
@@ -107,6 +126,12 @@ window.addEventListener('resize', () => renderer.resize());
 
 updateMuteIcon();
 renderer.resize();
+
+// 물리 워밍업 — 버려지는 시뮬레이션을 미리 돌려 JIT을 데운다 (첫 런 끊김 방지)
+{
+  const warm = newRun(1);
+  for (let i = 0; i < 900; i++) step(warm, { hold: i % 300 < 200 });
+}
 
 // 메인 루프 — 렌더는 rAF, 물리는 game.frame 안에서 고정 스텝으로 돈다
 let last = performance.now();

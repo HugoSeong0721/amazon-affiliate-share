@@ -69,6 +69,8 @@ export class Renderer {
 
   shake(power) { this._shake = Math.max(this._shake, power); }
 
+  clearTrail() { this.trail = []; }
+
   burst(wx, wy) {
     for (let i = 0; i < 14; i++) {
       const a = Math.random() * Math.PI * 2, v = 30 + Math.random() * 90;
@@ -364,6 +366,18 @@ export class Renderer {
   _drawComet(ctx, state) {
     const x = this.sx(state.x), y = this.sy(state.y);
     const r = WORLD.cometR * this.scale;
+    // 부활 보호막 — 남은 시간이 줄수록 빠르게 깜빡인다
+    if (state.invincible > 0) {
+      const blink = 0.55 + 0.45 * Math.sin(this._t * (state.invincible < 1 ? 18 : 8));
+      ctx.strokeStyle = `rgba(255, 211, 77, ${0.5 * blink + 0.2})`;
+      ctx.lineWidth = 2.5;
+      ctx.shadowColor = '#ffd34d';
+      ctx.shadowBlur = 16;
+      ctx.beginPath();
+      ctx.arc(x, y, r * 2.6, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.shadowBlur = 0;
+    }
     ctx.shadowColor = COL.comet;
     ctx.shadowBlur = 26;
     ctx.fillStyle = COL.comet;
