@@ -103,6 +103,73 @@ body {
 
 .hud-btn:active { transform: scale(0.94); }
 
+#btnPause { right: 62px; }
+
+/* ----- 일시정지 ----- */
+
+#pause {
+  position: absolute;
+  inset: 0;
+  z-index: 22;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(3, 3, 8, 0.72);
+  backdrop-filter: blur(2px);
+}
+
+#pause.hidden { display: none; }
+
+/* 재개 카운트다운 중: 터치가 게임으로 통과하고 배경도 얇아진다 */
+#pause.counting {
+  pointer-events: none;
+  background: rgba(3, 3, 8, 0.35);
+  backdrop-filter: none;
+}
+
+.pause-card {
+  text-align: center;
+  padding: 28px 44px;
+  border: 1px solid rgba(142, 246, 255, 0.22);
+  border-radius: 20px;
+  background: var(--panel);
+  animation: cardIn 0.25s cubic-bezier(0.2, 1.4, 0.4, 1);
+}
+
+#pauseTitle {
+  font-size: 34px;
+  font-weight: 900;
+  letter-spacing: 0.14em;
+  color: var(--text);
+  text-shadow: 0 0 20px var(--neon-dim);
+  font-variant-numeric: tabular-nums;
+}
+
+.pause-note {
+  margin-top: 8px;
+  font-size: 12.5px;
+  letter-spacing: 0.08em;
+  color: var(--muted);
+  animation: fadePulse 1.2s ease-in-out infinite;
+}
+
+.pause-note.hidden { display: none; }
+
+#btnResume {
+  display: block;
+  margin: 18px auto 0;
+  padding: 12px 30px;
+  border: none;
+  border-radius: 14px;
+  background: var(--neon);
+  color: #04121a;
+  font-size: 16px;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+#btnResume:active { transform: scale(0.96); }
+
 /* ----- 결과 카드 ----- */
 
 #overlay {

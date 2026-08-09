@@ -25,6 +25,18 @@ export class Game {
     this.dom.btnRevive.addEventListener('click', () => this._acceptRevive());
     this.dom.btnNoRevive.addEventListener('click', () => this._declineRevive());
 
+    this.paused = false;
+    this._resuming = false;
+    this.dom.btnPause.addEventListener('click', (e) => {
+      e.stopPropagation();
+      this.pause();
+    });
+    this.dom.btnResume.addEventListener('click', () => this._resume());
+    // 백그라운드로 가면 자동 일시정지 — 전화 한 통에 런을 잃지 않게
+    document.addEventListener('visibilitychange', () => {
+      if (document.hidden) this.pause();
+    });
+
     // 도전장: 공유 링크(?beat=N)로 들어오면 친구 기록이 결승선으로 그려진다
     this.challenge = challengeScore > 0
       ? { score: challengeScore, height: challengeScore * 4, beaten: false }
@@ -59,6 +71,8 @@ export class Game {
   // ----- 입력 -----
 
   press() {
+    // 일시정지 중에는 입력 무시 — 단, 재개 카운트다운 중의 홀드는 허용 (궤도 유지용)
+    if (this.paused && !this._resuming) return;
     this.holding = true;
     if (this.mode === 'ready') {
       this.mode = 'running';
@@ -88,7 +102,48 @@ export class Game {
 
   // ----- 프레임 -----
 
+  // ----- 일시정지 -----
+
+  pause() {
+    if (this.mode !== 'running' || this.state.dead || this.paused) return;
+    this.paused = true;
+    this._resuming = false;
+    clearInterval(this._resumeTimer);
+    this.dom.pause.classList.remove('counting');
+    this.dom.pauseTitle.textContent = 'PAUSED';
+    this.dom.pauseNote.classList.add('hidden');
+    this.dom.btnResume.classList.remove('hidden');
+    this.dom.pause.classList.remove('hidden');
+  }
+
+  _resume() {
+    if (!this.paused || this._resuming) return;
+    this._resuming = true;
+    this.dom.pause.classList.add('counting'); // 터치가 게임으로 통과한다 (홀드 준비용)
+    this.dom.btnResume.classList.add('hidden');
+    // 궤도 중이었다면 "누르고 있으면 계속 돈다"를 알려준다
+    this.dom.pauseNote.classList.toggle('hidden', this.state.mode !== 'orbit');
+    let left = 3;
+    this.dom.pauseTitle.textContent = String(left);
+    this._resumeTimer = setInterval(() => {
+      left -= 1;
+      if (left > 0) {
+        this.dom.pauseTitle.textContent = String(left);
+        return;
+      }
+      clearInterval(this._resumeTimer);
+      this.dom.pause.classList.add('hidden');
+      this.dom.pause.classList.remove('counting');
+      this.paused = false;
+      this._resuming = false;
+    }, 700);
+  }
+
   frame(dtMs) {
+    if (this.paused) {
+      this.renderer.draw(this.state, { mode: this.mode, holding: this.holding, challenge: this.challenge });
+      return;
+    }
     if (this.mode === 'running' && !this.state.dead) {
       this._acc += Math.min(dtMs, 100) / 1000;
       this._runSeconds += Math.min(dtMs, 100) / 1000;
