@@ -119,6 +119,7 @@ export class Renderer {
 
     this._drawStars(ctx);
     this._drawWalls(ctx, state);
+    if (ui.challenge) this._drawFinishLine(ctx, ui.challenge);
     this._drawAnchors(ctx, state, ui);
     this._drawHazards(ctx, state);
     this._drawTrail(ctx);
@@ -177,6 +178,32 @@ export class Renderer {
         ctx.stroke();
       }
     }
+  }
+
+  // 도전장 결승선 — 친구 기록의 높이에 금색 선. 넘으면 초록으로 남는다.
+  _drawFinishLine(ctx, c) {
+    if (!this._visible(c.height, 40)) return;
+    const y = this.sy(c.height);
+    const col = c.beaten ? 'rgba(120, 240, 160, 0.75)' : 'rgba(255, 211, 77, 0.75)';
+    ctx.save();
+    ctx.setLineDash([12, 8]);
+    ctx.lineDashOffset = -this._t * 25;
+    ctx.strokeStyle = col;
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(this.sx(-WORLD.halfW), y);
+    ctx.lineTo(this.sx(WORLD.halfW), y);
+    ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.font = '800 13px system-ui';
+    ctx.textAlign = 'right';
+    ctx.textBaseline = 'bottom';
+    ctx.fillStyle = col;
+    ctx.shadowColor = 'rgba(0,0,0,0.8)';
+    ctx.shadowBlur = 5;
+    ctx.fillText(c.beaten ? `🏆 ${c.score}` : `🏁 ${c.score}`, this.sx(WORLD.halfW) - 8, y - 5);
+    ctx.shadowBlur = 0;
+    ctx.restore();
   }
 
   _visible(wy, pad = 80) {

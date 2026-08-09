@@ -16,6 +16,9 @@ const dom = {
   overlay: $('overlay'),
   overlayScore: $('overlayScore'),
   overlayBest: $('overlayBest'),
+  overlayChallenge: $('overlayChallenge'),
+  btnShare: $('btnShare'),
+  toast: $('toast'),
   signup: $('signup'),
   emailForm: $('emailForm'),
   emailInput: $('emailInput'),
@@ -43,6 +46,8 @@ const game = new Game({
   renderer,
   sound,
   dom,
+  // 도전장 링크(?beat=N) — 친구 기록이 결승선으로 그려진다
+  challengeScore: Number(params.get('beat')) || null,
   // 광고는 죽은 뒤 "다시" 전환 순간에만. 런 도중에는 절대 안 뜬다.
   onRunEnded: async (runSeconds) => {
     ads.noteRunEnded();

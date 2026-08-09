@@ -69,6 +69,25 @@ async function flushQueue(config) {
   saveQueue(remain);
 }
 
+// 랭킹용 점수 제출 — 이메일과 같은 endpoint 로 보낸다 (시트의 scores 탭에 쌓임).
+// 신기록일 때만 부르면 시트가 깔끔하다. 실패분은 이메일과 같은 큐로 재시도.
+export function submitScore(score, config = SIGNUP_CONFIG) {
+  const entry = {
+    type: 'score',
+    score,
+    email: localStorage.getItem(SIGNUP_STORE.email) || '',
+    game: 'comet-sling',
+    at: new Date().toISOString(),
+  };
+  send(entry, config).then((ok) => {
+    if (!ok && config.endpoint) {
+      const q = loadQueue();
+      q.push(entry);
+      saveQueue(q);
+    }
+  });
+}
+
 function decodeJwtEmail(credential) {
   try {
     const payload = JSON.parse(
