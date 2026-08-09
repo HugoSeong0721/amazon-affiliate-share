@@ -150,6 +150,7 @@ export function newRun(seed) {
     sparks: 0,               // 니어미스 횟수
     dead: false,
     deathCause: null,        // 'wall' | 'hazard' | 'fell'
+    invincible: 0,           // 부활 직후 보호막 남은 시간(초)
     anchors: [{ x: 0, y: 64 }],
     hazards: [],
     _credited: new Set(),    // 니어미스 중복 방지 (hazard 인덱스)
@@ -212,6 +213,22 @@ function die(state, cause) {
   state.events.push({ type: 'death', cause });
 }
 
+// 부활(회생) — 죽음을 되돌리고, 도달했던 최고 높이에서 위로 다시 날린다.
+// 잠깐의 보호막 동안은 벽/소행성/추락 판정이 전부 꺼져서 숨 돌릴 틈이 생긴다.
+export function revive(state) {
+  state.dead = false;
+  state.deathCause = null;
+  state.mode = 'flying';
+  state.orbit = null;
+  state.x = Math.max(-20, Math.min(20, state.x));
+  state.y = state.height;
+  state.dirX = 0;
+  state.dirY = 1;
+  state.invincible = 2.5;
+  state.events.push({ type: 'revive' });
+  return state;
+}
+
 // 한 물리 스텝. input = { hold: boolean }
 export function step(state, input) {
   if (state.dead) return state;
@@ -237,6 +254,14 @@ export function step(state, input) {
 
   if (state.y > state.height) state.height = state.y;
   ensureTrack(state, state.y + WORLD.genMargin);
+
+  // 보호막 중에는 죽지 않는다 — 벽은 안쪽으로 밀어내 준다
+  if (state.invincible > 0) {
+    state.invincible = Math.max(0, state.invincible - DT);
+    const lim = WORLD.halfW - WORLD.cometR - 1;
+    if (Math.abs(state.x) > lim) state.x = Math.sign(state.x) * lim;
+    return state;
+  }
 
   // 죽음 판정
   if (Math.abs(state.x) > WORLD.halfW - WORLD.cometR) return die(state, 'wall'), state;

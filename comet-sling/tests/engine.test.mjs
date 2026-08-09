@@ -7,7 +7,7 @@
 
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { DT, WORLD, newRun, step, score, paramsAt, assistAt, aim, orbitOmega, ensureTrack, makeRng } from '../engine.js';
+import { DT, WORLD, newRun, step, score, paramsAt, assistAt, aim, orbitOmega, revive, ensureTrack, makeRng } from '../engine.js';
 
 function runScript(seed, script, steps) {
   // script(i) → hold 여부
@@ -204,6 +204,30 @@ test('최고점에서 fallLimit 이상 떨어지면 죽는다', () => {
   for (let i = 0; i < 6000 && !s.dead; i++) step(s, { hold: false });
   assert.equal(s.dead, true);
   assert.equal(s.deathCause, 'fell');
+});
+
+test('부활: 죽음을 되돌리고, 최고 높이에서 잠깐 무적으로 다시 난다', () => {
+  const s = newRun(7);
+  s.dirX = 1; s.dirY = 0;
+  for (let i = 0; i < 2000 && !s.dead; i++) step(s, { hold: false });
+  assert.equal(s.dead, true);
+
+  revive(s);
+  assert.equal(s.dead, false);
+  assert.equal(s.y, s.height);
+  assert.ok(s.invincible > 0);
+  assert.ok(Math.abs(s.x) <= 20);
+
+  // 보호막 동안은 벽으로 밀어도 죽지 않는다 (안쪽으로 밀려난다)
+  s.dirX = 1; s.dirY = 0;
+  for (let i = 0; i < Math.floor(2.0 / DT); i++) step(s, { hold: false });
+  assert.equal(s.dead, false);
+
+  // 보호막이 끝나면 다시 죽을 수 있다
+  s.invincible = 0;
+  s.dirX = 1; s.dirY = 0;
+  for (let i = 0; i < 2000 && !s.dead; i++) step(s, { hold: false });
+  assert.equal(s.dead, true);
 });
 
 test('점수 = 높이/4 + 니어미스×25', () => {
