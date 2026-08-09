@@ -18,6 +18,8 @@
         <div id="bestLabel">BEST 0</div>
       </div>
       <div class="hud-right">
+        <button id="btnPause" class="hud-btn" title="Pause" aria-label="Pause">⏸</button>
+        <button id="btnBoard" class="hud-btn" title="Rankings" aria-label="Rankings">🏆</button>
         <button id="btnSignup" class="hud-btn hidden" title="Join with email" aria-label="Join with email">✉️</button>
         <button id="btnMute" class="hud-btn" title="Sound on/off" aria-label="Sound">🔊</button>
       </div>
@@ -29,9 +31,38 @@
       <div class="overlay-card">
         <div id="overlayScore">0</div>
         <div id="overlayBest">BEST 0</div>
+        <div class="overlay-btns">
+          <button id="btnShare" type="button">📤 SHARE</button>
+          <button id="btnRanks" type="button">🏆 RANKS</button>
+        </div>
         <p class="retry-note">tap to stack again</p>
       </div>
     </div>
+
+    <div id="ranks" class="hidden">
+      <div class="ranks-card">
+        <div class="ranks-head">
+          <span class="ranks-title">🏆 TOP 20</span>
+          <button id="ranksClose" aria-label="Close">✕</button>
+        </div>
+        <div id="ranksList" class="ranks-list"></div>
+        <p id="ranksNote" class="ranks-note hidden">This device only — global ranks coming soon.</p>
+      </div>
+    </div>
+
+    <div id="pause" class="hidden">
+      <div class="pause-card">
+        <div class="pause-title">PAUSED</div>
+        <button id="btnResume" type="button" class="pause-main">▶ RESUME</button>
+        <div class="pause-btns">
+          <button id="btnPauseShare" type="button">📤 SHARE</button>
+          <button id="btnPauseRanks" type="button">🏆 RANKS</button>
+        </div>
+        <button id="btnRestart" type="button" class="pause-restart">start over</button>
+      </div>
+    </div>
+
+    <div id="toast" class="hidden">Link copied!</div>
 
     <div id="gate" class="hidden">
       <div class="gate-card">
