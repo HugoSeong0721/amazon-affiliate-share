@@ -6,7 +6,8 @@
 <meta name="theme-color" content="#05040c">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>☄️</text></svg>">
 <title>Comet Sling — One-Touch Orbit Dash</title>
-<link rel="stylesheet" href="./style.css">
+<!-- ?v= 은 캐시 버스터 — 배포 때 숫자를 올리면 브라우저가 옛 파일을 물고 있지 못한다 -->
+<link rel="stylesheet" href="./style.css?v=2">
 </head>
 <body>
   <div id="app">
@@ -17,8 +18,10 @@
         <div id="scoreLabel">0</div>
         <div id="bestLabel">BEST 0</div>
       </div>
-      <button id="btnMute" class="hud-btn" title="Sound on/off" aria-label="Sound">🔊</button>
-      <button id="btnPause" class="hud-btn" title="Pause" aria-label="Pause">⏸</button>
+      <div class="hud-right">
+        <button id="btnPause" class="hud-btn" title="Pause" aria-label="Pause">⏸️</button>
+        <button id="btnMute" class="hud-btn" title="Sound on/off" aria-label="Sound">🔊</button>
+      </div>
     </header>
 
     <div id="pause" class="hidden">
@@ -89,6 +92,6 @@
       </div>
     </div>
   </div>
-  <script type="module" src="./main.js"></script>
+  <script type="module" src="./main.js?v=2"></script>
 </body>
 </html>

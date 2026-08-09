@@ -94,10 +94,16 @@ body {
   color: var(--muted);
 }
 
-.hud-btn {
+.hud-right {
   position: absolute;
   right: 14px;
   top: 0;
+  display: flex;
+  gap: 8px;
+  pointer-events: auto;
+}
+
+.hud-btn {
   pointer-events: auto;
   width: 40px;
   height: 40px;
@@ -111,8 +117,6 @@ body {
 }
 
 .hud-btn:active { transform: scale(0.94); }
-
-#btnPause { right: 62px; }
 
 /* ----- 일시정지 ----- */
 
@@ -624,8 +628,10 @@ body {
         <div id="scoreLabel">0</div>
         <div id="bestLabel">BEST 0</div>
       </div>
-      <button id="btnMute" class="hud-btn" title="Sound on/off" aria-label="Sound">🔊</button>
-      <button id="btnPause" class="hud-btn" title="Pause" aria-label="Pause">⏸</button>
+      <div class="hud-right">
+        <button id="btnPause" class="hud-btn" title="Pause" aria-label="Pause">⏸️</button>
+        <button id="btnMute" class="hud-btn" title="Sound on/off" aria-label="Sound">🔊</button>
+      </div>
     </header>
 
     <div id="pause" class="hidden">
