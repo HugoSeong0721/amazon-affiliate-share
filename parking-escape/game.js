@@ -107,11 +107,17 @@ export class Game {
     return n;
   }
 
+  // 이번 챕터의 승객 — 택시 뒷좌석에 타고 있고, 챕터를 다 깨면 집에 내린다
+  get passengerHex() {
+    return PASSENGER_HEX[Math.floor(this.levelIndex / CHAPTER) % PASSENGER_HEX.length];
+  }
+
   loadLevel(i) {
     this.levelIndex = Math.min(Math.max(i, 0), LEVEL_DATA.length - 1);
     localStorage.setItem(STORAGE_LEVEL, String(this.levelIndex));
     const lv = this.level;
     this.state = decodeVehicles(lv.v);
+    this.renderer.setPassenger(this.passengerHex);
     this.solution = decodeMoves(lv.sol);
     this.history = [];
     this.won = false;
@@ -231,9 +237,14 @@ export class Game {
     }
 
     const last = this.levelIndex >= LEVEL_DATA.length - 1;
-    this.dom.overlayTitle.textContent = last ? '🎉 Everyone got home!' : `Level ${this.levelIndex + 1} Clear!`;
+    this.dom.overlayTitle.textContent = last
+      ? '🎉 Everyone got home!'
+      : earned === 3
+        ? '✨ Perfect!'
+        : `Level ${this.levelIndex + 1} Clear!`;
     this.dom.overlayInfo.textContent = `${this.history.length} moves · Par ${this.level.par}`;
     this.dom.btnNext.textContent = last ? 'Play Again ↻' : 'Next Level ▶';
+    this.updateHud();
 
     // 별은 오버레이가 뜰 때 하나씩 튀어나오게 (클래스를 다시 붙여 애니메이션 재생)
     [...this.dom.starRow.children].forEach((el, i) => {
@@ -241,12 +252,29 @@ export class Game {
       if (i < earned) void el.offsetWidth, el.classList.add('on');
     });
 
-    if (nowHome && !wasHome) {
-      this.dom.overlayRescue.textContent = `A passenger made it home! (${this.homeCount}/${this.chapterCount})`;
-      this.dom.overlayRescue.classList.remove('hidden');
-    } else {
-      this.dom.overlayRescue.classList.add('hidden');
+    // 승객 진행 — "왜 깨는지"가 매 판 눈에 보여야 다음 판을 누른다.
+    // 챕터의 남은 판 수를 점으로, 끝에 이번 승객 얼굴을 놓는다.
+    const start = chapter * CHAPTER;
+    const slots = Math.min(CHAPTER, LEVEL_DATA.length - start);
+    let dots = '';
+    let left = 0;
+    for (let k = 0; k < slots; k++) {
+      const done = this.cleared[start + k];
+      if (!done) left++;
+      dots += `<span class="ride-dot${done ? ' on' : ''}"></span>`;
     }
+    const gotHome = nowHome && !wasHome;
+    this.dom.rideRow.innerHTML =
+      dots +
+      `<span class="ride-arrow">›</span>` +
+      `<span class="ride-face${nowHome ? ' home' : ''}" style="--c:${this.passengerHex}">` +
+      '<span class="eye l"></span><span class="eye r"></span><span class="mouth"></span></span>';
+    this.dom.overlayRescue.textContent = gotHome
+      ? `Passenger dropped off! (${this.homeCount}/${this.chapterCount})`
+      : nowHome
+        ? ''
+        : `${left} ride${left > 1 ? 's' : ''} until drop-off`;
+    this.dom.overlayRescue.classList.toggle('hidden', nowHome && !gotHome);
 
     // 택시가 실제로 달려 나간 뒤에 카드가 뜬다 — 연출이 보상보다 먼저
     this.renderer.driveOut(() => {
@@ -256,7 +284,8 @@ export class Game {
   }
 
   updateHud() {
-    this.dom.levelLabel.textContent = `Level ${this.levelIndex + 1}`;
+    // 모은 별을 늘 보이게 — 수집이 눈에 보여야 수집욕이 생긴다
+    this.dom.levelLabel.textContent = `Level ${this.levelIndex + 1} · ⭐ ${this.totalStars}`;
     this.dom.moveLabel.textContent = `${this.history.length} moves · Par ${this.level.par}`;
     this.dom.btnUndo.disabled = !this.history.length;
   }

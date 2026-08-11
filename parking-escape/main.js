@@ -23,6 +23,7 @@ const dom = {
   overlayTitle: $('overlayTitle'),
   overlayInfo: $('overlayInfo'),
   overlayRescue: $('overlayRescue'),
+  rideRow: $('rideRow'),
   starRow: $('starRow'),
 };
 

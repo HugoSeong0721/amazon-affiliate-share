@@ -283,6 +283,60 @@ body {
   100% { transform: scale(1) rotate(0); opacity: 1; }
 }
 
+/* 승객 진행 — 챕터의 남은 판을 점으로, 끝에 이번 승객을 놓는다.
+   "왜 깨는지"가 매 판 클리어 카드에서 눈에 보인다. */
+.ride-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  margin: -4px 0 10px;
+}
+.ride-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.14);
+}
+.ride-dot.on { background: linear-gradient(180deg, #ffe27a, #ffb524); }
+.ride-arrow { color: var(--muted); font-size: 15px; font-weight: 800; margin: 0 -1px; }
+
+.ride-face {
+  position: relative;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 32% 30%, rgba(255, 255, 255, 0.5), var(--c) 42%, rgba(0, 0, 0, 0.35));
+  filter: saturate(0.25) brightness(0.6);
+}
+.ride-face.home {
+  filter: none;
+  box-shadow: 0 0 12px -1px var(--c);
+}
+.ride-face .eye {
+  position: absolute;
+  top: 11px;
+  width: 3.5px;
+  height: 4px;
+  border-radius: 50%;
+  background: rgba(28, 26, 48, 0.85);
+}
+.ride-face .eye.l { left: 9px; }
+.ride-face .eye.r { right: 9px; }
+.ride-face:not(.home) .eye { height: 1.5px; top: 13px; }
+.ride-face .mouth {
+  position: absolute;
+  top: 16px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 9px;
+  height: 5px;
+  border: 1.5px solid rgba(28, 26, 48, 0.8);
+  border-top: 0;
+  border-radius: 0 0 9px 9px;
+}
+.ride-face:not(.home) .mouth { width: 5px; height: 3px; }
+
 .rescue-note {
   color: #ffd98a;
   font-size: 14px;
@@ -616,6 +670,7 @@ body {
           <span class="star"></span><span class="star"></span><span class="star"></span>
         </div>
         <p id="overlayInfo"></p>
+        <div id="rideRow" class="ride-row"></div>
         <p id="overlayRescue" class="rescue-note hidden"></p>
         <div class="overlay-actions">
           <button id="btnLevelsFromWin" class="ghost-btn">Journey</button>
@@ -1181,6 +1236,11 @@ class Renderer {
 
   setGuide(move) {
     this.guide = move;
+  }
+
+  // 이번 챕터의 승객 색 — 택시 뒷좌석에 그려진다
+  setPassenger(hex) {
+    this.passengerHex = hex;
   }
 
   nudgeVehicle(i) {
@@ -1784,6 +1844,22 @@ class Renderer {
     ctx.fillStyle = isPlayer ? 'rgba(157,189,232,0.95)' : 'rgba(157,180,215,0.45)';
     rr(ctx, -bw * 0.34, roofTop + roofH + bl * 0.015, bw * 0.68, bl * 0.1, bw * 0.1);
     ctx.fill();
+
+    // 뒷좌석의 승객 — 이 손님을 집에 데려다주는 게 이 여정의 이유다
+    if (isPlayer && this.passengerHex) {
+      const py = roofTop + roofH + bl * 0.065;
+      const pr = bw * 0.115;
+      ctx.fillStyle = this.passengerHex;
+      ctx.beginPath();
+      ctx.arc(bw * 0.12, py, pr, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = '#1d2439';
+      for (const sx of [-1, 1]) {
+        ctx.beginPath();
+        ctx.arc(bw * 0.12 + sx * pr * 0.36, py - pr * 0.1, pr * 0.18, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
 
     // 얼굴은 택시에게만 — 판에서 유일하게 눈을 깜빡이는 존재가 곧 주인공이다
     if (isPlayer) {
@@ -2457,11 +2533,17 @@ class Game {
     return n;
   }
 
+  // 이번 챕터의 승객 — 택시 뒷좌석에 타고 있고, 챕터를 다 깨면 집에 내린다
+  get passengerHex() {
+    return PASSENGER_HEX[Math.floor(this.levelIndex / CHAPTER) % PASSENGER_HEX.length];
+  }
+
   loadLevel(i) {
     this.levelIndex = Math.min(Math.max(i, 0), LEVEL_DATA.length - 1);
     safeStorage.setItem(STORAGE_LEVEL, String(this.levelIndex));
     const lv = this.level;
     this.state = decodeVehicles(lv.v);
+    this.renderer.setPassenger(this.passengerHex);
     this.solution = decodeMoves(lv.sol);
     this.history = [];
     this.won = false;
@@ -2581,9 +2663,14 @@ class Game {
     }
 
     const last = this.levelIndex >= LEVEL_DATA.length - 1;
-    this.dom.overlayTitle.textContent = last ? '🎉 Everyone got home!' : `Level ${this.levelIndex + 1} Clear!`;
+    this.dom.overlayTitle.textContent = last
+      ? '🎉 Everyone got home!'
+      : earned === 3
+        ? '✨ Perfect!'
+        : `Level ${this.levelIndex + 1} Clear!`;
     this.dom.overlayInfo.textContent = `${this.history.length} moves · Par ${this.level.par}`;
     this.dom.btnNext.textContent = last ? 'Play Again ↻' : 'Next Level ▶';
+    this.updateHud();
 
     // 별은 오버레이가 뜰 때 하나씩 튀어나오게 (클래스를 다시 붙여 애니메이션 재생)
     [...this.dom.starRow.children].forEach((el, i) => {
@@ -2591,12 +2678,29 @@ class Game {
       if (i < earned) void el.offsetWidth, el.classList.add('on');
     });
 
-    if (nowHome && !wasHome) {
-      this.dom.overlayRescue.textContent = `A passenger made it home! (${this.homeCount}/${this.chapterCount})`;
-      this.dom.overlayRescue.classList.remove('hidden');
-    } else {
-      this.dom.overlayRescue.classList.add('hidden');
+    // 승객 진행 — "왜 깨는지"가 매 판 눈에 보여야 다음 판을 누른다.
+    // 챕터의 남은 판 수를 점으로, 끝에 이번 승객 얼굴을 놓는다.
+    const start = chapter * CHAPTER;
+    const slots = Math.min(CHAPTER, LEVEL_DATA.length - start);
+    let dots = '';
+    let left = 0;
+    for (let k = 0; k < slots; k++) {
+      const done = this.cleared[start + k];
+      if (!done) left++;
+      dots += `<span class="ride-dot${done ? ' on' : ''}"></span>`;
     }
+    const gotHome = nowHome && !wasHome;
+    this.dom.rideRow.innerHTML =
+      dots +
+      `<span class="ride-arrow">›</span>` +
+      `<span class="ride-face${nowHome ? ' home' : ''}" style="--c:${this.passengerHex}">` +
+      '<span class="eye l"></span><span class="eye r"></span><span class="mouth"></span></span>';
+    this.dom.overlayRescue.textContent = gotHome
+      ? `Passenger dropped off! (${this.homeCount}/${this.chapterCount})`
+      : nowHome
+        ? ''
+        : `${left} ride${left > 1 ? 's' : ''} until drop-off`;
+    this.dom.overlayRescue.classList.toggle('hidden', nowHome && !gotHome);
 
     // 택시가 실제로 달려 나간 뒤에 카드가 뜬다 — 연출이 보상보다 먼저
     this.renderer.driveOut(() => {
@@ -2606,7 +2710,8 @@ class Game {
   }
 
   updateHud() {
-    this.dom.levelLabel.textContent = `Level ${this.levelIndex + 1}`;
+    // 모은 별을 늘 보이게 — 수집이 눈에 보여야 수집욕이 생긴다
+    this.dom.levelLabel.textContent = `Level ${this.levelIndex + 1} · ⭐ ${this.totalStars}`;
     this.dom.moveLabel.textContent = `${this.history.length} moves · Par ${this.level.par}`;
     this.dom.btnUndo.disabled = !this.history.length;
   }
@@ -2740,6 +2845,7 @@ const dom = {
   overlayTitle: $('overlayTitle'),
   overlayInfo: $('overlayInfo'),
   overlayRescue: $('overlayRescue'),
+  rideRow: $('rideRow'),
   starRow: $('starRow'),
 };
 

@@ -177,6 +177,11 @@ export class Renderer {
     this.guide = move;
   }
 
+  // 이번 챕터의 승객 색 — 택시 뒷좌석에 그려진다
+  setPassenger(hex) {
+    this.passengerHex = hex;
+  }
+
   nudgeVehicle(i) {
     this.nudges.set(i, performance.now());
   }
@@ -778,6 +783,22 @@ export class Renderer {
     ctx.fillStyle = isPlayer ? 'rgba(157,189,232,0.95)' : 'rgba(157,180,215,0.45)';
     rr(ctx, -bw * 0.34, roofTop + roofH + bl * 0.015, bw * 0.68, bl * 0.1, bw * 0.1);
     ctx.fill();
+
+    // 뒷좌석의 승객 — 이 손님을 집에 데려다주는 게 이 여정의 이유다
+    if (isPlayer && this.passengerHex) {
+      const py = roofTop + roofH + bl * 0.065;
+      const pr = bw * 0.115;
+      ctx.fillStyle = this.passengerHex;
+      ctx.beginPath();
+      ctx.arc(bw * 0.12, py, pr, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = '#1d2439';
+      for (const sx of [-1, 1]) {
+        ctx.beginPath();
+        ctx.arc(bw * 0.12 + sx * pr * 0.36, py - pr * 0.1, pr * 0.18, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
 
     // 얼굴은 택시에게만 — 판에서 유일하게 눈을 깜빡이는 존재가 곧 주인공이다
     if (isPlayer) {
