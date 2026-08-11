@@ -93,8 +93,6 @@ export class Game {
     this._syncHud();
   }
 
-  // ----- 프레임 -----
-
   // ----- 일시정지 -----
 
   pause() {
@@ -132,6 +130,8 @@ export class Game {
     }, 700);
   }
 
+  // ----- 프레임 -----
+
   frame(dtMs) {
     if (this.paused) {
       this.renderer.draw(this.state, { mode: this.mode, holding: this.holding, challenge: this.challenge });
@@ -140,10 +140,15 @@ export class Game {
     if (this.mode === 'running' && !this.state.dead) {
       this._acc += Math.min(dtMs, 100) / 1000;
       this._runSeconds += Math.min(dtMs, 100) / 1000;
-      while (this._acc >= DT) {
+      // 캐치업 상한 — 프레임이 한 번 밀렸을 때 다음 프레임에 물리를 몰아서 돌리면
+      // 그 프레임이 또 밀린다(죽음의 나선). 밀린 시간은 버리고 넘어간다.
+      let steps = 0;
+      while (this._acc >= DT && steps < 6) {
         step(this.state, { hold: this.holding });
         this._acc -= DT;
+        steps++;
       }
+      if (steps === 6) this._acc = 0;
       this._handleEvents();
       this._checkChallenge();
       this._syncHud();
@@ -202,16 +207,21 @@ export class Game {
     if (this.mode !== 'running' || this.state.dead) return null;
     const s = this.state;
     if (s.mode === 'orbit') {
-      // 릴리즈 타이밍: 조준이 앵커에 잠겼거나 접선이 위를 향할 때
-      const o = s.orbit;
-      const upness = Math.cos(o.theta) * o.dir;
-      return aim(s).snapped !== null || upness > 0.45 ? 'release' : null;
+      // 릴리즈 타이밍 — 조준선이 실제로 위를 향할 때만 권한다.
+      // (스냅은 아래쪽 앵커도 잡을 수 있어서, 잠김만 보고 권하면 아래로 놓게 가르친다)
+      const a = aim(s);
+      if (a.dy < 0.3) return null;
+      return a.snapped !== null || a.dy > 0.55 ? 'release' : null;
     }
     if (!this.holding) {
-      // 잡을 수 있는 앵커가 사거리 안에 있는데 안 누르고 있다
-      const near = s.anchors.some(
-        (a) => a.y >= s.y - WORLD.captureR && Math.hypot(a.x - s.x, a.y - s.y) < WORLD.captureR * 1.2
-      );
+      // 잡을 수 있는 앵커가 사거리 안에 있는데 안 누르고 있다 (창 안에서만 찾는다)
+      let near = false;
+      for (let i = s.anchorFrom || 0; i < s.anchors.length && !near; i++) {
+        const a = s.anchors[i];
+        if (a.y > s.y + WORLD.captureR * 1.2) break;
+        if (a.y < s.y - WORLD.captureR) continue;
+        near = Math.hypot(a.x - s.x, a.y - s.y) < WORLD.captureR * 1.2;
+      }
       if (near) return 'hold';
     }
     return null;

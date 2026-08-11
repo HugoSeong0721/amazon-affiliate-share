@@ -74,16 +74,19 @@ export function aim(state) {
   dx /= len;
   dy /= len;
 
-  // 진행 방향과 가장 잘 맞는 앵커를 찾는다 (지금 돌고 있는 앵커는 제외)
+  // 진행 방향과 가장 잘 맞는 앵커를 찾는다 (지금 돌고 있는 앵커는 제외).
+  // 소행성이 막고 있는 앵커에는 스냅하지 않는다 — 금색으로 잠긴 조준선은
+  // "여기로 가면 닿는다"는 약속이므로, 가는 길에 죽으면 거짓말이 된다.
   let best = null, bestCos = Math.cos((SNAP_DEG * Math.PI) / 180);
-  for (let i = 0; i < state.anchors.length; i++) {
+  for (let i = state.anchorFrom || 0; i < state.anchors.length; i++) {
     if (i === o.i) continue;
     const a = state.anchors[i];
+    if (a.y > state.y + SNAP_MAX_DIST) break;       // 위로 정렬 — 더 볼 필요 없다
     const ax = a.x - state.x, ay = a.y - state.y;
     const d = Math.hypot(ax, ay);
     if (d < WORLD.orbitMin || d > SNAP_MAX_DIST) continue;
     const cos = (ax * dx + ay * dy) / d;
-    if (cos > bestCos) { bestCos = cos; best = i; }
+    if (cos > bestCos && pathIsClear(state, a.x, a.y)) { bestCos = cos; best = i; }
   }
   if (best !== null) {
     const a = state.anchors[best];
@@ -91,6 +94,18 @@ export function aim(state) {
     return { dx: (a.x - state.x) / d, dy: (a.y - state.y) / d, snapped: best };
   }
   return { dx, dy, snapped: null };
+}
+
+// 코멧에서 (tx,ty)까지 직선이 소행성에 막히지 않는지 (창 안의 소행성만 본다)
+function pathIsClear(state, tx, ty) {
+  const clear = WORLD.hazardR + WORLD.cometR + 1;
+  const top = Math.max(state.y, ty) + 200;
+  for (let i = state.hazardFrom || 0; i < state.hazards.length; i++) {
+    const hz = state.hazards[i];
+    if (hz.y > top) break;
+    if (distToSegment(hz.x, hz.y, state.x, state.y, tx, ty) < clear) return false;
+  }
+  return true;
 }
 
 // ----- 트랙 생성 (앵커 순서대로만 소비되는 RNG 스트림) -----
@@ -152,6 +167,13 @@ export function newRun(seed) {
     deathCause: null,        // 'wall' | 'hazard' | 'fell'
     anchors: [{ x: 0, y: 64 }],
     hazards: [],
+    // 스캔 시작점 — 코멧 아래로 한참 지난 것들은 영원히 무관해지므로 건너뛴다.
+    // (인덱스는 그대로 두므로 orbit.i / _credited 가 안전하다)
+    anchorFrom: 0,
+    hazardFrom: 0,
+    // 방금 놓은 앵커 — 사거리를 벗어나기 전까지는 다시 잡히지 않는다.
+    // (없으면 놓자마자 같은 앵커를 다시 잡아 제자리를 뱅뱅 돈다)
+    noLatch: -1,
     _credited: new Set(),    // 니어미스 중복 방지 (hazard 인덱스)
     _held: false,
     events: [],              // 프레임 이벤트 큐 — 렌더러/사운드가 비운다
@@ -177,8 +199,10 @@ export function score(state) {
 
 function tryLatch(state) {
   let best = -1, bestD = WORLD.captureR;
-  for (let i = 0; i < state.anchors.length; i++) {
+  for (let i = state.anchorFrom; i < state.anchors.length; i++) {
+    if (i === state.noLatch) continue;              // 방금 놓은 앵커는 건너뛴다
     const a = state.anchors[i];
+    if (a.y > state.y + WORLD.captureR) break;      // 위로 정렬 — 더 볼 필요 없다
     if (a.y < state.y - WORLD.captureR) continue;   // 한참 지난 앵커는 안 잡는다
     const d = Math.hypot(a.x - state.x, a.y - state.y);
     if (d < bestD) { bestD = d; best = i; }
@@ -201,6 +225,7 @@ function release(state) {
   const a = aim(state);
   state.dirX = a.dx;
   state.dirY = a.dy;
+  state.noLatch = state.orbit.i;
   state.orbit = null;
   state.mode = 'flying';
   state.events.push({ type: 'release', snapped: a.snapped });
@@ -239,14 +264,33 @@ export function step(state, input) {
   if (state.y > state.height) state.height = state.y;
   ensureTrack(state, state.y + WORLD.genMargin);
 
+  // 방금 놓은 앵커의 사거리를 벗어났으면 다시 잡을 수 있게 풀어 준다
+  if (state.noLatch >= 0) {
+    const a = state.anchors[state.noLatch];
+    if (!a || Math.hypot(a.x - state.x, a.y - state.y) > WORLD.captureR + 4) state.noLatch = -1;
+  }
+
+  // 창(window) 전진 — 최고점에서 fallLimit 아래로 사라진 것들은 다시 만날 수 없다.
+  // 이걸 안 하면 트랙이 길어질수록 매 스텝의 스캔이 무한히 늘어 후반에 끊긴다.
+  const cutoff = state.height - WORLD.fallLimit - 80;
+  while (state.anchorFrom < state.anchors.length - 1 && state.anchors[state.anchorFrom].y < cutoff) {
+    state.anchorFrom++;
+  }
+  while (state.hazardFrom < state.hazards.length && state.hazards[state.hazardFrom].y < cutoff) {
+    state.hazardFrom++;
+  }
+
   // 죽음 판정
   if (Math.abs(state.x) > WORLD.halfW - WORLD.cometR) return die(state, 'wall'), state;
   if (state.y < state.height - WORLD.fallLimit) return die(state, 'fell'), state;
 
   // 소행성: 충돌 + 니어미스 (지나간 것은 건너뛴다)
-  for (let i = 0; i < state.hazards.length; i++) {
+  for (let i = state.hazardFrom; i < state.hazards.length; i++) {
     const hz = state.hazards[i];
-    if (hz.y < state.y - 60 || hz.y > state.y + 60) continue;
+    // 소행성은 구간 안에서 y가 조금 뒤섞일 수 있으므로, 한 구간보다 훨씬 넉넉히 지나서 끊는다
+    if (hz.y > state.y + 200) break;
+
+    if (hz.y < state.y - 60) continue;
     const d = Math.hypot(hz.x - state.x, hz.y - state.y);
     if (d < WORLD.hazardR + WORLD.cometR) return die(state, 'hazard'), state;
     if (d < WORLD.hazardR + WORLD.cometR + WORLD.nearMissBand && !state._credited.has(i)) {

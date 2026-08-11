@@ -93,6 +93,36 @@ test('트랙 불변식: 궤도 안전 · 직선 개방 · 통로 안 (시드 200
   }
 });
 
+test('스캔 창(window) 전제 검증: 앵커는 정렬, 소행성 뒤섞임은 200 미만', () => {
+  // step()은 정렬을 전제로 루프를 조기 종료한다. 그 전제가 깨지면 충돌을 놓친다.
+  for (let seed = 1; seed <= 120; seed++) {
+    const s = newRun(seed);
+    ensureTrack(s, 6000);
+    for (let i = 1; i < s.anchors.length; i++) {
+      assert.ok(s.anchors[i].y > s.anchors[i - 1].y, `seed ${seed}: 앵커 정렬이 깨졌다`);
+    }
+    let maxBack = 0;
+    for (let i = 1; i < s.hazards.length; i++) {
+      maxBack = Math.max(maxBack, s.hazards[i - 1].y - s.hazards[i].y);
+    }
+    assert.ok(maxBack < 200, `seed ${seed}: 소행성 뒤섞임 ${maxBack.toFixed(1)} — break 문턱을 넘었다`);
+  }
+});
+
+test('스캔 창이 전진해도 런 결과는 같다 (창 없는 전수 스캔과 동일)', () => {
+  // 창 전진이 충돌/니어미스를 놓치지 않는지: 창을 강제로 0에 묶은 런과 비교한다
+  const script = (i) => (i % 400) < 220;
+  const run = (pin) => {
+    const s = newRun(4242);
+    for (let i = 0; i < 8000 && !s.dead; i++) {
+      if (pin) { s.anchorFrom = 0; s.hazardFrom = 0; }
+      step(s, { hold: script(i) });
+    }
+    return { y: s.y, height: s.height, sparks: s.sparks, dead: s.dead, cause: s.deathCause };
+  };
+  assert.deepEqual(run(false), run(true));
+});
+
 test('난이도 곡선은 단조 증가한다', () => {
   let prev = paramsAt(0);
   for (let h = 50; h <= 8000; h += 50) {
@@ -155,6 +185,7 @@ test('자석 조준: 얼추 맞으면 앵커로 스냅, 많이 어긋나면 그�
   // 높이 5000 → 어시스트 0, 접선이 정확히 위(+y)를 향하는 궤도 상태를 만든다
   const base = {
     x: 0, y: 5000, height: 5000, dirX: 0, dirY: 1,
+    hazards: [], hazardFrom: 0, anchorFrom: 0,
     orbit: { i: 0, r: 20, theta: 0, dir: 1 }, // rel=(r,0), dir=+1 → 접선 (0,1)
   };
 
@@ -174,6 +205,36 @@ test('자석 조준: 얼추 맞으면 앵커로 스냅, 많이 어긋나면 그�
   // 지금 돌고 있는 앵커(i=0)에는 절대 스냅하지 않는다
   a = aim({ ...base, anchors: [{ x: 0, y: 5100 }] , orbit: { ...base.orbit, i: 0 } });
   assert.equal(a.snapped, null);
+
+  // 소행성이 길을 막고 있으면 스냅하지 않는다 (금색 조준선은 안전을 약속한다)
+  const blocked = { ...base, anchors: [{ x: -20, y: 5000 }, off10],
+    hazards: [{ x: off10.x / 2, y: 5000 + 50 }] };
+  assert.equal(aim(blocked).snapped, null);
+});
+
+test('스냅된 조준선은 소행성이 없는 길만 가리킨다 (시드 60개 자동 플레이)', () => {
+  // 봇이 스냅될 때마다 그 직선이 실제로 비어 있는지 검사한다
+  const clear = WORLD.hazardR + WORLD.cometR + 1;
+  for (let seed = 1; seed <= 60; seed++) {
+    const s = newRun(seed);
+    for (let i = 0; i < 20000 && !s.dead; i++) {
+      let hold = true;
+      if (s.mode === 'orbit') {
+        const a = aim(s);
+        if (a.snapped !== null) {
+          const t = s.anchors[a.snapped];
+          for (const hz of s.hazards) {
+            assert.ok(
+              distToSegment(hz.x, hz.y, s.x, s.y, t.x, t.y) >= clear,
+              `seed ${seed}: 스냅 경로가 소행성에 막혀 있다`
+            );
+          }
+          if (a.dy > 0.4) hold = false;
+        }
+      }
+      step(s, { hold });
+    }
+  }
 });
 
 test('잡는 순간 회전 방향은 진행 방향을 잇는다 (접선·속도 내적 > 0)', () => {

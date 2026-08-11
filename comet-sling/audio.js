@@ -11,7 +11,8 @@
 
 const STORAGE_MUTED = 'cms.muted';
 const MASTER = 2.4;   // 전체 음량 — 개별 레시피는 그대로 두고 여기서 키운다
-const POOL = 3;       // 효과음당 <audio> 개수 (겹쳐 울릴 수 있게)
+const POOL = 2;       // 효과음당 <audio> 개수 (겹쳐 울릴 수 있게)
+const BAKE_RATE = 22050; // 굽는 표본율 — 이 효과음들엔 충분하고 용량이 절반이다
 
 const isIOS = () =>
   typeof navigator !== 'undefined' &&
@@ -58,8 +59,11 @@ const RECIPES = {
   },
 };
 
-// 레시피가 차지하는 최대 길이(초) — 오프라인 렌더 버퍼 크기용
-const RECIPE_SECONDS = 0.75;
+// 레시피별 길이(초) — 필요한 만큼만 구워야 <audio>가 물고 있는 메모리가 작아진다
+const RECIPE_SECONDS = {
+  launch: 0.42, latch: 0.26, release: 0.24, spark: 0.2,
+  crashHard: 0.46, crashFall: 0.58, fanfare: 0.56,
+};
 
 // 컨텍스트(라이브/오프라인 공용)에 레시피를 그리는 붓
 function makeVoice(ctx, destination, t0) {
@@ -164,8 +168,8 @@ export class Sound {
     const pools = {};
     try {
       for (const [name, recipe] of Object.entries(RECIPES)) {
-        const rate = 44100;
-        const ctx = new OfflineCtx(1, Math.ceil(rate * RECIPE_SECONDS), rate);
+        const rate = BAKE_RATE;
+        const ctx = new OfflineCtx(1, Math.ceil(rate * (RECIPE_SECONDS[name] || 0.6)), rate);
         const master = ctx.createGain();
         master.gain.value = MASTER;
         master.connect(ctx.destination);
