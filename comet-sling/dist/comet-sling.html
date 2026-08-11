@@ -922,6 +922,8 @@ class Renderer {
     this._stars = this._makeStars();
     this._t = 0;
     this._dprCap = 1.5;
+    this.vx = 0;
+    this.vy = 0;
     this._frameTimes = [];
     this._lastFrameAt = 0;
     this.resize();
@@ -1085,6 +1087,8 @@ class Renderer {
 
   reset(state) {
     this.camY = state.y;
+    this.vx = state.x;
+    this.vy = state.y;
     this.trail = [];
     this.particles = [];
     this._shake = 0;
@@ -1115,17 +1119,24 @@ class Renderer {
 
   draw(state, ui) {
     const ctx = this.ctx;
-    const dt = 1 / 60;
+    // 애니메이션은 실제 경과 시간으로 — 프레임 수에 묶으면 주사율마다 속도가 달라진다
+    const dt = Math.min(ui.dt || 1 / 60, 0.1);
     this._t += dt;
     this._autoQuality();
 
-    // 카메라 — 위로는 바로, 아래로는 천천히 따라간다
-    const target = Math.max(state.y, state.height - 20);
-    this.camY += (target - this.camY) * (state.dead ? 0.04 : 0.14);
+    // 화면상의 코멧 위치 — 물리 스텝 사이를 보간한 값 (없으면 물리 위치 그대로)
+    const view = ui.view || { x: state.x, y: state.y };
+    this.vx = view.x;
+    this.vy = view.y;
+
+    // 카메라 — 위로는 바로, 아래로는 천천히. 지수 감쇠라 주사율과 무관하게 같은 속도다.
+    const target = Math.max(view.y, state.height - 20);
+    const k = state.dead ? 2.5 : 9;
+    this.camY += (target - this.camY) * (1 - Math.exp(-k * dt));
 
     // 트레일 기록 (죽으면 멈춘다)
     if (!state.dead && ui.mode === 'running') {
-      this.trail.push({ x: state.x, y: state.y });
+      this.trail.push({ x: view.x, y: view.y });
       if (this.trail.length > 46) this.trail.shift();
     }
 
@@ -1280,7 +1291,7 @@ class Renderer {
         ctx.strokeStyle = 'rgba(227,194,255,0.35)';
         ctx.beginPath();
         ctx.moveTo(x, y);
-        ctx.lineTo(this.sx(state.x), this.sy(state.y));
+        ctx.lineTo(this.sx(this.vx), this.sy(this.vy));
         ctx.stroke();
       }
 
@@ -1328,13 +1339,13 @@ class Renderer {
   // "옆으로 튕겨나갔다"가 아니라 "옆을 향할 때 놓았다"를 눈으로 알게 해 준다.
   _drawAimLine(ctx, state) {
     const a = aim(state);
-    const x0 = this.sx(state.x), y0 = this.sy(state.y);
+    const x0 = this.sx(this.vx), y0 = this.sy(this.vy);
     let lenW = 85;
     if (a.snapped !== null) {
       const t = state.anchors[a.snapped];
       lenW = Math.hypot(t.x - state.x, t.y - state.y);
     }
-    const x1 = this.sx(state.x + a.dx * lenW), y1 = this.sy(state.y + a.dy * lenW);
+    const x1 = this.sx(this.vx + a.dx * lenW), y1 = this.sy(this.vy + a.dy * lenW);
     const locked = a.snapped !== null;
     const col = locked ? 'rgba(255,211,77,0.9)' : 'rgba(142,246,255,0.45)';
 
@@ -1373,7 +1384,7 @@ class Renderer {
   }
 
   _drawComet(ctx, state) {
-    this._blit(ctx, this._sprComet, this.sx(state.x), this.sy(state.y));
+    this._blit(ctx, this._sprComet, this.sx(this.vx), this.sy(this.vy));
   }
 
   _drawParticles(ctx, dt) {
@@ -1395,7 +1406,7 @@ class Renderer {
   // 출발대: 코멧이 숨쉬듯 떠 있다
   _drawReadyComet(ctx, state) {
     const bob = Math.sin(this._t * 2.2) * 4;
-    this._blit(ctx, this._sprComet, this.sx(state.x), this.sy(state.y) + bob);
+    this._blit(ctx, this._sprComet, this.sx(this.vx), this.sy(this.vy) + bob);
   }
 
   // 유령 시범 — 첫 릴리즈에 성공하기 전까지, 출발대에서 유령 혜성이 직접 보여준다:
@@ -2142,6 +2153,8 @@ class Game {
     this.state = newRun(this._forcedSeed ?? this._seed());
     this.mode = 'ready';
     this._newBest = false;
+    this._prevX = undefined;
+    this._prevY = undefined;
     this.renderer.reset(this.state);
     this.dom.overlay.classList.add('hidden');
     this._syncHud();
@@ -2188,7 +2201,10 @@ class Game {
 
   frame(dtMs) {
     if (this.paused) {
-      this.renderer.draw(this.state, { mode: this.mode, holding: this.holding, challenge: this.challenge });
+      this.renderer.draw(this.state, {
+        mode: this.mode, holding: this.holding, challenge: this.challenge,
+        view: this._view(), dt: Math.min(dtMs, 100) / 1000,
+      });
       return;
     }
     if (this.mode === 'running' && !this.state.dead) {
@@ -2198,6 +2214,9 @@ class Game {
       // 그 프레임이 또 밀린다(죽음의 나선). 밀린 시간은 버리고 넘어간다.
       let steps = 0;
       while (this._acc >= DT && steps < 6) {
+        // 보간용으로 '한 스텝 전' 위치를 남긴다
+        this._prevX = this.state.x;
+        this._prevY = this.state.y;
         step(this.state, { hold: this.holding });
         this._acc -= DT;
         steps++;
@@ -2213,7 +2232,23 @@ class Game {
       demo: this.releases === 0,
       coach: this._coach(),
       challenge: this.challenge,
+      view: this._view(),
+      dt: Math.min(dtMs, 100) / 1000,
     });
+  }
+
+  // 물리는 120Hz 고정 간격, 화면은 기기 주사율(60/90/120Hz)이다. 그대로 그리면
+  // 어떤 프레임은 0칸, 어떤 프레임은 2칸 움직여 눈에 덜컥거린다.
+  // 마지막 두 스텝 사이를 남은 시간(_acc) 비율로 보간해 화면만 매끄럽게 만든다.
+  // (물리 자체는 손대지 않으므로 결정론은 그대로다)
+  _view() {
+    const s = this.state;
+    if (this._prevX === undefined || s.dead) return { x: s.x, y: s.y };
+    const a = Math.max(0, Math.min(1, this._acc / DT));
+    return {
+      x: this._prevX + (s.x - this._prevX) * a,
+      y: this._prevY + (s.y - this._prevY) * a,
+    };
   }
 
   // 결승선(친구 기록 높이)을 넘는 순간 한 번 축하한다
