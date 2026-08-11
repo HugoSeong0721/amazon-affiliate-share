@@ -307,8 +307,18 @@ export class Game {
     this._syncHud();
   }
 
+  // 매 프레임 textContent를 다시 쓰면 그때마다 레이아웃이 다시 계산된다.
+  // 값이 실제로 바뀔 때만 쓴다.
   _syncHud() {
-    this.dom.scoreLabel.textContent = String(score(this.state));
-    this.dom.bestLabel.textContent = `BEST ${this.best}`;
+    const s = String(score(this.state));
+    if (s !== this._hudScore) {
+      this._hudScore = s;
+      this.dom.scoreLabel.textContent = s;
+    }
+    const b = `BEST ${this.best}`;
+    if (b !== this._hudBest) {
+      this._hudBest = b;
+      this.dom.bestLabel.textContent = b;
+    }
   }
 }

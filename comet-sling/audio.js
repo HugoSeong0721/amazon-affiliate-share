@@ -65,6 +65,20 @@ const RECIPE_SECONDS = {
   crashHard: 0.46, crashFall: 0.58, fanfare: 0.56,
 };
 
+// 잡음원(1초)은 컨텍스트당 한 번만 만들어 돌려 쓴다.
+// 소리마다 새로 채우면 재생 순간에 난수 1만5천 개를 만드느라 프레임이 튄다.
+const noiseCache = new WeakMap();
+function sharedNoise(ctx) {
+  let buf = noiseCache.get(ctx);
+  if (buf) return buf;
+  const len = Math.ceil(ctx.sampleRate);
+  buf = ctx.createBuffer(1, len, ctx.sampleRate);
+  const data = buf.getChannelData(0);
+  for (let i = 0; i < len; i++) data[i] = Math.random() * 2 - 1;
+  noiseCache.set(ctx, buf);
+  return buf;
+}
+
 // 컨텍스트(라이브/오프라인 공용)에 레시피를 그리는 붓
 function makeVoice(ctx, destination, t0) {
   return {
@@ -84,12 +98,11 @@ function makeVoice(ctx, destination, t0) {
     },
     noise({ dur = 0.3, gain = 0.18, freq = 800, delay = 0, q = 1 } = {}) {
       const t = t0 + delay;
-      const len = Math.ceil(ctx.sampleRate * dur);
-      const buf = ctx.createBuffer(1, len, ctx.sampleRate);
-      const data = buf.getChannelData(0);
-      for (let i = 0; i < len; i++) data[i] = Math.random() * 2 - 1;
+      const buf = sharedNoise(ctx);
       const src = ctx.createBufferSource();
       src.buffer = buf;
+      // 같은 잡음원을 임의 지점부터 잘라 쓰므로 매번 다르게 들린다
+      const offset = Math.random() * Math.max(0, buf.duration - dur);
       const filt = ctx.createBiquadFilter();
       filt.type = 'bandpass';
       filt.frequency.setValueAtTime(freq, t);
@@ -98,10 +111,14 @@ function makeVoice(ctx, destination, t0) {
       g.gain.setValueAtTime(gain, t);
       g.gain.exponentialRampToValueAtTime(0.0008, t + dur);
       src.connect(filt).connect(g).connect(destination);
-      src.start(t);
+      src.start(t, offset, dur);
     },
   };
 }
+
+// 표본 1개짜리 무음 WAV — 첫 제스처에서 재생 허가만 받는 용도
+const SILENT_WAV =
+  'data:audio/wav;base64,UklGRioAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQYAAAAAAAAAAAA=';
 
 // AudioBuffer → 16bit PCM WAV data URI
 function bufferToWavUri(buf) {
@@ -216,23 +233,31 @@ export class Sound {
   fanfare() { this._play('fanfare'); }
   crash(cause) { this._play(cause === 'fell' ? 'crashFall' : 'crashHard'); }
 
-  // 첫 제스처에서 오디오를 미리 깨워 둔다 — 런 시작 프레임의 버벅임 방지.
-  // <audio> 경로에서는 이 제스처 안에서 한 번 재생해 둬야 이후 재생이 허용된다.
+  // 오디오 장치를 미리 연다 — 이게 이 파일에서 가장 비싼 한 번(폰에서 100ms 이상)이다.
+  // 누르는 순간에 열면 그게 곧 "홀드할 때 처음 끊김"이 되므로, 로딩 후 한가한 틈에
+  // 미리 열어 둔다. 컨텍스트 '생성'은 제스처가 필요 없고, '재생'만 제스처가 필요하다.
+  prime() {
+    if (this.useHtml5) return; // 이 경로는 로드 때 이미 WAV를 구워 둔다
+    const ctx = this.ctx;      // getter가 생성한다
+    if (ctx) try { sharedNoise(ctx); } catch {}  // 잡음원도 지금 만들어 둔다
+  }
+
+  // 첫 제스처에서 오디오를 딱 한 번 깨운다.
+  //
+  // 여기서 무거운 일을 하면 그게 곧 "누른 순간의 버벅임"이 된다. 그래서
+  //   - 단 한 번만 실행한다 (예전엔 누를 때마다 실행됐다)
+  //   - <audio> 경로에서도 효과음 7개를 다 재생하지 않고, 무음 1개만 재생해
+  //     브라우저의 재생 허가만 받는다 (이후 실제 효과음은 허가 없이 나간다)
   warm() {
+    if (this._warmed) return;
+    this._warmed = true;
     if (this.useHtml5) {
-      if (!this._pools) return;
-      for (const pool of Object.values(this._pools)) {
-        const el = pool.els[0];
-        try {
-          const v = el.volume;
-          el.volume = 0;
-          el.play().then(() => {
-            el.pause();
-            el.currentTime = 0;
-            el.volume = v;
-          }).catch(() => { el.volume = v; });
-        } catch {}
-      }
+      try {
+        // 44바이트 헤더 + 표본 1개짜리 무음 WAV — 재생 허가를 받기 위한 최소 비용
+        const el = new Audio(SILENT_WAV);
+        el.volume = 0;
+        el.play().then(() => el.pause()).catch(() => {});
+      } catch {}
       return;
     }
     const ctx = this.ctx;
