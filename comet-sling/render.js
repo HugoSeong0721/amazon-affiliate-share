@@ -352,15 +352,16 @@ export class Renderer {
     // 점선 큰 원은 래스터화가 비싸다 — 사거리 안의 '가장 가까운' 앵커 하나만 그린다
     let nearest = -1, nearestD = WORLD.captureR;
     if (!state.dead) {
-      for (let i = 0; i < state.anchors.length; i++) {
+      for (let i = state.anchorFrom || 0; i < state.anchors.length; i++) {
         const a = state.anchors[i];
         if (a.y < state.y - WORLD.captureR) continue;
         const d = Math.hypot(a.x - state.x, a.y - state.y);
         if (d < nearestD) { nearestD = d; nearest = i; }
       }
     }
-    for (let i = 0; i < state.anchors.length; i++) {
+    for (let i = state.anchorFrom || 0; i < state.anchors.length; i++) {
       const a = state.anchors[i];
+      if (this.sy(a.y) < -80) break;   // 화면 위로 벗어남 — 앵커는 정렬돼 있으니 끝
       if (!this._visible(a.y)) continue;
       const x = this.sx(a.x), y = this.sy(a.y);
       const active = state.orbit && state.orbit.i === i;
@@ -397,8 +398,9 @@ export class Renderer {
   }
 
   _drawHazards(ctx, state) {
-    for (let i = 0; i < state.hazards.length; i++) {
+    for (let i = state.hazardFrom || 0; i < state.hazards.length; i++) {
       const hz = state.hazards[i];
+      if (this.sy(hz.y) < -280) break; // 화면 위로 한참 벗어남 (구간 내 뒤섞임 여유 포함)
       if (!this._visible(hz.y)) continue;
       this._blit(ctx, this._sprHazard[i % 3], this.sx(hz.x), this.sy(hz.y), this._t * 0.4 + i * 1.7);
     }
