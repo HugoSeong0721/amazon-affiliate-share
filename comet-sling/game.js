@@ -88,6 +88,8 @@ export class Game {
     this.state = newRun(this._forcedSeed ?? this._seed());
     this.mode = 'ready';
     this._newBest = false;
+    this._prevX = undefined;
+    this._prevY = undefined;
     this.renderer.reset(this.state);
     this.dom.overlay.classList.add('hidden');
     this._syncHud();
@@ -134,7 +136,10 @@ export class Game {
 
   frame(dtMs) {
     if (this.paused) {
-      this.renderer.draw(this.state, { mode: this.mode, holding: this.holding, challenge: this.challenge });
+      this.renderer.draw(this.state, {
+        mode: this.mode, holding: this.holding, challenge: this.challenge,
+        view: this._view(), dt: Math.min(dtMs, 100) / 1000,
+      });
       return;
     }
     if (this.mode === 'running' && !this.state.dead) {
@@ -144,6 +149,9 @@ export class Game {
       // 그 프레임이 또 밀린다(죽음의 나선). 밀린 시간은 버리고 넘어간다.
       let steps = 0;
       while (this._acc >= DT && steps < 6) {
+        // 보간용으로 '한 스텝 전' 위치를 남긴다
+        this._prevX = this.state.x;
+        this._prevY = this.state.y;
         step(this.state, { hold: this.holding });
         this._acc -= DT;
         steps++;
@@ -159,7 +167,23 @@ export class Game {
       demo: this.releases === 0,
       coach: this._coach(),
       challenge: this.challenge,
+      view: this._view(),
+      dt: Math.min(dtMs, 100) / 1000,
     });
+  }
+
+  // 물리는 120Hz 고정 간격, 화면은 기기 주사율(60/90/120Hz)이다. 그대로 그리면
+  // 어떤 프레임은 0칸, 어떤 프레임은 2칸 움직여 눈에 덜컥거린다.
+  // 마지막 두 스텝 사이를 남은 시간(_acc) 비율로 보간해 화면만 매끄럽게 만든다.
+  // (물리 자체는 손대지 않으므로 결정론은 그대로다)
+  _view() {
+    const s = this.state;
+    if (this._prevX === undefined || s.dead) return { x: s.x, y: s.y };
+    const a = Math.max(0, Math.min(1, this._acc / DT));
+    return {
+      x: this._prevX + (s.x - this._prevX) * a,
+      y: this._prevY + (s.y - this._prevY) * a,
+    };
   }
 
   // 결승선(친구 기록 높이)을 넘는 순간 한 번 축하한다

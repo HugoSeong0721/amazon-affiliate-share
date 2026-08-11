@@ -30,6 +30,8 @@ export class Renderer {
     this._stars = this._makeStars();
     this._t = 0;
     this._dprCap = 1.5;
+    this.vx = 0;
+    this.vy = 0;
     this._frameTimes = [];
     this._lastFrameAt = 0;
     this.resize();
@@ -193,6 +195,8 @@ export class Renderer {
 
   reset(state) {
     this.camY = state.y;
+    this.vx = state.x;
+    this.vy = state.y;
     this.trail = [];
     this.particles = [];
     this._shake = 0;
@@ -223,17 +227,24 @@ export class Renderer {
 
   draw(state, ui) {
     const ctx = this.ctx;
-    const dt = 1 / 60;
+    // 애니메이션은 실제 경과 시간으로 — 프레임 수에 묶으면 주사율마다 속도가 달라진다
+    const dt = Math.min(ui.dt || 1 / 60, 0.1);
     this._t += dt;
     this._autoQuality();
 
-    // 카메라 — 위로는 바로, 아래로는 천천히 따라간다
-    const target = Math.max(state.y, state.height - 20);
-    this.camY += (target - this.camY) * (state.dead ? 0.04 : 0.14);
+    // 화면상의 코멧 위치 — 물리 스텝 사이를 보간한 값 (없으면 물리 위치 그대로)
+    const view = ui.view || { x: state.x, y: state.y };
+    this.vx = view.x;
+    this.vy = view.y;
+
+    // 카메라 — 위로는 바로, 아래로는 천천히. 지수 감쇠라 주사율과 무관하게 같은 속도다.
+    const target = Math.max(view.y, state.height - 20);
+    const k = state.dead ? 2.5 : 9;
+    this.camY += (target - this.camY) * (1 - Math.exp(-k * dt));
 
     // 트레일 기록 (죽으면 멈춘다)
     if (!state.dead && ui.mode === 'running') {
-      this.trail.push({ x: state.x, y: state.y });
+      this.trail.push({ x: view.x, y: view.y });
       if (this.trail.length > 46) this.trail.shift();
     }
 
@@ -388,7 +399,7 @@ export class Renderer {
         ctx.strokeStyle = 'rgba(227,194,255,0.35)';
         ctx.beginPath();
         ctx.moveTo(x, y);
-        ctx.lineTo(this.sx(state.x), this.sy(state.y));
+        ctx.lineTo(this.sx(this.vx), this.sy(this.vy));
         ctx.stroke();
       }
 
@@ -436,13 +447,13 @@ export class Renderer {
   // "옆으로 튕겨나갔다"가 아니라 "옆을 향할 때 놓았다"를 눈으로 알게 해 준다.
   _drawAimLine(ctx, state) {
     const a = aim(state);
-    const x0 = this.sx(state.x), y0 = this.sy(state.y);
+    const x0 = this.sx(this.vx), y0 = this.sy(this.vy);
     let lenW = 85;
     if (a.snapped !== null) {
       const t = state.anchors[a.snapped];
       lenW = Math.hypot(t.x - state.x, t.y - state.y);
     }
-    const x1 = this.sx(state.x + a.dx * lenW), y1 = this.sy(state.y + a.dy * lenW);
+    const x1 = this.sx(this.vx + a.dx * lenW), y1 = this.sy(this.vy + a.dy * lenW);
     const locked = a.snapped !== null;
     const col = locked ? 'rgba(255,211,77,0.9)' : 'rgba(142,246,255,0.45)';
 
@@ -481,7 +492,7 @@ export class Renderer {
   }
 
   _drawComet(ctx, state) {
-    this._blit(ctx, this._sprComet, this.sx(state.x), this.sy(state.y));
+    this._blit(ctx, this._sprComet, this.sx(this.vx), this.sy(this.vy));
   }
 
   _drawParticles(ctx, dt) {
@@ -503,7 +514,7 @@ export class Renderer {
   // 출발대: 코멧이 숨쉬듯 떠 있다
   _drawReadyComet(ctx, state) {
     const bob = Math.sin(this._t * 2.2) * 4;
-    this._blit(ctx, this._sprComet, this.sx(state.x), this.sy(state.y) + bob);
+    this._blit(ctx, this._sprComet, this.sx(this.vx), this.sy(this.vy) + bob);
   }
 
   // 유령 시범 — 첫 릴리즈에 성공하기 전까지, 출발대에서 유령 혜성이 직접 보여준다:
