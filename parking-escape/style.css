@@ -274,6 +274,60 @@ body {
   100% { transform: scale(1) rotate(0); opacity: 1; }
 }
 
+/* 승객 진행 — 챕터의 남은 판을 점으로, 끝에 이번 승객을 놓는다.
+   "왜 깨는지"가 매 판 클리어 카드에서 눈에 보인다. */
+.ride-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  margin: -4px 0 10px;
+}
+.ride-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.14);
+}
+.ride-dot.on { background: linear-gradient(180deg, #ffe27a, #ffb524); }
+.ride-arrow { color: var(--muted); font-size: 15px; font-weight: 800; margin: 0 -1px; }
+
+.ride-face {
+  position: relative;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 32% 30%, rgba(255, 255, 255, 0.5), var(--c) 42%, rgba(0, 0, 0, 0.35));
+  filter: saturate(0.25) brightness(0.6);
+}
+.ride-face.home {
+  filter: none;
+  box-shadow: 0 0 12px -1px var(--c);
+}
+.ride-face .eye {
+  position: absolute;
+  top: 11px;
+  width: 3.5px;
+  height: 4px;
+  border-radius: 50%;
+  background: rgba(28, 26, 48, 0.85);
+}
+.ride-face .eye.l { left: 9px; }
+.ride-face .eye.r { right: 9px; }
+.ride-face:not(.home) .eye { height: 1.5px; top: 13px; }
+.ride-face .mouth {
+  position: absolute;
+  top: 16px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 9px;
+  height: 5px;
+  border: 1.5px solid rgba(28, 26, 48, 0.8);
+  border-top: 0;
+  border-radius: 0 0 9px 9px;
+}
+.ride-face:not(.home) .mouth { width: 5px; height: 3px; }
+
 .rescue-note {
   color: #ffd98a;
   font-size: 14px;
