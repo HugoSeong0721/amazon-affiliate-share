@@ -1507,17 +1507,17 @@ class Renderer {
 // 형제 게임들의 Sound와 같은 뼈대지만, 소리의 결이 다르다:
 // 딸깍·퐁 같은 '장난감' 소리 대신 휘익·지잉·쿵 같은 '속도'의 소리다.
 //
-// 재생 경로가 둘이다:
-//   1) WebAudio (기본) — 지연이 가장 짧다
-//   2) HTML5 <audio> (iOS) — **아이폰 무음 스위치가 WebAudio를 통째로 죽이기 때문에**
-//      같은 레시피를 OfflineAudioContext로 미리 WAV로 구워 두고 <audio>로 튼다.
-//      <audio>는 미디어 채널이라 무음 스위치에 막히지 않는다.
-// 레시피는 한 벌만 쓴다 — 두 경로가 같은 소리를 낸다.
+// 효과음은 전부 WebAudio 한 경로다 — 지연이 가장 짧고, 재생이 메인 스레드를
+// 건드리지 않는다. (한때 iOS에서 효과음마다 <audio>를 재생하는 경로를 뒀는데,
+// 사파리의 미디어 파이프라인이 재생마다 메인 스레드를 잡아 미세한 끊김을 만들었다.)
+//
+// 아이폰 무음 스위치는 WebAudio를 통째로 죽이는데, 해법은 재생 경로를 바꾸는 게
+// 아니라 오디오 세션을 바꾸는 것이다: 첫 제스처에서 '무음 루프' <audio>를 하나
+// 틀어 두면 사파리가 미디어 재생 모드로 전환되고, 그 뒤로는 WebAudio도 무음
+// 스위치를 무시하고 들린다. (unmute.js 등이 쓰는 널리 알려진 기법)
 
 const STORAGE_MUTED = 'cms.muted';
-const MASTER = 2.4;   // 전체 음량 — 개별 레시피는 그대로 두고 여기서 키운다
-const POOL = 2;       // 효과음당 <audio> 개수 (겹쳐 울릴 수 있게)
-const BAKE_RATE = 22050; // 굽는 표본율 — 이 효과음들엔 충분하고 용량이 절반이다
+const MASTER = 2.4; // 전체 음량 — 개별 레시피는 그대로 두고 여기서 키운다
 
 const isIOS = () =>
   typeof navigator !== 'undefined' &&
@@ -1564,12 +1564,6 @@ const RECIPES = {
   },
 };
 
-// 레시피별 길이(초) — 필요한 만큼만 구워야 <audio>가 물고 있는 메모리가 작아진다
-const RECIPE_SECONDS = {
-  launch: 0.42, latch: 0.26, release: 0.24, spark: 0.2,
-  crashHard: 0.46, crashFall: 0.58, fanfare: 0.56,
-};
-
 // 잡음원(1초)은 컨텍스트당 한 번만 만들어 돌려 쓴다.
 // 소리마다 새로 채우면 재생 순간에 난수 1만5천 개를 만드느라 프레임이 튄다.
 const noiseCache = new WeakMap();
@@ -1584,7 +1578,7 @@ function sharedNoise(ctx) {
   return buf;
 }
 
-// 컨텍스트(라이브/오프라인 공용)에 레시피를 그리는 붓
+// 컨텍스트에 레시피를 그리는 붓
 function makeVoice(ctx, destination, t0) {
   return {
     tone(freq, { type = 'sine', dur = 0.12, gain = 0.1, delay = 0, slide = 0 } = {}) {
@@ -1621,33 +1615,24 @@ function makeVoice(ctx, destination, t0) {
   };
 }
 
-// 표본 1개짜리 무음 WAV — 첫 제스처에서 재생 허가만 받는 용도
-const SILENT_WAV =
-  'data:audio/wav;base64,UklGRioAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQYAAAAAAAAAAAA=';
-
-// AudioBuffer → 16bit PCM WAV data URI
-function bufferToWavUri(buf) {
-  const ch = buf.getChannelData(0);
-  const n = ch.length;
-  const bytes = new Uint8Array(44 + n * 2);
+// 무음 루프용 WAV data URI — 헤더 + 0으로 채운 표본. 코드로 만들면 파일이 필요 없다.
+function silentWavUri(seconds = 0.2, rate = 8000) {
+  const n = Math.ceil(seconds * rate);
+  const bytes = new Uint8Array(44 + n * 2); // data 구간은 0(무음)으로 남는다
   const view = new DataView(bytes.buffer);
   const str = (off, s) => { for (let i = 0; i < s.length; i++) view.setUint8(off + i, s.charCodeAt(i)); };
   str(0, 'RIFF');
   view.setUint32(4, 36 + n * 2, true);
   str(8, 'WAVEfmt ');
   view.setUint32(16, 16, true);
-  view.setUint16(20, 1, true);          // PCM
-  view.setUint16(22, 1, true);          // mono
-  view.setUint32(24, buf.sampleRate, true);
-  view.setUint32(28, buf.sampleRate * 2, true);
+  view.setUint16(20, 1, true);
+  view.setUint16(22, 1, true);
+  view.setUint32(24, rate, true);
+  view.setUint32(28, rate * 2, true);
   view.setUint16(32, 2, true);
   view.setUint16(34, 16, true);
   str(36, 'data');
   view.setUint32(40, n * 2, true);
-  for (let i = 0; i < n; i++) {
-    const s = Math.max(-1, Math.min(1, ch[i]));
-    view.setInt16(44 + i * 2, s < 0 ? s * 0x8000 : s * 0x7fff, true);
-  }
   let bin = '';
   for (let i = 0; i < bytes.length; i += 0x8000) {
     bin += String.fromCharCode.apply(null, bytes.subarray(i, i + 0x8000));
@@ -1659,10 +1644,11 @@ class Sound {
   constructor({ forceHtml5 = false } = {}) {
     this.muted = safeStorage.getItem(STORAGE_MUTED) === '1';
     this._ctx = null;
-    // iOS는 무음 스위치가 WebAudio를 죽이므로 <audio> 경로를 쓴다
-    this.useHtml5 = forceHtml5 || isIOS();
-    this._pools = null;
-    if (this.useHtml5) this._prerender();
+    this._warmed = false;
+    // iOS: 무음 스위치가 WebAudio를 죽인다 → 무음 루프로 세션을 미디어 모드로 바꾼다.
+    // (?html5audio 는 이 우회를 아무 데서나 켜 보는 테스트 스위치로 남겨 둔다)
+    this._needKeepAlive = forceHtml5 || isIOS();
+    this._keepAliveEl = null;
   }
 
   get ctx() {
@@ -1683,44 +1669,33 @@ class Sound {
     safeStorage.setItem(STORAGE_MUTED, m ? '1' : '0');
   }
 
-  // 레시피들을 WAV로 미리 구워 <audio> 풀에 담는다 (제스처 없이도 가능)
-  async _prerender() {
-    const OfflineCtx = window.OfflineAudioContext || window.webkitOfflineAudioContext;
-    if (!OfflineCtx) { this.useHtml5 = false; return; }
-    const pools = {};
-    try {
-      for (const [name, recipe] of Object.entries(RECIPES)) {
-        const rate = BAKE_RATE;
-        const ctx = new OfflineCtx(1, Math.ceil(rate * (RECIPE_SECONDS[name] || 0.6)), rate);
-        const master = ctx.createGain();
-        master.gain.value = MASTER;
-        master.connect(ctx.destination);
-        recipe(makeVoice(ctx, master, 0));
-        const uri = bufferToWavUri(await ctx.startRendering());
-        pools[name] = { i: 0, els: Array.from({ length: POOL }, () => {
-          const a = new Audio(uri);
-          a.preload = 'auto';
-          return a;
-        }) };
-      }
-      this._pools = pools;
-    } catch {
-      this.useHtml5 = false; // 굽기 실패 — WebAudio로 되돌린다
+  // 오디오 장치를 미리 연다 — 이게 이 파일에서 가장 비싼 한 번(폰에서 100ms 이상)이다.
+  // 누르는 순간에 열면 그게 곧 "홀드할 때 처음 끊김"이 되므로, 로딩 직후에 열어 둔다.
+  // 컨텍스트 '생성'은 제스처가 필요 없고, '재생'만 제스처가 필요하다.
+  prime() {
+    const ctx = this.ctx;
+    if (ctx) try { sharedNoise(ctx); } catch {} // 잡음원도 지금 만들어 둔다
+  }
+
+  // 첫 제스처에서 딱 한 번:
+  //  - WebAudio 재생 허가(resume)
+  //  - iOS면 무음 루프를 시작해 무음 스위치를 우회
+  warm() {
+    if (this._warmed) return;
+    this._warmed = true;
+    this.ctx; // getter가 resume까지 처리한다
+    if (this._needKeepAlive) {
+      try {
+        const el = new Audio(silentWavUri());
+        el.loop = true;
+        el.play().catch(() => {});
+        this._keepAliveEl = el;
+      } catch {}
     }
   }
 
   _play(name) {
     if (this.muted) return;
-    if (this.useHtml5 && this._pools && this._pools[name]) {
-      const pool = this._pools[name];
-      const el = pool.els[pool.i];
-      pool.i = (pool.i + 1) % pool.els.length;
-      try {
-        el.currentTime = 0;
-        el.play().catch(() => {});
-      } catch {}
-      return;
-    }
     const ctx = this.ctx;
     if (!ctx) return;
     try {
@@ -1737,44 +1712,6 @@ class Sound {
   spark() { this._play('spark'); }
   fanfare() { this._play('fanfare'); }
   crash(cause) { this._play(cause === 'fell' ? 'crashFall' : 'crashHard'); }
-
-  // 오디오 장치를 미리 연다 — 이게 이 파일에서 가장 비싼 한 번(폰에서 100ms 이상)이다.
-  // 누르는 순간에 열면 그게 곧 "홀드할 때 처음 끊김"이 되므로, 로딩 후 한가한 틈에
-  // 미리 열어 둔다. 컨텍스트 '생성'은 제스처가 필요 없고, '재생'만 제스처가 필요하다.
-  prime() {
-    if (this.useHtml5) return; // 이 경로는 로드 때 이미 WAV를 구워 둔다
-    const ctx = this.ctx;      // getter가 생성한다
-    if (ctx) try { sharedNoise(ctx); } catch {}  // 잡음원도 지금 만들어 둔다
-  }
-
-  // 첫 제스처에서 오디오를 딱 한 번 깨운다.
-  //
-  // 여기서 무거운 일을 하면 그게 곧 "누른 순간의 버벅임"이 된다. 그래서
-  //   - 단 한 번만 실행한다 (예전엔 누를 때마다 실행됐다)
-  //   - <audio> 경로에서도 효과음 7개를 다 재생하지 않고, 무음 1개만 재생해
-  //     브라우저의 재생 허가만 받는다 (이후 실제 효과음은 허가 없이 나간다)
-  warm() {
-    if (this._warmed) return;
-    this._warmed = true;
-    if (this.useHtml5) {
-      try {
-        // 44바이트 헤더 + 표본 1개짜리 무음 WAV — 재생 허가를 받기 위한 최소 비용
-        const el = new Audio(SILENT_WAV);
-        el.volume = 0;
-        el.play().then(() => el.pause()).catch(() => {});
-      } catch {}
-      return;
-    }
-    const ctx = this.ctx;
-    if (!ctx) return;
-    try {
-      const buf = ctx.createBuffer(1, 1, 22050);
-      const src = ctx.createBufferSource();
-      src.buffer = buf;
-      src.connect(ctx.destination);
-      src.start(0);
-    } catch {}
-  }
 }
 
 // ===== comet-sling/ads.js =====
