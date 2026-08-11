@@ -69,7 +69,6 @@ new SignupGate({
   config: SIGNUP_CONFIG,
   onDone: () => {
     gateOpen = false;
-    sound.warm(); // 게이트 버튼 클릭이 제스처이므로 여기서 오디오를 미리 깨운다
   },
 });
 
@@ -98,6 +97,7 @@ dom.board.addEventListener('contextmenu', (e) => e.preventDefault());
 // 데스크톱 테스트용: 스페이스/아무 키나 홀드
 window.addEventListener('keydown', (e) => {
   if (e.repeat || gateOpen) return;
+  sound.warm(); // 한 번만 실행된다 (audio.js)
   if (e.key === ' ' || e.key === 'ArrowUp') game.press();
   if (e.key === 'Escape' || e.key === 'p') game.pause();
 });
@@ -116,6 +116,11 @@ window.addEventListener('resize', () => renderer.resize());
 
 updateMuteIcon();
 renderer.resize();
+
+// 오디오 장치는 첫 터치가 아니라 첫 화면이 그려진 직후에 열어 둔다 — 열는 데 100ms 넘게
+// 걸리므로, 누르는 순간에 열면 그게 곧 "홀드할 때 처음 끊김"이 된다.
+// (idle 콜백은 사용자가 1초 안에 누르면 아직 안 돌아 있어서 늦다)
+requestAnimationFrame(() => setTimeout(() => sound.prime(), 0));
 
 // 물리 워밍업 — 버려지는 시뮬레이션을 미리 돌려 JIT을 데운다 (첫 런 끊김 방지)
 {
