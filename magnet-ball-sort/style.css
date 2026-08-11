@@ -497,6 +497,144 @@ body {
   background: var(--panel);
 }
 
+/* 데일리 챌린지 */
+.hud-btn { position: relative; }
+
+/* 오늘 것을 아직 안 했다는 점 — 조용한 리마인더 */
+.ndot {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: linear-gradient(180deg, #ffb524, #ff6b3d);
+  box-shadow: 0 0 6px rgba(255, 140, 60, 0.8);
+}
+
+#dailyPanel {
+  position: absolute;
+  inset: 0;
+  z-index: 40;
+  background: rgba(6, 10, 22, 0.74);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 18px;
+  overflow: hidden;
+}
+
+.dc-card { max-width: 380px; gap: 8px; }
+
+.dc-sub { color: var(--muted); font-size: 12px; line-height: 1.45; }
+
+.dc-streak {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  font-size: 15px;
+  font-weight: 800;
+  padding: 9px 0;
+  border-radius: 12px;
+  background: rgba(255, 150, 60, 0.1);
+  border: 1px solid rgba(255, 150, 60, 0.25);
+}
+.dc-streak .best { color: var(--muted); font-size: 12px; font-weight: 700; }
+
+.dc-month {
+  text-align: center;
+  font-size: 13px;
+  font-weight: 800;
+  color: var(--muted);
+  margin-top: 2px;
+}
+
+.dc-dows {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 5px;
+  text-align: center;
+  color: var(--muted);
+  opacity: 0.7;
+  font-size: 10px;
+  font-weight: 800;
+}
+
+.dc-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 5px;
+  overflow-y: auto;
+  min-height: 0;
+}
+
+.dc-day {
+  aspect-ratio: 1;
+  border-radius: 11px;
+  display: grid;
+  place-items: center;
+  font-size: 12.5px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  color: var(--muted);
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid transparent;
+}
+.dc-day.empty { visibility: hidden; }
+.dc-day.future { opacity: 0.3; }
+.dc-day.done {
+  background: linear-gradient(180deg, #ffe27a, #ffb524);
+  color: #4a3200;
+  box-shadow: 0 3px 10px rgba(255, 181, 36, 0.35);
+}
+.dc-day.today {
+  border-color: var(--accent);
+  color: var(--text);
+  box-shadow: 0 0 0 2px rgba(79, 184, 255, 0.35);
+}
+.dc-day.today.done { color: #4a3200; }
+
+.dc-play {
+  width: 100%;
+  padding: 13px 0;
+  border-radius: 15px;
+  border: 0;
+  background: linear-gradient(180deg, #5cc4ff, #2b7ff0);
+  color: #fff;
+  font-family: inherit;
+  font-size: 15px;
+  font-weight: 800;
+  cursor: pointer;
+  box-shadow: 0 6px 18px rgba(43, 127, 240, 0.45);
+  transition: transform 0.08s;
+  margin-top: 2px;
+}
+.dc-play:active { transform: scale(0.97); }
+.dc-play.done-today {
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  color: var(--muted);
+  box-shadow: none;
+}
+
+/* 승리 화면의 데일리 리마인더 칩 */
+.daily-chip {
+  margin-top: 13px;
+  background: none;
+  border: 0;
+  color: #ffd98a;
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 800;
+  cursor: pointer;
+  padding: 6px 10px;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
 /* 여정 카드 발치 — 계정 줄과 개인정보 링크 */
 .ls-foot {
   flex: 0 0 auto;

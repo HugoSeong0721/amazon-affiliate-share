@@ -16,6 +16,7 @@
         <div id="moveLabel">0 moves</div>
       </div>
       <div class="hud-right">
+        <button id="btnDaily" class="hud-btn" title="Daily challenge" aria-label="Daily challenge">📅<span id="dailyDot" class="ndot hidden"></span></button>
         <button id="btnLevels" class="hud-btn" title="Journey map" aria-label="Journey map">☰</button>
         <button id="btnUndo" class="hud-btn" title="Undo" aria-label="Undo">↩︎</button>
         <button id="btnRestart" class="hud-btn" title="Restart level" aria-label="Restart level">⟳</button>
@@ -46,6 +47,7 @@
           <button id="btnLevelsFromWin" class="ghost-btn">Journey</button>
           <button id="btnNext">Next Level ▶</button>
         </div>
+        <button id="overlayDaily" class="daily-chip hidden" type="button">🔥 Today&#39;s daily puzzle ▶</button>
       </div>
     </div>
 
@@ -84,6 +86,21 @@
           </div>
           <a class="privacy-link" href="https://hugoseong0721.github.io/amazon-affiliate-share/magnet-ball-sort/privacy.html" target="_blank" rel="noopener">Privacy</a>
         </div>
+      </div>
+    </div>
+
+    <div id="dailyPanel" class="hidden">
+      <div class="ls-card dc-card">
+        <div class="ls-head">
+          <h2>Daily Challenge</h2>
+          <button id="btnCloseDaily" class="hud-btn" title="Close" aria-label="Close">✕</button>
+        </div>
+        <p class="dc-sub">One special puzzle a day — same for everyone. Keep the flame alive!</p>
+        <div id="dailyStreak" class="dc-streak"></div>
+        <div id="dailyMonth" class="dc-month"></div>
+        <div class="dc-dows" aria-hidden="true"><span>S</span><span>M</span><span>T</span><span>W</span><span>T</span><span>F</span><span>S</span></div>
+        <div id="dailyGrid" class="dc-grid"></div>
+        <button id="btnPlayDaily" class="dc-play" type="button">Play today&#39;s puzzle ▶</button>
       </div>
     </div>
 
