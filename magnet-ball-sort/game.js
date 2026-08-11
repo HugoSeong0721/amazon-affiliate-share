@@ -64,6 +64,8 @@ export class Game {
     this.busy = false;
     this.won = false;
     this.selected = null;
+    // 'campaign'(여정) 또는 'daily'(데일리 챌린지). 데일리는 캠페인 진행을 건드리지 않는다.
+    this.mode = 'campaign';
   }
 
   get level() {
@@ -99,17 +101,33 @@ export class Game {
   }
 
   loadLevel(i) {
+    this.mode = 'campaign';
+    this.dailyKey = null;
     this.levelIndex = Math.min(Math.max(i, 0), LEVEL_DATA.length - 1);
     localStorage.setItem(STORAGE_LEVEL, String(this.levelIndex));
-    const lv = this.level;
+    this._boot(this.level, GUIDED_LEVELS.has(this.levelIndex));
+  }
+
+  // 데일리 챌린지를 연다. 캠페인 위치(levelIndex/저장)는 그대로 두므로
+  // 데일리를 끝내면 하던 여정으로 정확히 돌아간다.
+  loadDaily(key, lv, label) {
+    this.mode = 'daily';
+    this.dailyKey = key;
+    this._dailyLv = lv;
+    this._dailyLabel = label || 'Daily';
+    this._boot(lv, false);
+  }
+
+  _boot(lv, guided) {
     this.state = { capacity: lv.cap, bottles: decodeTubes(lv.tubes) };
     this.targets = colorsOf(lv.tubes);
     this.solution = decodeSolution(lv.sol);
+    this.par = lv.par;
     this.history = [];
     this.selected = null;
     this.won = false;
     this.busy = false;
-    this.guided = GUIDED_LEVELS.has(this.levelIndex);
+    this.guided = guided;
     clearTimeout(this._deadT);
     clearTimeout(this._winT);
 
@@ -248,10 +266,16 @@ export class Game {
 
   restart() {
     if (this.busy) return;
-    this.loadLevel(this.levelIndex);
+    if (this.mode === 'daily') this.loadDaily(this.dailyKey, this._dailyLv, this._dailyLabel);
+    else this.loadLevel(this.levelIndex);
   }
 
   next() {
+    // 데일리를 마치면 하던 여정으로 복귀한다
+    if (this.mode === 'daily') {
+      this.loadLevel(this.levelIndex);
+      return;
+    }
     const last = this.levelIndex >= LEVEL_DATA.length - 1;
     this.loadLevel(last ? 0 : this.levelIndex + 1);
   }
@@ -265,16 +289,44 @@ export class Game {
     }, 160);
   }
 
+  _popStars(earned) {
+    // 별은 오버레이가 뜰 때 하나씩 튀어나오게 (클래스를 다시 붙여 애니메이션 재생)
+    [...this.dom.starRow.children].forEach((el, i) => {
+      el.classList.remove('on');
+      if (i < earned) void el.offsetWidth, el.classList.add('on');
+    });
+  }
+
   win() {
     this.won = true;
     this.release();
     this.sound.win();
     this.renderer.setGuide(null);
     this.renderer.celebrate();
+    const earned = starsFor(this.history.length, this.par);
+
+    // 데일리: 도장과 스트릭만 남기고, 캠페인 진행에는 손대지 않는다
+    if (this.mode === 'daily') {
+      const info = this.onDailyCleared?.(this.dailyKey, earned);
+      this.dom.overlayTitle.textContent = 'Daily Clear!';
+      this.dom.overlayInfo.textContent = `${this.history.length} moves · Par ${this.par}`;
+      this.dom.btnNext.textContent = 'Back to Journey ▶';
+      // "여정으로" 버튼과 겹치므로 목차 버튼은 숨긴다
+      this.dom.btnLevelsFromWin?.classList.add('hidden');
+      this._popStars(earned);
+      if (info?.note) {
+        this.dom.overlayRescue.textContent = info.note;
+        this.dom.overlayRescue.classList.remove('hidden');
+      } else {
+        this.dom.overlayRescue.classList.add('hidden');
+      }
+      this._winT = setTimeout(() => this.dom.overlay.classList.remove('hidden'), 800);
+      this.onCleared?.(); // 광고 페이싱에는 데일리도 한 판이다
+      return;
+    }
 
     const chapter = Math.floor(this.levelIndex / CHAPTER);
     const wasFreed = this.friendFreed(chapter);
-    const earned = starsFor(this.history.length, this.level.par);
     this.cleared[this.levelIndex] = true;
     this.stars[this.levelIndex] = Math.max(this.stars[this.levelIndex], earned);
     this.saveProgress();
@@ -286,14 +338,11 @@ export class Game {
 
     const last = this.levelIndex >= LEVEL_DATA.length - 1;
     this.dom.overlayTitle.textContent = last ? '🎉 Everyone rescued!' : `Level ${this.levelIndex + 1} Clear!`;
-    this.dom.overlayInfo.textContent = `${this.history.length} moves · Par ${this.level.par}`;
+    this.dom.overlayInfo.textContent = `${this.history.length} moves · Par ${this.par}`;
     this.dom.btnNext.textContent = last ? 'Play Again ↻' : 'Next Level ▶';
+    this.dom.btnLevelsFromWin?.classList.remove('hidden');
 
-    // 별은 오버레이가 뜰 때 하나씩 튀어나오게 (클래스를 다시 붙여 애니메이션 재생)
-    [...this.dom.starRow.children].forEach((el, i) => {
-      el.classList.remove('on');
-      if (i < earned) void el.offsetWidth, el.classList.add('on');
-    });
+    this._popStars(earned);
 
     // 챕터를 막 끝냈다면 친구 한 명이 풀려난다 — 이게 이 여정의 보상이다
     if (nowFreed && !wasFreed) {
@@ -309,7 +358,8 @@ export class Game {
 
   updateHud() {
     const done = this.state.bottles.filter((_, i) => isComplete(this.state, i)).length;
-    this.dom.levelLabel.textContent = `Level ${this.levelIndex + 1}`;
+    this.dom.levelLabel.textContent =
+      this.mode === 'daily' ? `Daily · ${this._dailyLabel}` : `Level ${this.levelIndex + 1}`;
     this.dom.moveLabel.textContent = `${done}/${this.targets.length} sorted · ${this.history.length} moves`;
     this.dom.btnUndo.disabled = !this.history.length;
   }

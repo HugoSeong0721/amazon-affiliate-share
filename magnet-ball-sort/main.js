@@ -9,6 +9,7 @@ import {
   createFakeAuthProvider,
   createCapacitorFirebaseProvider,
 } from './auth.js';
+import { DailyState, dateKey, levelForDate, monthGrid, streakFrom, MONTHS } from './daily.js';
 import { Game, LEVEL_DATA } from './game.js';
 
 const $ = (id) => document.getElementById(id);
@@ -20,6 +21,7 @@ const dom = {
   btnRestart: $('btnRestart'),
   btnMute: $('btnMute'),
   btnNext: $('btnNext'),
+  btnLevelsFromWin: $('btnLevelsFromWin'),
   levelSelect: $('levelSelect'),
   journey: $('journey'),
   journeyTotal: $('journeyTotal'),
@@ -39,6 +41,13 @@ const dom = {
   authError: $('authError'),
   deleteConfirm: $('deleteConfirm'),
   delError: $('delError'),
+  dailyPanel: $('dailyPanel'),
+  dailyDot: $('dailyDot'),
+  dailyStreak: $('dailyStreak'),
+  dailyMonth: $('dailyMonth'),
+  dailyGrid: $('dailyGrid'),
+  btnPlayDaily: $('btnPlayDaily'),
+  overlayDaily: $('overlayDaily'),
 };
 
 const params = new URLSearchParams(location.search);
@@ -62,6 +71,8 @@ const authProvider =
   createCapacitorFirebaseProvider() || (params.has('debug') ? createFakeAuthProvider() : null);
 const auth = new AuthManager({ provider: authProvider });
 
+const daily = new DailyState();
+
 const game = new Game({
   renderer,
   sound,
@@ -70,8 +81,84 @@ const game = new Game({
     ads.noteLevelCleared();
     // 로그인돼 있으면 깰 때마다 클라우드에 진행을 민다 (실패해도 조용히 넘어간다)
     auth.push(game.getProgressData());
+    // 승리 화면에 "오늘의 퍼즐" 리마인더 — 캠페인에서, 아직 안 했을 때만
+    dom.overlayDaily.classList.toggle(
+      'hidden',
+      game.mode !== 'campaign' || daily.isDone(dateKey())
+    );
   },
 });
+
+// --- 데일리 챌린지 (돌아올 이유) ---
+
+const MONTHS_SHORT = MONTHS.map((m) => m.slice(0, 3));
+const dailyLabel = (key) => {
+  const [, m, d] = key.split('-').map(Number);
+  return `${MONTHS_SHORT[m - 1]} ${d}`;
+};
+
+function renderDaily() {
+  const today = dateKey();
+  const n = daily.streak(today);
+  dom.dailyDot.classList.toggle('hidden', daily.isDone(today));
+  dom.dailyStreak.innerHTML =
+    (n === 0 ? '🔥 Start your streak today!' : `🔥 ${n} day${n === 1 ? '' : 's'} streak`) +
+    (daily.best > 1 ? ` <span class="best">· Best ${daily.best}</span>` : '');
+
+  const now = new Date();
+  const grid = monthGrid(now.getFullYear(), now.getMonth());
+  dom.dailyMonth.textContent = grid.label;
+  dom.dailyGrid.innerHTML = '';
+  for (let i = 0; i < grid.firstDow; i++) {
+    const pad = document.createElement('div');
+    pad.className = 'dc-day empty';
+    dom.dailyGrid.appendChild(pad);
+  }
+  grid.keys.forEach((key, i) => {
+    const cell = document.createElement('div');
+    const future = key > today;
+    cell.className =
+      'dc-day' +
+      (daily.isDone(key) ? ' done' : '') +
+      (key === today ? ' today' : '') +
+      (future ? ' future' : '');
+    cell.textContent = String(i + 1);
+    cell.setAttribute(
+      'aria-label',
+      `${key} — ${daily.isDone(key) ? 'cleared' : future ? 'upcoming' : 'not played'}`
+    );
+    dom.dailyGrid.appendChild(cell);
+  });
+
+  const done = daily.isDone(today);
+  dom.btnPlayDaily.textContent = done ? '✓ Cleared today — play again' : "Play today's puzzle ▶";
+  dom.btnPlayDaily.classList.toggle('done-today', done);
+}
+
+function openDaily() {
+  game.closeLevels();
+  renderDaily();
+  dom.dailyPanel.classList.remove('hidden');
+}
+
+function closeDaily() {
+  dom.dailyPanel.classList.add('hidden');
+}
+
+function playDaily(key = dateKey()) {
+  closeDaily();
+  game.loadDaily(key, levelForDate(key), dailyLabel(key));
+}
+
+// 데일리 승리 → 도장 + 스트릭. 승리 카드에 띄울 한 줄을 돌려준다.
+game.onDailyCleared = (key, stars) => {
+  daily.markDone(key, stars);
+  renderDaily();
+  const n = daily.streak(key);
+  return {
+    note: n >= 2 ? `🔥 ${n}-day streak!` : '🔥 Streak started — come back tomorrow!',
+  };
+};
 
 function updateMuteIcon() {
   dom.btnMute.textContent = sound.muted ? '🔇' : '🔊';
@@ -144,7 +231,7 @@ dom.btnNext.addEventListener('click', async () => {
   dom.btnNext.disabled = true;
   let jumped = false;
   try {
-    if (auth.shouldPrompt(game.levelIndex)) {
+    if (game.mode === 'campaign' && auth.shouldPrompt(game.levelIndex)) {
       auth.markPrompted();
       ads.noteInterruption();
       jumped = await showAuthDialog();
@@ -197,14 +284,30 @@ dom.btnMute.addEventListener('click', () => {
 
 $('deUndo').addEventListener('click', () => game.undo());
 $('deRestart').addEventListener('click', () => game.restart());
-$('btnLevels').addEventListener('click', () => game.toggleLevels());
+$('btnLevels').addEventListener('click', () => {
+  closeDaily();
+  game.toggleLevels();
+});
 $('btnCloseLevels').addEventListener('click', () => game.closeLevels());
 $('btnLevelsFromWin').addEventListener('click', () => game.openLevels());
 dom.levelSelect.addEventListener('click', (e) => {
   if (e.target === dom.levelSelect) game.closeLevels();
 });
+$('btnDaily').addEventListener('click', () => {
+  if (dom.dailyPanel.classList.contains('hidden')) openDaily();
+  else closeDaily();
+});
+$('btnCloseDaily').addEventListener('click', closeDaily);
+dom.btnPlayDaily.addEventListener('click', () => playDaily());
+dom.overlayDaily.addEventListener('click', () => playDaily());
+dom.dailyPanel.addEventListener('click', (e) => {
+  if (e.target === dom.dailyPanel) closeDaily();
+});
 window.addEventListener('keydown', (e) => {
-  if (e.key === 'Escape') game.closeLevels();
+  if (e.key === 'Escape') {
+    game.closeLevels();
+    closeDaily();
+  }
 });
 
 new ResizeObserver(() => renderer.resize()).observe(dom.board);
@@ -212,6 +315,7 @@ window.addEventListener('resize', () => renderer.resize());
 
 updateMuteIcon();
 renderer.resize();
+renderDaily(); // 부팅 때 오늘 미완료 점(📅)을 맞춰둔다
 game.loadLevel(game.levelIndex);
 
 // ?debug — 자동화 테스트/개발용 훅
@@ -225,6 +329,10 @@ if (params.has('debug')) {
     auth,
     authProvider,
     authConfig: AUTH_CONFIG,
+    daily,
+    dailyModule: { dateKey, levelForDate, streakFrom, monthGrid },
+    playDaily,
+    openDaily,
     levelCount: LEVEL_DATA.length,
     tap: (i) => game.tap(i),
     state: () => game.state,
