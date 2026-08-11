@@ -1017,11 +1017,15 @@ const LEVEL_DATA = [
 
 
 const TAXI_HEX = '#ffce3a';
+// 조연들은 채도를 낮춘 한 가족의 색이다. 판에서 유일하게 쨍한 색이 택시여야
+// "누가 주인공인지"를 설명 없이 말할 수 있다 — 대비는 더해서가 아니라 빼서 만든다.
 const CAR_HEX = [
-  '#4a90ff', '#ff4d5a', '#35d07f', '#a96bff', '#ff6bd0',
-  '#2fd3d3', '#ff9838', '#7c8cff', '#9bd356', '#5ad0a5',
-  '#e06c9a', '#c9d1e8',
+  '#5d78a8', '#8a93ad', '#6f9a8d', '#9a7f9d', '#a8926b',
+  '#557c9e', '#7d8daf', '#87a08a', '#a08585', '#6d86a0',
+  '#94889f', '#7e97a8',
 ];
+// 색종이만은 축제답게 쨍한 색을 쓴다
+const CONFETTI_HEX = ['#ffce3a', '#4a90ff', '#ff4d5a', '#35d07f', '#a96bff', '#ff6bd0', '#2fd3d3'];
 
 const rgbCache = new Map();
 function hexToRgb(hex) {
@@ -1353,7 +1357,7 @@ class Renderer {
   celebrate() {
     const cx = this.ox + W * this.cell + this.wall;
     const cy = this.oy + (EXIT_ROW + 0.5) * this.cell;
-    const hexes = [TAXI_HEX, ...CAR_HEX.slice(0, 6)];
+    const hexes = CONFETTI_HEX;
     for (let k = 0; k < 110; k++) {
       const fromExit = k < 55;
       const a = fromExit ? Math.PI * (1.15 + Math.random() * 0.7) : Math.PI * (0.25 + Math.random() * 0.5);
@@ -1490,7 +1494,6 @@ class Renderer {
       }
       for (const i of order) this._drawCar(i, now);
     }
-    this._drawIntroMarker(now);
     this._drawGuide(now);
     this._drawParticles(now);
   }
@@ -1515,41 +1518,17 @@ class Renderer {
     const r = this.carRect(PLAYER);
     const y = this.oy + (EXIT_ROW + 0.5) * cell;
     ctx.save();
-    ctx.globalAlpha = 0.4 * a;
+    ctx.globalAlpha = 0.28 * a;
     ctx.strokeStyle = TAXI_HEX;
-    ctx.lineWidth = cell * 0.09;
+    ctx.lineWidth = cell * 0.065;
     ctx.lineCap = 'round';
-    ctx.setLineDash([cell * 0.24, cell * 0.2]);
-    ctx.lineDashOffset = -((now / 26) % (cell * 0.44)); // 출구 쪽으로 흐른다
+    ctx.setLineDash([cell * 0.22, cell * 0.22]);
+    ctx.lineDashOffset = -((now / 30) % (cell * 0.44)); // 출구 쪽으로 흐른다
     ctx.beginPath();
     ctx.moveTo(r.x + r.w * 0.55, y);
     ctx.lineTo(this.ox + W * cell + this.wall * 0.7, y);
     ctx.stroke();
     ctx.restore();
-  }
-
-  // 택시 위에서 통통 튀는 마커 — 차들 위에 그려야 가려지지 않는다
-  _drawIntroMarker(now) {
-    const a = this._introAlpha(now);
-    if (a <= 0) return;
-    const { ctx, cell } = this;
-    const r = this.carRect(PLAYER);
-    const bob = Math.sin(now / 220) * cell * 0.07;
-    const mx = r.x + r.w / 2;
-    const my = r.y - cell * 0.3 + bob;
-    const s = cell * 0.17;
-    ctx.globalAlpha = a;
-    ctx.fillStyle = TAXI_HEX;
-    ctx.strokeStyle = 'rgba(40,30,0,0.55)';
-    ctx.lineWidth = 1.5;
-    ctx.beginPath();
-    ctx.moveTo(mx - s, my - s * 1.2);
-    ctx.lineTo(mx + s, my - s * 1.2);
-    ctx.lineTo(mx, my);
-    ctx.closePath();
-    ctx.fill();
-    ctx.stroke();
-    ctx.globalAlpha = 1;
   }
 
   // 주차장 바닥과 벽, 출구
@@ -1580,15 +1559,6 @@ class Renderer {
       ctx.lineTo(ox + W * cell - 3, oy + k * cell);
       ctx.stroke();
     }
-    // 칸 모서리 점 — 주차장 느낌
-    ctx.fillStyle = 'rgba(255,255,255,0.10)';
-    for (let gx = 0; gx <= W; gx++) {
-      for (let gy = 0; gy <= H; gy++) {
-        ctx.beginPath();
-        ctx.arc(ox + gx * cell, oy + gy * cell, 1.6, 0, Math.PI * 2);
-        ctx.fill();
-      }
-    }
 
     // 출구는 검은 구멍이 아니라 밝은 진입로 — 바닥이 울타리를 뚫고 이어진다
     const gapY0 = oy + EXIT_ROW * cell;
@@ -1598,7 +1568,7 @@ class Renderer {
     ctx.fillStyle = drive;
     ctx.fillRect(ox + W * cell - 1, gapY0, wall + 1, cell);
 
-    // 벽 대신 산울타리 — 동글동글한 덤불이 주차장을 감싼다 (출구만 뚫려 있다)
+    // 벽 대신 산울타리 — 동글동글하되 조용하게. 장식은 배경이지 주인공이 아니다.
     const mid = wall * 0.5;
     const hedge = (x0, y0, x1, y1, seed) => {
       const len = Math.hypot(x1 - x0, y1 - y0);
@@ -1607,14 +1577,10 @@ class Renderer {
         const t = k / n;
         const px = x0 + (x1 - x0) * t;
         const py = y0 + (y1 - y0) * t;
-        const br = wall * (0.5 + Math.sin(k * 2.1 + seed) * 0.08);
-        ctx.fillStyle = k % 2 ? '#2f6b45' : '#28603f';
+        const br = wall * (0.5 + Math.sin(k * 2.1 + seed) * 0.05);
+        ctx.fillStyle = k % 2 ? '#2b5a3e' : '#28553a';
         ctx.beginPath();
         ctx.arc(px, py, br, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.fillStyle = 'rgba(255,255,255,0.07)';
-        ctx.beginPath();
-        ctx.arc(px - br * 0.2, py - br * 0.28, br * 0.55, 0, Math.PI * 2);
         ctx.fill();
       }
     };
@@ -1623,28 +1589,6 @@ class Renderer {
     hedge(bx + mid, by + mid, bx + mid, by + bs - mid, 4); // 왼쪽
     hedge(bx + bs - mid, by + mid, bx + bs - mid, gapY0 - wall * 0.2, 6); // 오른쪽 위
     hedge(bx + bs - mid, gapY0 + cell + wall * 0.2, bx + bs - mid, by + bs - mid, 8); // 오른쪽 아래
-
-    // 울타리에 핀 꽃 — 자리 고정 장식 (출구 근처는 피해 둔다)
-    for (const [fx, fy] of [[0.13, 0], [0.57, 0], [0.86, 0], [0, 0.32], [0, 0.72], [0.33, 1], [0.74, 1], [1, 0.82]]) {
-      const px = bx + mid + (bs - wall) * fx;
-      const py = by + mid + (bs - wall) * fy;
-      ctx.fillStyle = '#ff9ec3';
-      for (let a = 0; a < 5; a++) {
-        ctx.beginPath();
-        ctx.arc(
-          px + Math.cos((a / 5) * Math.PI * 2) * wall * 0.17,
-          py + Math.sin((a / 5) * Math.PI * 2) * wall * 0.17,
-          wall * 0.13,
-          0,
-          Math.PI * 2
-        );
-        ctx.fill();
-      }
-      ctx.fillStyle = '#ffd23e';
-      ctx.beginPath();
-      ctx.arc(px, py, wall * 0.11, 0, Math.PI * 2);
-      ctx.fill();
-    }
 
     // --- 골인 게이트 ---
     // 길이 뚫리면 게이트가 확 밝아지고 갈매기가 빨라진다 — "지금이야!"를 빛으로 말한다
@@ -1664,30 +1608,15 @@ class Renderer {
     ctx.fillStyle = rgba(TAXI_HEX, open ? 0.16 : 0.09);
     ctx.fillRect(ox + (W - 1) * cell, gapY0, cell, cell);
 
-    // 체커 깃발 두 개 — 골인 지점이라는 만국 공용어
-    const flag = (fx, fy, phase) => {
-      const poleH = cell * 0.5;
-      ctx.strokeStyle = '#c9d1e8';
-      ctx.lineWidth = Math.max(2, cell * 0.045);
-      ctx.lineCap = 'round';
-      ctx.beginPath();
-      ctx.moveTo(fx, fy);
-      ctx.lineTo(fx, fy - poleH);
-      ctx.stroke();
-      const fw = cell * 0.34;
-      const fh = cell * 0.22;
-      const wave = Math.sin(now / 260 + phase) * fh * 0.18;
-      const sq = fw / 3;
-      for (let cxk = 0; cxk < 3; cxk++) {
-        for (let cyk = 0; cyk < 2; cyk++) {
-          ctx.fillStyle = (cxk + cyk) % 2 ? '#f4f6fb' : '#1d2233';
-          const lean = (cxk / 3) * wave;
-          ctx.fillRect(fx + cxk * sq, fy - poleH + cyk * (fh / 2) + lean, sq + 0.5, fh / 2 + 0.5);
-        }
+    // 바닥에 그려진 결승 체커선 — 골인 지점이라는 만국 공용어, 그러나 조용하게
+    const sq = cell / 6;
+    const fx0 = gx + wall * 0.18;
+    for (let cxk = 0; cxk < 2; cxk++) {
+      for (let cyk = 0; cyk < 6; cyk++) {
+        ctx.fillStyle = (cxk + cyk) % 2 ? 'rgba(240,244,255,0.85)' : 'rgba(20,26,44,0.85)';
+        ctx.fillRect(fx0 + cxk * sq * 0.7, gapY0 + cyk * sq, sq * 0.7, sq);
       }
-    };
-    flag(gx + wall * 0.22, gapY0 - wall * 0.28, 0);
-    flag(gx + wall * 0.22, gapY0 + cell + wall * 0.75, 2.1);
+    }
 
     // 밖으로 흐르는 갈매기 — 길이 뚫리면 두 배로 빨라진다
     const pulse = (now / (open ? 380 : 900)) % 1;
@@ -1808,23 +1737,25 @@ class Renderer {
     ctx.lineWidth = 1.5;
     ctx.stroke();
 
-    // 헤드라이트 · 테일라이트
-    ctx.fillStyle = '#fff3bf';
-    for (const sx of [-1, 1]) {
-      ctx.beginPath();
-      ctx.arc(sx * bw * 0.26, by + bl * 0.055, bw * 0.09, 0, Math.PI * 2);
-      ctx.fill();
-    }
-    ctx.fillStyle = '#ff5257';
-    for (const sx of [-1, 1]) {
-      rr(ctx, sx * bw * 0.26 - bw * 0.09, by + bl * 0.945 - bl * 0.02, bw * 0.18, bl * 0.035, bw * 0.04);
-      ctx.fill();
+    // 라이트는 택시만 — 조연이 반짝이면 주인공이 묻힌다
+    if (isPlayer) {
+      ctx.fillStyle = '#fff3bf';
+      for (const sx of [-1, 1]) {
+        ctx.beginPath();
+        ctx.arc(sx * bw * 0.26, by + bl * 0.055, bw * 0.09, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      ctx.fillStyle = '#ff5257';
+      for (const sx of [-1, 1]) {
+        rr(ctx, sx * bw * 0.26 - bw * 0.09, by + bl * 0.945 - bl * 0.02, bw * 0.18, bl * 0.035, bw * 0.04);
+        ctx.fill();
+      }
     }
 
-    // 앞유리 → 지붕 → 뒷유리
+    // 앞유리 → 지붕 → 뒷유리. 조연의 유리는 몇 톤 어둡게 가라앉힌다.
     const glass = ctx.createLinearGradient(0, by + bl * 0.15, 0, by + bl * 0.36);
-    glass.addColorStop(0, '#dcecff');
-    glass.addColorStop(1, '#9dbde8');
+    glass.addColorStop(0, isPlayer ? '#dcecff' : 'rgba(200,215,238,0.5)');
+    glass.addColorStop(1, isPlayer ? '#9dbde8' : 'rgba(140,162,196,0.5)');
     ctx.fillStyle = glass;
     rr(ctx, -bw * 0.39, by + bl * 0.15, bw * 0.78, bl * 0.19, bw * 0.14);
     ctx.fill();
@@ -1840,7 +1771,7 @@ class Renderer {
 
     // 3칸 차는 지붕 양옆에 창문이 줄지어 있는 버스 느낌
     if (v.len === 3) {
-      ctx.fillStyle = 'rgba(157,189,232,0.9)';
+      ctx.fillStyle = isPlayer ? 'rgba(157,189,232,0.9)' : 'rgba(157,180,215,0.45)';
       for (let k = 0; k < 3; k++) {
         const wy = roofTop + roofH * (0.14 + k * 0.3);
         for (const sx of [-1, 1]) {
@@ -1850,32 +1781,33 @@ class Renderer {
       }
     }
 
-    ctx.fillStyle = 'rgba(157,189,232,0.95)';
+    ctx.fillStyle = isPlayer ? 'rgba(157,189,232,0.95)' : 'rgba(157,180,215,0.45)';
     rr(ctx, -bw * 0.34, roofTop + roofH + bl * 0.015, bw * 0.68, bl * 0.1, bw * 0.1);
     ctx.fill();
 
-    // 앞유리 너머의 눈 — 가끔 깜빡인다. 이게 이 게임의 표정이다.
-    const blink = (now / 1000 + i * 0.83) % 3.7 < 0.12 ? 0.18 : 1;
-    const eyeR = bw * 0.085;
-    const eyeY = by + bl * 0.245;
-    for (const sx of [-1, 1]) {
-      ctx.save();
-      ctx.translate(sx * bw * 0.16, eyeY);
-      ctx.scale(1, blink);
-      ctx.fillStyle = '#1d2439';
-      ctx.beginPath();
-      ctx.arc(0, 0, eyeR, 0, Math.PI * 2);
-      ctx.fill();
-      if (blink === 1) {
-        ctx.fillStyle = 'rgba(255,255,255,0.9)';
+    // 얼굴은 택시에게만 — 판에서 유일하게 눈을 깜빡이는 존재가 곧 주인공이다
+    if (isPlayer) {
+      const blink = (now / 1000 + i * 0.83) % 3.7 < 0.12 ? 0.18 : 1;
+      const eyeR = bw * 0.085;
+      const eyeY = by + bl * 0.245;
+      for (const sx of [-1, 1]) {
+        ctx.save();
+        ctx.translate(sx * bw * 0.16, eyeY);
+        ctx.scale(1, blink);
+        ctx.fillStyle = '#1d2439';
         ctx.beginPath();
-        ctx.arc(-eyeR * 0.3, -eyeR * 0.3, eyeR * 0.35, 0, Math.PI * 2);
+        ctx.arc(0, 0, eyeR, 0, Math.PI * 2);
         ctx.fill();
+        if (blink === 1) {
+          ctx.fillStyle = 'rgba(255,255,255,0.9)';
+          ctx.beginPath();
+          ctx.arc(-eyeR * 0.3, -eyeR * 0.3, eyeR * 0.35, 0, Math.PI * 2);
+          ctx.fill();
+        }
+        ctx.restore();
       }
-      ctx.restore();
+      this._drawTaxiTrim(bw, bl, by, roofTop, roofH, now);
     }
-
-    if (isPlayer) this._drawTaxiTrim(bw, bl, by, roofTop, roofH, now);
   }
 
   // 택시 장식: 옆구리 체커 줄 + 지붕등. 출구로 달려 나갈 주인공이라는 표식.
