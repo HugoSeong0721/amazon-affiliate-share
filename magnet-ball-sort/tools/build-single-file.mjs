@@ -29,6 +29,7 @@ buildSingleFile({
     'magnet-ball-sort/cloud.js',
     'magnet-ball-sort/auth.js',
     'magnet-ball-sort/daily.js',
+    'magnet-ball-sort/share.js',
     'magnet-ball-sort/game.js',
     'magnet-ball-sort/main.js',
   ],

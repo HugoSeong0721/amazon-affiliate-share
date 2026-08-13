@@ -10,6 +10,7 @@ import {
   createCapacitorFirebaseProvider,
 } from './auth.js';
 import { DailyState, dateKey, levelForDate, monthGrid, streakFrom, MONTHS } from './daily.js';
+import { buildShareText, shareResult } from './share.js';
 import { Game, LEVEL_DATA } from './game.js';
 
 const $ = (id) => document.getElementById(id);
@@ -48,6 +49,8 @@ const dom = {
   dailyGrid: $('dailyGrid'),
   btnPlayDaily: $('btnPlayDaily'),
   overlayDaily: $('overlayDaily'),
+  btnShare: $('btnShare'),
+  btnShareDaily: $('btnShareDaily'),
 };
 
 const params = new URLSearchParams(location.search);
@@ -86,6 +89,8 @@ const game = new Game({
       'hidden',
       game.mode !== 'campaign' || daily.isDone(dateKey())
     );
+    // 공유 버튼은 데일리 승리에만 (도전장은 오늘의 퍼즐로만 성립한다)
+    dom.btnShare.classList.toggle('hidden', game.mode !== 'daily');
   },
 });
 
@@ -133,6 +138,7 @@ function renderDaily() {
   const done = daily.isDone(today);
   dom.btnPlayDaily.textContent = done ? '✓ Cleared today — play again' : "Play today's puzzle ▶";
   dom.btnPlayDaily.classList.toggle('done-today', done);
+  dom.btnShareDaily.classList.toggle('hidden', !done);
 }
 
 function openDaily() {
@@ -151,14 +157,43 @@ function playDaily(key = dateKey()) {
 }
 
 // 데일리 승리 → 도장 + 스트릭. 승리 카드에 띄울 한 줄을 돌려준다.
-game.onDailyCleared = (key, stars) => {
-  daily.markDone(key, stars);
+game.onDailyCleared = (key, stars, moves) => {
+  daily.markDone(key, stars, moves);
   renderDaily();
   const n = daily.streak(key);
   return {
     note: n >= 2 ? `🔥 ${n}-day streak!` : '🔥 Streak started — come back tomorrow!',
   };
 };
+
+// --- 결과 공유 (Wordle 식 도전장) ---
+// 지금은 웹 링크를 붙인다. 스토어에 올라가면 스토어 링크로 바꾼다.
+const SHARE_URL = 'https://hugoseong0721.github.io/amazon-affiliate-share/magnet-ball-sort/';
+
+function shareTextFor(key) {
+  return buildShareText({
+    label: dailyLabel(key),
+    moves: daily.movesFor(key),
+    par: levelForDate(key).par,
+    stars: daily.starsFor(key),
+    streak: daily.streak(key),
+    colors: [...new Set(levelForDate(key).tubes.join(''))],
+    url: SHARE_URL,
+  });
+}
+
+// 공유하고, 클립보드로 떨어진 경우엔 버튼 글씨로 알려준다
+async function doShare(btn, key = dateKey()) {
+  const original = btn.textContent;
+  const outcome = await shareResult(shareTextFor(key));
+  if (outcome === 'copied') btn.textContent = '✓ Copied!';
+  else if (outcome === 'failed') btn.textContent = 'Sharing not available';
+  if (outcome === 'copied' || outcome === 'failed') {
+    setTimeout(() => {
+      btn.textContent = original;
+    }, 1600);
+  }
+}
 
 function updateMuteIcon() {
   dom.btnMute.textContent = sound.muted ? '🔇' : '🔊';
@@ -300,6 +335,8 @@ $('btnDaily').addEventListener('click', () => {
 $('btnCloseDaily').addEventListener('click', closeDaily);
 dom.btnPlayDaily.addEventListener('click', () => playDaily());
 dom.overlayDaily.addEventListener('click', () => playDaily());
+dom.btnShare.addEventListener('click', () => doShare(dom.btnShare, game.dailyKey || dateKey()));
+dom.btnShareDaily.addEventListener('click', () => doShare(dom.btnShareDaily));
 dom.dailyPanel.addEventListener('click', (e) => {
   if (e.target === dom.dailyPanel) closeDaily();
 });
@@ -333,6 +370,8 @@ if (params.has('debug')) {
     dailyModule: { dateKey, levelForDate, streakFrom, monthGrid },
     playDaily,
     openDaily,
+    shareModule: { buildShareText, shareResult },
+    shareTextFor,
     levelCount: LEVEL_DATA.length,
     tap: (i) => game.tap(i),
     state: () => game.state,
