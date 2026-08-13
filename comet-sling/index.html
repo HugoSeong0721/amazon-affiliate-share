@@ -7,7 +7,7 @@
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>☄️</text></svg>">
 <title>Comet Sling — One-Touch Orbit Dash</title>
 <!-- ?v= 은 캐시 버스터 — 배포 때 숫자를 올리면 브라우저가 옛 파일을 물고 있지 못한다 -->
-<link rel="stylesheet" href="./style.css?v=14">
+<link rel="stylesheet" href="./style.css?v=15">
 </head>
 <body>
   <div id="app">
@@ -37,12 +37,30 @@
         <div id="overlayScore">0</div>
         <div id="overlayBest">BEST 0</div>
         <p id="overlayChallenge" class="challenge-note hidden"></p>
-        <button id="btnShare" type="button">📤 Challenge a friend</button>
+        <div class="overlay-actions">
+          <button id="btnRanks" type="button" class="ghost-btn">🏆 Ranking</button>
+          <button id="btnShare" type="button">📤 Challenge</button>
+        </div>
         <p class="retry-note">tap to fly again</p>
       </div>
     </div>
 
     <div id="toast" class="hidden"></div>
+
+    <div id="ranks" class="hidden">
+      <div class="ranks-card">
+        <div class="ranks-head">
+          <h2>🏆 Friends</h2>
+          <button id="btnCloseRanks" class="hud-btn" type="button" aria-label="Close">✕</button>
+        </div>
+        <ol id="ranksList"></ol>
+        <p class="ranks-hint">Send a challenge — friends who open it appear here.</p>
+        <form id="nameForm">
+          <input id="nameInput" type="text" maxlength="14" autocomplete="nickname" aria-label="Your name">
+          <button type="submit">Save name</button>
+        </form>
+      </div>
+    </div>
 
 
 
@@ -76,6 +94,6 @@
       </div>
     </div>
   </div>
-  <script type="module" src="./main.js?v=14"></script>
+  <script type="module" src="./main.js?v=15"></script>
 </body>
 </html>
