@@ -88,13 +88,24 @@ export class DailyState {
     return !!this.done[key];
   }
 
+  // 저장 값은 {s: 별, m: 최소 수}. 예전 형식(숫자 하나 = 별)도 그대로 읽는다.
   starsFor(key) {
-    return Number(this.done[key]) || 0;
+    const v = this.done[key];
+    if (v && typeof v === 'object') return Number(v.s) || 0;
+    return Number(v) || 0;
   }
 
-  // 다시 깨면 별은 더 좋은 쪽만 남는다
-  markDone(key, stars) {
-    this.done[key] = Math.max(this.starsFor(key), Math.min(Math.max(stars, 1), 3));
+  movesFor(key) {
+    const v = this.done[key];
+    return v && typeof v === 'object' && Number.isFinite(v.m) ? v.m : null;
+  }
+
+  // 다시 깨면 별은 더 좋은 쪽, 수는 더 적은 쪽만 남는다 (공유 카드는 최고 기록으로)
+  markDone(key, stars, moves) {
+    const s = Math.max(this.starsFor(key), Math.min(Math.max(stars, 1), 3));
+    const prevM = this.movesFor(key);
+    const m = Number.isFinite(moves) ? (prevM === null ? moves : Math.min(prevM, moves)) : prevM;
+    this.done[key] = m === null ? { s } : { s, m };
     this.best = Math.max(this.best, this.streak(key));
     this._save();
   }

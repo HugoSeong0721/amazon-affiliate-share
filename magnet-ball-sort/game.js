@@ -307,7 +307,7 @@ export class Game {
 
     // 데일리: 도장과 스트릭만 남기고, 캠페인 진행에는 손대지 않는다
     if (this.mode === 'daily') {
-      const info = this.onDailyCleared?.(this.dailyKey, earned);
+      const info = this.onDailyCleared?.(this.dailyKey, earned, this.history.length);
       this.dom.overlayTitle.textContent = 'Daily Clear!';
       this.dom.overlayInfo.textContent = `${this.history.length} moves · Par ${this.par}`;
       this.dom.btnNext.textContent = 'Back to Journey ▶';
