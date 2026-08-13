@@ -3,6 +3,7 @@
 
 import { DT, WORLD, newRun, step, score, drainEvents, aim } from './engine.js';
 import { submitScore } from './signup.js';
+import { myName, setMyName, board } from './leaderboard.js';
 
 const STORE = {
   best: 'cms.best',
@@ -13,7 +14,7 @@ const STORE = {
 const COACH_UNTIL_RELEASES = 3;
 
 export class Game {
-  constructor({ renderer, sound, dom, onRunEnded, challengeScore = null }) {
+  constructor({ renderer, sound, dom, onRunEnded, challengeScore = null, challengeName = '' }) {
     this.renderer = renderer;
     this.sound = sound;
     this.dom = dom;
@@ -31,14 +32,30 @@ export class Game {
       if (document.hidden) this.pause();
     });
 
-    // 도전장: 공유 링크(?beat=N)로 들어오면 친구 기록이 결승선으로 그려진다
+    // 도전장: 공유 링크(?beat=N&by=이름)로 들어오면 친구 기록이 결승선으로 그려진다
     this.challenge = challengeScore > 0
-      ? { score: challengeScore, height: challengeScore * 4, beaten: false }
+      ? { score: challengeScore, height: challengeScore * 4, beaten: false, name: challengeName }
       : null;
 
     this.dom.btnShare.addEventListener('click', (e) => {
       e.stopPropagation();
       this._share();
+    });
+
+    // 친구 랭킹판 — 도전장을 주고받은 친구들의 기록이 쌓인다 (leaderboard.js)
+    this.dom.btnRanks.addEventListener('click', (e) => {
+      e.stopPropagation();
+      this._openRanks();
+    });
+    this.dom.btnCloseRanks.addEventListener('click', () => this.dom.ranks.classList.add('hidden'));
+    this.dom.ranks.addEventListener('click', (e) => {
+      if (e.target === this.dom.ranks) this.dom.ranks.classList.add('hidden');
+    });
+    this.dom.nameForm.addEventListener('submit', (e) => {
+      e.preventDefault();
+      setMyName(this.dom.nameInput.value);
+      this._renderRanks();
+      this._toast('Saved!');
     });
 
     this.best = Number(localStorage.getItem(STORE.best) || 0);
@@ -195,11 +212,39 @@ export class Game {
     this.renderer.burst(this.state.x, this.state.y);
   }
 
+  // ----- 친구 랭킹판 -----
+
+  _openRanks() {
+    this._renderRanks();
+    this.dom.nameInput.value = myName();
+    this.dom.ranks.classList.remove('hidden');
+  }
+
+  _renderRanks() {
+    const rows = board(this.best);
+    this.dom.ranksList.textContent = '';
+    rows.forEach((r, i) => {
+      const li = document.createElement('li');
+      if (r.me) li.className = 'me';
+      const rk = document.createElement('span');
+      rk.className = 'rk';
+      rk.textContent = i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : String(i + 1);
+      const nm = document.createElement('span');
+      nm.className = 'nm';
+      nm.textContent = r.me ? `${r.name} (you)` : r.name;
+      const sc = document.createElement('span');
+      sc.className = 'sc';
+      sc.textContent = String(r.score);
+      li.append(rk, nm, sc);
+      this.dom.ranksList.appendChild(li);
+    });
+  }
+
   // 결과 공유 — 공유 시트가 있으면 그걸로, 없으면 클립보드 복사
   async _share() {
     const s = Math.max(score(this.state), this.best);
     const url = new URL(location.href);
-    url.search = `?beat=${s}`;
+    url.search = `?beat=${s}&by=${encodeURIComponent(myName())}`;
     const text = `☄️ I scored ${s} in Comet Sling — can you beat me?`;
     try {
       if (navigator.share) {

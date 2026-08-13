@@ -5,6 +5,7 @@ import { Sound } from './audio.js';
 import { AdManager, AD_CONFIG, createPlaceholderProvider } from './ads.js';
 import { Game } from './game.js';
 import { SignupGate, SIGNUP_CONFIG } from './signup.js';
+import { recordFriend } from './leaderboard.js';
 import { newRun, step, WORLD, paramsAt, aim } from './engine.js';
 
 const $ = (id) => document.getElementById(id);
@@ -19,6 +20,12 @@ const dom = {
   overlayChallenge: $('overlayChallenge'),
   btnShare: $('btnShare'),
   toast: $('toast'),
+  ranks: $('ranks'),
+  ranksList: $('ranksList'),
+  btnRanks: $('btnRanks'),
+  btnCloseRanks: $('btnCloseRanks'),
+  nameForm: $('nameForm'),
+  nameInput: $('nameInput'),
   pause: $('pause'),
   pauseTitle: $('pauseTitle'),
   pauseNote: $('pauseNote'),
@@ -48,12 +55,18 @@ const ads = new AdManager({
   }),
 });
 
+// 도전장을 열면 그 친구의 기록이 이 기기의 랭킹판에 쌓인다
+const challengeScore = Number(params.get('beat')) || null;
+const challengeName = (params.get('by') || '').slice(0, 14);
+if (challengeScore && challengeName) recordFriend(challengeName, challengeScore);
+
 const game = new Game({
   renderer,
   sound,
   dom,
-  // 도전장 링크(?beat=N) — 친구 기록이 결승선으로 그려진다
-  challengeScore: Number(params.get('beat')) || null,
+  // 도전장 링크(?beat=N&by=이름) — 친구 기록이 결승선으로 그려진다
+  challengeScore,
+  challengeName,
   // 광고는 죽은 뒤 "다시" 전환 순간에만. 런 도중에는 절대 안 뜬다.
   onRunEnded: async (runSeconds) => {
     ads.noteRunEnded();

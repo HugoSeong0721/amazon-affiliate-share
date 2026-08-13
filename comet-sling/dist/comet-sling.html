@@ -251,9 +251,15 @@ body {
 
 .challenge-note.hidden { display: none; }
 
-#btnShare {
+.overlay-actions {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
   margin-top: 16px;
-  padding: 11px 22px;
+}
+
+#btnShare, .ghost-btn {
+  padding: 11px 18px;
   border: 1px solid rgba(255, 211, 77, 0.5);
   border-radius: 12px;
   background: rgba(255, 211, 77, 0.12);
@@ -261,10 +267,125 @@ body {
   font-size: 14px;
   font-weight: 800;
   cursor: pointer;
-  pointer-events: auto; /* 오버레이는 탭을 흘려보내지만 이 버튼은 받는다 */
+  pointer-events: auto; /* 오버레이는 탭을 흘려보내지만 버튼은 받는다 */
 }
 
-#btnShare:active { transform: scale(0.96); }
+.ghost-btn {
+  border-color: rgba(142, 246, 255, 0.35);
+  background: rgba(142, 246, 255, 0.08);
+  color: var(--neon);
+}
+
+#btnShare:active, .ghost-btn:active { transform: scale(0.96); }
+
+/* ----- 친구 랭킹판 ----- */
+
+#ranks {
+  position: absolute;
+  inset: 0;
+  z-index: 35;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: rgba(3, 3, 8, 0.78);
+  backdrop-filter: blur(2px);
+}
+
+#ranks.hidden { display: none; }
+
+.ranks-card {
+  width: min(88vw, 340px);
+  max-height: 78dvh;
+  display: flex;
+  flex-direction: column;
+  padding: 18px 20px 16px;
+  border: 1px solid rgba(142, 246, 255, 0.22);
+  border-radius: 20px;
+  background: var(--panel);
+  box-shadow: 0 0 42px rgba(142, 246, 255, 0.1), 0 18px 50px rgba(0, 0, 0, 0.55);
+  animation: cardIn 0.28s cubic-bezier(0.2, 1.4, 0.4, 1);
+}
+
+.ranks-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.ranks-head h2 {
+  font-size: 19px;
+  font-weight: 900;
+  letter-spacing: 0.04em;
+}
+
+#ranksList {
+  margin-top: 12px;
+  list-style: none;
+  overflow-y: auto;
+  min-height: 60px;
+}
+
+#ranksList li {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 10px;
+  border-radius: 10px;
+  font-size: 15px;
+  font-weight: 700;
+}
+
+#ranksList li:nth-child(odd) { background: rgba(255, 255, 255, 0.04); }
+
+#ranksList li.me {
+  background: rgba(142, 246, 255, 0.12);
+  border: 1px solid rgba(142, 246, 255, 0.3);
+}
+
+#ranksList .rk { width: 26px; color: var(--muted); font-variant-numeric: tabular-nums; }
+#ranksList li:nth-child(1) .rk { color: var(--gold); }
+#ranksList .nm { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+#ranksList .sc { font-variant-numeric: tabular-nums; color: var(--neon); }
+
+.ranks-hint {
+  margin-top: 10px;
+  font-size: 11.5px;
+  color: var(--muted);
+  line-height: 1.45;
+}
+
+#nameForm {
+  display: flex;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+#nameInput {
+  flex: 1;
+  min-width: 0;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid rgba(142, 246, 255, 0.25);
+  background: rgba(3, 3, 10, 0.6);
+  color: var(--text);
+  font-size: 14px;
+  outline: none;
+}
+
+#nameInput:focus { border-color: var(--neon); }
+
+#nameForm button {
+  padding: 10px 14px;
+  border: none;
+  border-radius: 10px;
+  background: rgba(142, 246, 255, 0.16);
+  color: var(--neon);
+  font-size: 13px;
+  font-weight: 800;
+  cursor: pointer;
+  white-space: nowrap;
+}
 
 #toast {
   position: absolute;
@@ -522,12 +643,30 @@ body {
         <div id="overlayScore">0</div>
         <div id="overlayBest">BEST 0</div>
         <p id="overlayChallenge" class="challenge-note hidden"></p>
-        <button id="btnShare" type="button">📤 Challenge a friend</button>
+        <div class="overlay-actions">
+          <button id="btnRanks" type="button" class="ghost-btn">🏆 Ranking</button>
+          <button id="btnShare" type="button">📤 Challenge</button>
+        </div>
         <p class="retry-note">tap to fly again</p>
       </div>
     </div>
 
     <div id="toast" class="hidden"></div>
+
+    <div id="ranks" class="hidden">
+      <div class="ranks-card">
+        <div class="ranks-head">
+          <h2>🏆 Friends</h2>
+          <button id="btnCloseRanks" class="hud-btn" type="button" aria-label="Close">✕</button>
+        </div>
+        <ol id="ranksList"></ol>
+        <p class="ranks-hint">Send a challenge — friends who open it appear here.</p>
+        <form id="nameForm">
+          <input id="nameInput" type="text" maxlength="14" autocomplete="nickname" aria-label="Your name">
+          <button type="submit">Save name</button>
+        </form>
+      </div>
+    </div>
 
 
 
@@ -1240,7 +1379,8 @@ class Renderer {
     ctx.fillStyle = col;
     ctx.shadowColor = 'rgba(0,0,0,0.8)';
     ctx.shadowBlur = 5;
-    ctx.fillText(c.beaten ? `🏆 ${c.score}` : `🏁 ${c.score}`, this.sx(WORLD.halfW) - 8, y - 5);
+    const who = c.name ? `${c.name} ` : '';
+    ctx.fillText(c.beaten ? `🏆 ${who}${c.score}` : `🏁 ${who}${c.score}`, this.sx(WORLD.halfW) - 8, y - 5);
     ctx.shadowBlur = 0;
     ctx.restore();
   }
@@ -2025,9 +2165,89 @@ class SignupGate {
   }
 }
 
+// ===== comet-sling/leaderboard.js =====
+// 친구 랭킹 — 서버 없이, 도전장 링크로 전염되는 순위표.
+//
+// 원리: 공유 링크(?beat=점수&by=이름)를 열 때마다 그 친구의 기록이 이 기기에
+// 저장된다. 링크를 주고받는 사이끼리는 자연스럽게 서로의 최고 기록이 쌓이고,
+// 그걸 정렬하면 친구 랭킹판이다. 서버도 계정도 필요 없다.
+//
+// 한계(정직하게): 친구 기록은 링크를 받은 시점의 것이다 — 실시간 갱신이 아니다.
+// 실시간 전체 랭킹은 EMAIL-SETUP.md 의 시트 연동(endpoint)이 붙으면 그 위에 올린다.
+
+const KEY_NAME = 'cms.name';
+const KEY_FRIENDS = 'cms.friends';
+const MAX_FRIENDS = 50;
+
+// 내 이름 — 처음엔 부르기 쉬운 임의 콜사인을 주고, 랭킹판에서 바꿀 수 있다
+function myName() {
+  let n = safeStorage.getItem(KEY_NAME);
+  if (!n) {
+    n = 'Comet-' + (100 + Math.floor(Math.random() * 900));
+    safeStorage.setItem(KEY_NAME, n);
+  }
+  return n;
+}
+
+function setMyName(name) {
+  const n = String(name).trim().slice(0, 14);
+  if (!n) return myName();
+  safeStorage.setItem(KEY_NAME, n);
+  return n;
+}
+
+function friends() {
+  try {
+    const list = JSON.parse(safeStorage.getItem(KEY_FRIENDS) || '[]');
+    return Array.isArray(list) ? list : [];
+  } catch {
+    return [];
+  }
+}
+
+function saveFriends(list) {
+  try {
+    safeStorage.setItem(KEY_FRIENDS, JSON.stringify(list.slice(0, MAX_FRIENDS)));
+  } catch {}
+}
+
+// 도전장을 열면 그 친구의 기록을 저장한다 — 이름당 최고 기록만 남긴다
+function recordFriend(name, score) {
+  const n = String(name || '').trim().slice(0, 14);
+  const s = Math.floor(Number(score));
+  if (!n || !(s > 0)) return;
+  if (n === myName()) return; // 내 링크를 내가 열었을 때
+  const list = friends();
+  const at = new Date().toISOString();
+  const existing = list.find((f) => f.name === n);
+  if (existing) {
+    if (s > existing.score) {
+      existing.score = s;
+      existing.at = at;
+    }
+  } else {
+    list.push({ name: n, score: s, at });
+  }
+  // 점수 내림차순으로 저장해 두면 잘릴 때 낮은 기록부터 밀려난다
+  list.sort((a, b) => b.score - a.score);
+  saveFriends(list);
+}
+
+// 랭킹판 행 — 나 + 친구들, 점수 내림차순. 내 행에는 me 표시.
+function board(myBest) {
+  const me = { name: myName(), score: Math.max(0, Math.floor(myBest) || 0), me: true };
+  const rows = friends()
+    .filter((f) => f.name !== me.name)
+    .map((f) => ({ name: f.name, score: f.score, me: false }));
+  rows.push(me);
+  rows.sort((a, b) => b.score - a.score || (a.me ? -1 : 1));
+  return rows;
+}
+
 // ===== comet-sling/game.js =====
 // 게임 껍데기 — 엔진(순수 물리)을 화면·소리·저장과 잇는다.
 // 모드: ready(출발대) → running(런) → dead(결과) → ready…
+
 
 
 
@@ -2040,7 +2260,7 @@ const STORE = {
 const COACH_UNTIL_RELEASES = 3;
 
 class Game {
-  constructor({ renderer, sound, dom, onRunEnded, challengeScore = null }) {
+  constructor({ renderer, sound, dom, onRunEnded, challengeScore = null, challengeName = '' }) {
     this.renderer = renderer;
     this.sound = sound;
     this.dom = dom;
@@ -2058,14 +2278,30 @@ class Game {
       if (document.hidden) this.pause();
     });
 
-    // 도전장: 공유 링크(?beat=N)로 들어오면 친구 기록이 결승선으로 그려진다
+    // 도전장: 공유 링크(?beat=N&by=이름)로 들어오면 친구 기록이 결승선으로 그려진다
     this.challenge = challengeScore > 0
-      ? { score: challengeScore, height: challengeScore * 4, beaten: false }
+      ? { score: challengeScore, height: challengeScore * 4, beaten: false, name: challengeName }
       : null;
 
     this.dom.btnShare.addEventListener('click', (e) => {
       e.stopPropagation();
       this._share();
+    });
+
+    // 친구 랭킹판 — 도전장을 주고받은 친구들의 기록이 쌓인다 (leaderboard.js)
+    this.dom.btnRanks.addEventListener('click', (e) => {
+      e.stopPropagation();
+      this._openRanks();
+    });
+    this.dom.btnCloseRanks.addEventListener('click', () => this.dom.ranks.classList.add('hidden'));
+    this.dom.ranks.addEventListener('click', (e) => {
+      if (e.target === this.dom.ranks) this.dom.ranks.classList.add('hidden');
+    });
+    this.dom.nameForm.addEventListener('submit', (e) => {
+      e.preventDefault();
+      setMyName(this.dom.nameInput.value);
+      this._renderRanks();
+      this._toast('Saved!');
     });
 
     this.best = Number(safeStorage.getItem(STORE.best) || 0);
@@ -2222,11 +2458,39 @@ class Game {
     this.renderer.burst(this.state.x, this.state.y);
   }
 
+  // ----- 친구 랭킹판 -----
+
+  _openRanks() {
+    this._renderRanks();
+    this.dom.nameInput.value = myName();
+    this.dom.ranks.classList.remove('hidden');
+  }
+
+  _renderRanks() {
+    const rows = board(this.best);
+    this.dom.ranksList.textContent = '';
+    rows.forEach((r, i) => {
+      const li = document.createElement('li');
+      if (r.me) li.className = 'me';
+      const rk = document.createElement('span');
+      rk.className = 'rk';
+      rk.textContent = i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : String(i + 1);
+      const nm = document.createElement('span');
+      nm.className = 'nm';
+      nm.textContent = r.me ? `${r.name} (you)` : r.name;
+      const sc = document.createElement('span');
+      sc.className = 'sc';
+      sc.textContent = String(r.score);
+      li.append(rk, nm, sc);
+      this.dom.ranksList.appendChild(li);
+    });
+  }
+
   // 결과 공유 — 공유 시트가 있으면 그걸로, 없으면 클립보드 복사
   async _share() {
     const s = Math.max(score(this.state), this.best);
     const url = new URL(location.href);
-    url.search = `?beat=${s}`;
+    url.search = `?beat=${s}&by=${encodeURIComponent(myName())}`;
     const text = `☄️ I scored ${s} in Comet Sling — can you beat me?`;
     try {
       if (navigator.share) {
@@ -2359,6 +2623,7 @@ class Game {
 
 
 
+
 const $ = (id) => document.getElementById(id);
 const dom = {
   board: $('board'),
@@ -2371,6 +2636,12 @@ const dom = {
   overlayChallenge: $('overlayChallenge'),
   btnShare: $('btnShare'),
   toast: $('toast'),
+  ranks: $('ranks'),
+  ranksList: $('ranksList'),
+  btnRanks: $('btnRanks'),
+  btnCloseRanks: $('btnCloseRanks'),
+  nameForm: $('nameForm'),
+  nameInput: $('nameInput'),
   pause: $('pause'),
   pauseTitle: $('pauseTitle'),
   pauseNote: $('pauseNote'),
@@ -2400,12 +2671,18 @@ const ads = new AdManager({
   }),
 });
 
+// 도전장을 열면 그 친구의 기록이 이 기기의 랭킹판에 쌓인다
+const challengeScore = Number(params.get('beat')) || null;
+const challengeName = (params.get('by') || '').slice(0, 14);
+if (challengeScore && challengeName) recordFriend(challengeName, challengeScore);
+
 const game = new Game({
   renderer,
   sound,
   dom,
-  // 도전장 링크(?beat=N) — 친구 기록이 결승선으로 그려진다
-  challengeScore: Number(params.get('beat')) || null,
+  // 도전장 링크(?beat=N&by=이름) — 친구 기록이 결승선으로 그려진다
+  challengeScore,
+  challengeName,
   // 광고는 죽은 뒤 "다시" 전환 순간에만. 런 도중에는 절대 안 뜬다.
   onRunEnded: async (runSeconds) => {
     ads.noteRunEnded();

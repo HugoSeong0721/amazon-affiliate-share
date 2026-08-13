@@ -348,7 +348,8 @@ export class Renderer {
     ctx.fillStyle = col;
     ctx.shadowColor = 'rgba(0,0,0,0.8)';
     ctx.shadowBlur = 5;
-    ctx.fillText(c.beaten ? `🏆 ${c.score}` : `🏁 ${c.score}`, this.sx(WORLD.halfW) - 8, y - 5);
+    const who = c.name ? `${c.name} ` : '';
+    ctx.fillText(c.beaten ? `🏆 ${who}${c.score}` : `🏁 ${who}${c.score}`, this.sx(WORLD.halfW) - 8, y - 5);
     ctx.shadowBlur = 0;
     ctx.restore();
   }
