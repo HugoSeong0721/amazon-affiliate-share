@@ -7,11 +7,12 @@ const STORAGE_BEST = 'sky.best';
 const STORAGE_RUNS = 'sky.runs';
 
 export class Game {
-  constructor({ renderer, sound, dom, onRunEnded }) {
+  constructor({ renderer, sound, dom, onRunEnded, onBeforeNextRun }) {
     this.r = renderer;
     this.sound = sound;
     this.dom = dom;
-    this.onRunEnded = onRunEnded;
+    this.onRunEnded = onRunEnded; // 판이 끝난 즉시 (기록 제출 등 — 화면을 막지 않는 일)
+    this.onBeforeNextRun = onBeforeNextRun; // 다음 판으로 넘어가는 전환 (광고가 설 자리)
 
     this.best = Number(localStorage.getItem(STORAGE_BEST)) || 0;
     this.runs = Number(localStorage.getItem(STORAGE_RUNS)) || 0;
@@ -22,7 +23,9 @@ export class Game {
     this.pausedAt = 0; // 일시정지 중에는 런 시간이 흐르지 않는다 (광고 판정이 왜곡되지 않게)
     this.paused = false;
     this.lastScore = 0;
+    this.lastRunSeconds = 0;
     this._ending = false;
+    this._starting = false;
     this._forcedSeed = null; // ?seed= 테스트용
 
     requestAnimationFrame((t) => this._loop(t));
@@ -105,7 +108,9 @@ export class Game {
     el.classList.add('show');
   }
 
-  async _endRun() {
+  // 탑이 무너졌다. 결과 카드는 **즉시** 뜬다 — 죽자마자 광고가 덮으면 김이 샌다.
+  // 광고는 여기서 띄우지 않고, 플레이어가 다음 판으로 넘어가는 순간까지 미룬다.
+  _endRun() {
     const s = this.state;
     this._ending = true;
     this.sound.over();
@@ -120,13 +125,12 @@ export class Game {
     }
     this.runs += 1;
     this.lastScore = sc;
+    this.lastRunSeconds = (performance.now() - this.runStartedAt) / 1000;
     try {
       localStorage.setItem(STORAGE_RUNS, String(this.runs));
     } catch {}
 
-    // 광고는 런이 끝난 이 전환 순간에만 — 플레이 도중에는 절대 안 뜬다
-    const runSeconds = (performance.now() - this.runStartedAt) / 1000;
-    await this.onRunEnded?.(runSeconds, { score: sc, isBest });
+    this.onRunEnded?.({ score: sc, isBest, runSeconds: this.lastRunSeconds });
 
     this.dom.overlayScore.textContent = String(sc);
     this.dom.overlayBest.textContent = isBest ? 'NEW BEST!' : `BEST ${this.best}`;
@@ -134,8 +138,18 @@ export class Game {
     this.dom.overlay.classList.remove('hidden');
   }
 
-  continueFromOverlay() {
-    if (this.dom.overlay.classList.contains('hidden')) return;
+  // 결과 카드에서 "다시" — 점수를 보고, 자랑하고, 순위를 확인한 뒤에 넘어가는 자리.
+  // 광고가 있다면 바로 이 전환에 낀다: 끝난 판이 아니라 다음 판 앞에 선다.
+  async continueFromOverlay() {
+    if (this.dom.overlay.classList.contains('hidden') || this._starting) return;
+    this._starting = true;
+    this.dom.overlay.classList.add('hidden'); // 카드를 먼저 치운다 — 광고가 카드를 덮지 않게
+    try {
+      await this.onBeforeNextRun?.(this.lastRunSeconds || 0);
+    } catch {
+      // 광고가 실패해도 다음 판은 시작된다
+    }
+    this._starting = false;
     this.startRun();
   }
 

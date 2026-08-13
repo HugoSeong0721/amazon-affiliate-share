@@ -74,12 +74,14 @@ const game = new Game({
   renderer,
   sound,
   dom,
-  // 런이 끝난 전환 순간에: 신기록이면 랭킹에 올리고, 그다음에야 광고 차례
-  onRunEnded: async (runSeconds, { score, isBest }) => {
+  // 판이 끝난 즉시 — 결과 카드를 막지 않는 일만 한다 (신기록 제출, 광고 카운트)
+  onRunEnded: ({ score, isBest }) => {
     if (isBest && score > 0) lb.submit(score);
     ads.noteRunEnded();
-    await ads.maybeShow(runSeconds);
   },
+  // 다음 판으로 넘어가는 전환 — 광고는 여기서만. 죽자마자가 아니라,
+  // 점수를 보고 자랑도 하고 "다시"를 누른 뒤라야 김이 새지 않는다.
+  onBeforeNextRun: (lastRunSeconds) => ads.maybeShow(lastRunSeconds),
 });
 
 // ?seed=123 으로 색상 시작점을 고정할 수 있다 (스크린샷/테스트용)
