@@ -2,7 +2,7 @@
 // 깊은 우주 배경, 패럴랙스 별, 네온 글로우, 코멧 트레일, 파티클, 화면 흔들림.
 // 월드 좌표(y 위로 증가)를 화면 좌표로 뒤집어 그린다. 카메라는 y만 따라간다.
 
-import { WORLD, aim } from './engine.js';
+import { WORLD, aim, hazardXAt } from './engine.js';
 
 const COL = {
   bgTop: '#0a0618',
@@ -414,7 +414,7 @@ export class Renderer {
       const hz = state.hazards[i];
       if (this.sy(hz.y) < -280) break; // 화면 위로 한참 벗어남 (구간 내 뒤섞임 여유 포함)
       if (!this._visible(hz.y)) continue;
-      this._blit(ctx, this._sprHazard[i % 3], this.sx(hz.x), this.sy(hz.y), this._t * 0.4 + i * 1.7);
+      this._blit(ctx, this._sprHazard[i % 3], this.sx(hazardXAt(hz, state.t)), this.sy(hz.y), this._t * 0.4 + i * 1.7);
     }
   }
 

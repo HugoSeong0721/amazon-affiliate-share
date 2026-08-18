@@ -759,9 +759,19 @@ function paramsAt(height) {
   return {
     speed: 32 + 68 * ramp,                          // 32 → 100
     hazardChance: Math.min(0.85, 0.08 + 1.0 * ramp), // 구간당 소행성 확률
-    maxHazards: h < 250 ? 1 : 2,                    // 구간당 최대 소행성 수
+    maxHazards: h < 250 ? 1 : h < 2500 ? 2 : 3,     // 구간당 최대 소행성 수 (후반 3개)
     anchorJitter: 14 + 16 * ramp,                   // 앵커 좌우 흔들림 폭
+    // 500부터 소행성이 좌우로 흔들리기 시작 — 진폭이 서서히 자라 10에서 멈춘다
+    sway: Math.min(10, Math.max(0, (h - 500) / 250)),
+    // 자석 조준의 관용각 — 배우는 동안 25°, 올라갈수록 촘촘해져 14°에서 멈춘다.
+    // 후반의 "어려움"이 반사신경이 아니라 조준 정밀도에서 오게 한다.
+    snapDeg: Math.max(14, 25 - h / 450),
   };
+}
+
+// 흔들리는 소행성의 현재 x — 시간의 순수 함수라 결정론이 유지된다
+function hazardXAt(hz, t) {
+  return hz.swayA ? hz.x + hz.swayA * Math.sin(hz.swayW * t + hz.swayP) : hz.x;
 }
 
 // 초반 에임 어시스트 — 릴리즈 방향을 위쪽으로 이만큼 끌어당긴다.
@@ -778,9 +788,8 @@ function orbitOmega(speed, r) {
   return speed / (0.55 * r + 10);
 }
 
-// 자석 조준 — 릴리즈 방향이 근처 앵커와 이 각도 이내로 맞으면 그 앵커로 스냅한다.
-// "옆으로 튕겨나간다"는 느낌의 해독제: 얼추 맞으면 정확히 맞은 걸로 쳐 준다.
-const SNAP_DEG = 25;
+// 자석 조준 — 릴리즈 방향이 근처 앵커와 관용각(높이에 따라 25°→14°) 이내로 맞으면
+// 그 앵커로 스냅한다. "옆으로 튕겨나간다"는 느낌의 해독제.
 const SNAP_MAX_DIST = 230;
 
 // 지금 놓으면 날아갈 방향 (순수 함수 — 릴리즈와 조준선 표시가 같은 값을 쓴다).
@@ -797,7 +806,7 @@ function aim(state) {
   // 진행 방향과 가장 잘 맞는 앵커를 찾는다 (지금 돌고 있는 앵커는 제외).
   // 소행성이 막고 있는 앵커에는 스냅하지 않는다 — 금색으로 잠긴 조준선은
   // "여기로 가면 닿는다"는 약속이므로, 가는 길에 죽으면 거짓말이 된다.
-  let best = null, bestCos = Math.cos((SNAP_DEG * Math.PI) / 180);
+  let best = null, bestCos = Math.cos((paramsAt(state.height).snapDeg * Math.PI) / 180);
   for (let i = state.anchorFrom || 0; i < state.anchors.length; i++) {
     if (i === o.i) continue;
     const a = state.anchors[i];
@@ -816,14 +825,16 @@ function aim(state) {
   return { dx, dy, snapped: null };
 }
 
-// 코멧에서 (tx,ty)까지 직선이 소행성에 막히지 않는지 (창 안의 소행성만 본다)
+// 코멧에서 (tx,ty)까지 직선이 소행성에 막히지 않는지 (창 안의 소행성만 본다).
+// 흔들리는 소행성은 지금 위치가 아니라 '흔들릴 수 있는 범위 전체'를 피한다 —
+// 금색 조준선은 안전 약속이라, 날아가는 동안 흔들려 들어와도 안 죽어야 한다.
 function pathIsClear(state, tx, ty) {
   const clear = WORLD.hazardR + WORLD.cometR + 1;
   const top = Math.max(state.y, ty) + 200;
   for (let i = state.hazardFrom || 0; i < state.hazards.length; i++) {
     const hz = state.hazards[i];
     if (hz.y > top) break;
-    if (distToSegment(hz.x, hz.y, state.x, state.y, tx, ty) < clear) return false;
+    if (distToSegment(hz.x, hz.y, state.x, state.y, tx, ty) < clear + (hz.swayA || 0)) return false;
   }
   return true;
 }
@@ -852,18 +863,27 @@ function distToSegment(px, py, ax, ay, bx, by) {
 //  - 통로 안에 완전히 들어간다
 function placeHazards(a, b, allAnchors, rng, p) {
   const out = [];
-  const n = rng() < p.hazardChance ? 1 + (p.maxHazards > 1 && rng() < 0.35 ? 1 : 0) : 0;
-  const anchorClear = WORLD.orbitMax + WORLD.hazardR + WORLD.cometR + 3;
-  const lineClear = WORLD.hazardR + WORLD.cometR + 4;
-  const maxX = WORLD.halfW - WORLD.hazardR - 1;
+  let n = 0;
+  if (rng() < p.hazardChance) {
+    n = 1;
+    if (p.maxHazards > 1 && rng() < 0.35) n++;
+    if (p.maxHazards > 2 && rng() < 0.3) n++;
+  }
   for (let k = 0; k < n; k++) {
+    // 흔들리는 소행성은 진폭만큼 모든 안전거리를 더 벌린다 — 흔들려도 불변식이 깨지지 않게
+    const swayA = p.sway > 0 ? p.sway * (0.35 + 0.65 * rng()) : 0;
+    const swayW = 0.6 + rng() * 0.8;      // 흔들림 각속도(rad/s)
+    const swayP = rng() * Math.PI * 2;    // 위상
+    const anchorClear = WORLD.orbitMax + WORLD.hazardR + WORLD.cometR + 3 + swayA;
+    const lineClear = WORLD.hazardR + WORLD.cometR + 4 + swayA;
+    const maxX = WORLD.halfW - WORLD.hazardR - 1 - swayA;
     for (let tries = 0; tries < 25; tries++) {
       const y = a.y + (0.25 + rng() * 0.5) * (b.y - a.y);
       const x = (rng() * 2 - 1) * maxX;
       if (distToSegment(x, y, a.x, a.y, b.x, b.y) < lineClear) continue;
       if (allAnchors.some((an) => Math.hypot(an.x - x, an.y - y) < anchorClear)) continue;
-      if (out.some((hz) => Math.hypot(hz.x - x, hz.y - y) < WORLD.hazardR * 2 + 2)) continue;
-      out.push({ x, y });
+      if (out.some((hz) => Math.hypot(hz.x - x, hz.y - y) < WORLD.hazardR * 2 + 2 + swayA + hz.swayA)) continue;
+      out.push({ x, y, swayA, swayW, swayP });
       break;
     }
   }
@@ -1009,14 +1029,15 @@ function step(state, input) {
     const hz = state.hazards[i];
     // 소행성은 구간 안에서 y가 조금 뒤섞일 수 있으므로, 한 구간보다 훨씬 넉넉히 지나서 끊는다
     if (hz.y > state.y + 200) break;
+    const hx = hazardXAt(hz, state.t);
 
     if (hz.y < state.y - 60) continue;
-    const d = Math.hypot(hz.x - state.x, hz.y - state.y);
+    const d = Math.hypot(hx - state.x, hz.y - state.y);
     if (d < WORLD.hazardR + WORLD.cometR) return die(state, 'hazard'), state;
     if (d < WORLD.hazardR + WORLD.cometR + WORLD.nearMissBand && !state._credited.has(i)) {
       state._credited.add(i);
       state.sparks += 1;
-      state.events.push({ type: 'spark', x: hz.x, y: hz.y });
+      state.events.push({ type: 'spark', x: hx, y: hz.y });
     }
   }
   return state;
@@ -1445,7 +1466,7 @@ class Renderer {
       const hz = state.hazards[i];
       if (this.sy(hz.y) < -280) break; // 화면 위로 한참 벗어남 (구간 내 뒤섞임 여유 포함)
       if (!this._visible(hz.y)) continue;
-      this._blit(ctx, this._sprHazard[i % 3], this.sx(hz.x), this.sy(hz.y), this._t * 0.4 + i * 1.7);
+      this._blit(ctx, this._sprHazard[i % 3], this.sx(hazardXAt(hz, state.t)), this.sy(hz.y), this._t * 0.4 + i * 1.7);
     }
   }
 
@@ -2775,7 +2796,7 @@ if (params.has('debug')) {
     sound,
     ads,
     adsModule: { AdManager, AD_CONFIG },
-    engine: { newRun, WORLD, paramsAt, aim },
+    engine: { newRun, WORLD, paramsAt, aim, hazardXAt },
     state: () => game.state,
     press: () => game.press(),
     release: () => game.releasePress(),
