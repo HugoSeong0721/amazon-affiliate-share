@@ -6,7 +6,7 @@ import { AdManager, AD_CONFIG, createPlaceholderProvider } from './ads.js';
 import { Game } from './game.js';
 import { SignupGate, SIGNUP_CONFIG } from './signup.js';
 import { recordFriend } from './leaderboard.js';
-import { newRun, step, WORLD, paramsAt, aim } from './engine.js';
+import { newRun, step, WORLD, paramsAt, aim, hazardXAt } from './engine.js';
 
 const $ = (id) => document.getElementById(id);
 const dom = {
@@ -159,7 +159,7 @@ if (params.has('debug')) {
     sound,
     ads,
     adsModule: { AdManager, AD_CONFIG },
-    engine: { newRun, WORLD, paramsAt, aim },
+    engine: { newRun, WORLD, paramsAt, aim, hazardXAt },
     state: () => game.state,
     press: () => game.press(),
     release: () => game.releasePress(),

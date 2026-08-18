@@ -58,7 +58,7 @@ function distToSegment(px, py, ax, ay, bx, by) {
 test('트랙 불변식: 궤도 안전 · 직선 개방 · 통로 안 (시드 200개)', () => {
   for (let seed = 1; seed <= 200; seed++) {
     const s = newRun(seed);
-    ensureTrack(s, 3000);
+    ensureTrack(s, 4000); // 흔들리는 소행성(500+)과 3개 구간(2500+)까지 포함
 
     // 앵커: y 단조 증가, 최대 궤도가 벽 안에 들어온다
     const maxX = WORLD.halfW - WORLD.orbitMax - WORLD.cometR - 2;
@@ -68,11 +68,12 @@ test('트랙 불변식: 궤도 안전 · 직선 개방 · 통로 안 (시드 200
       if (i > 0) assert.ok(a.y > s.anchors[i - 1].y, `seed ${seed}: 앵커 y가 단조 증가하지 않는다`);
     }
 
-    const anchorClear = WORLD.orbitMax + WORLD.hazardR + WORLD.cometR + 3;
-    const lineClear = WORLD.hazardR + WORLD.cometR + 4;
     for (const hz of s.hazards) {
-      // 통로 안
-      assert.ok(Math.abs(hz.x) <= WORLD.halfW - WORLD.hazardR - 1 + 1e-9, `seed ${seed}: 소행성이 벽을 뚫었다`);
+      const amp = hz.swayA || 0; // 흔들리는 최악 범위까지 안전해야 한다
+      const anchorClear = WORLD.orbitMax + WORLD.hazardR + WORLD.cometR + 3 + amp;
+      const lineClear = WORLD.hazardR + WORLD.cometR + 4 + amp;
+      // 통로 안 (흔들려도)
+      assert.ok(Math.abs(hz.x) + amp <= WORLD.halfW - WORLD.hazardR - 1 + 1e-9, `seed ${seed}: 소행성이 벽을 뚫었다`);
       // 어떤 앵커의 최대 궤도에도 닿지 않는다 → 궤도 중 죽을 수 없다
       for (const a of s.anchors) {
         assert.ok(
@@ -80,7 +81,7 @@ test('트랙 불변식: 궤도 안전 · 직선 개방 · 통로 안 (시드 200
           `seed ${seed}: 소행성이 앵커 궤도 안에 있다`
         );
       }
-      // 이웃 앵커 사이 직선은 항상 열려 있다
+      // 이웃 앵커 사이 직선은 항상 열려 있다 (흔들려도)
       for (let i = 1; i < s.anchors.length; i++) {
         const p = s.anchors[i - 1], q = s.anchors[i];
         if (hz.y < p.y - 5 || hz.y > q.y + 5) continue;
@@ -129,9 +130,15 @@ test('난이도 곡선은 단조 증가한다', () => {
     const p = paramsAt(h);
     assert.ok(p.speed >= prev.speed, `speed가 ${h}에서 줄었다`);
     assert.ok(p.hazardChance >= prev.hazardChance, `hazardChance가 ${h}에서 줄었다`);
+    assert.ok(p.sway >= prev.sway, `sway가 ${h}에서 줄었다`);
+    assert.ok(p.snapDeg <= prev.snapDeg, `snapDeg(조준 관용)가 ${h}에서 늘었다`);
     prev = p;
   }
   assert.ok(paramsAt(0).speed >= 25 && paramsAt(1e6).speed <= 100.001);
+  assert.equal(paramsAt(0).sway, 0);                 // 시작엔 흔들림 없음
+  assert.ok(paramsAt(1e6).sway <= 10.001);           // 진폭 상한
+  assert.ok(paramsAt(0).snapDeg >= 24.9);            // 처음엔 너그럽게
+  assert.ok(paramsAt(1e6).snapDeg >= 13.9);          // 끝까지 최소한의 관용은 남긴다
 });
 
 test('궤도 회전: 작은 원이 빠르되 얌전하게 — 차이는 1.3~1.7배, 시작 속도에서 한 바퀴 3~5.5초', () => {
@@ -224,9 +231,10 @@ test('스냅된 조준선은 소행성이 없는 길만 가리킨다 (시드 60�
         if (a.snapped !== null) {
           const t = s.anchors[a.snapped];
           for (const hz of s.hazards) {
+            // 흔들리는 소행성은 진폭 최악값까지 감안해도 경로가 비어 있어야 한다
             assert.ok(
-              distToSegment(hz.x, hz.y, s.x, s.y, t.x, t.y) >= clear,
-              `seed ${seed}: 스냅 경로가 소행성에 막혀 있다`
+              distToSegment(hz.x, hz.y, s.x, s.y, t.x, t.y) >= clear + (hz.swayA || 0),
+              `seed ${seed}: 스냅 경로가 소행성(±흔들림)에 막혀 있다`
             );
           }
           if (a.dy > 0.4) hold = false;
