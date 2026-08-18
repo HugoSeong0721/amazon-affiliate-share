@@ -263,17 +263,21 @@ export class Game {
       if (!done) left++;
       dots += `<span class="ride-dot${done ? ' on' : ''}"></span>`;
     }
+    // 점(남은 판) › 승객 얼굴 › 집 — "이 손님을 집에 데려다주는 중"이 그림으로 읽힌다.
+    // 문구는 거들 뿐이다. "drop-off" 같은 용어는 실플레이에서 못 알아들었다.
     const gotHome = nowHome && !wasHome;
     this.dom.rideRow.innerHTML =
       dots +
       `<span class="ride-arrow">›</span>` +
       `<span class="ride-face${nowHome ? ' home' : ''}" style="--c:${this.passengerHex}">` +
-      '<span class="eye l"></span><span class="eye r"></span><span class="mouth"></span></span>';
+      '<span class="eye l"></span><span class="eye r"></span><span class="mouth"></span></span>' +
+      `<span class="ride-arrow">›</span>` +
+      `<span class="ride-home${nowHome ? ' lit' : ''}">🏠</span>`;
     this.dom.overlayRescue.textContent = gotHome
-      ? `Passenger dropped off! (${this.homeCount}/${this.chapterCount})`
+      ? `Made it home! (${this.homeCount}/${this.chapterCount})`
       : nowHome
         ? ''
-        : `${left} ride${left > 1 ? 's' : ''} until drop-off`;
+        : `Home in ${left} ride${left > 1 ? 's' : ''}`;
     this.dom.overlayRescue.classList.toggle('hidden', nowHome && !gotHome);
 
     // 택시가 실제로 달려 나간 뒤에 카드가 뜬다 — 연출이 보상보다 먼저
