@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="theme-color" content="#0f1830">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🧲</text></svg>">
+<title>Magnet Balls — Color Sort Puzzle</title>
+<link rel="stylesheet" href="./style.css">
+</head>
+<body>
+  <div id="app">
+    <header id="topbar">
+      <div class="hud-left">
+        <div id="levelLabel">Level 1</div>
+        <div id="moveLabel">0 moves</div>
+      </div>
+      <div class="hud-right">
+        <button id="btnDaily" class="hud-btn" title="Daily challenge" aria-label="Daily challenge">📅<span id="dailyDot" class="ndot hidden"></span></button>
+        <button id="btnLevels" class="hud-btn" title="Journey map" aria-label="Journey map">☰</button>
+        <button id="btnUndo" class="hud-btn" title="Undo" aria-label="Undo">↩︎</button>
+        <button id="btnRestart" class="hud-btn" title="Restart level" aria-label="Restart level">⟳</button>
+        <button id="btnMute" class="hud-btn" title="Sound on/off" aria-label="Sound">🔊</button>
+      </div>
+    </header>
+
+    <canvas id="board"></canvas>
+
+    <div id="deadEnd" class="hidden">
+      <p class="de-title">🚫 Dead end!</p>
+      <p class="de-sub">The game isn&#39;t broken — this layout can&#39;t be solved anymore</p>
+      <div class="de-actions">
+        <button id="deUndo" class="de-btn" type="button">↩︎ Undo</button>
+        <button id="deRestart" class="de-btn primary" type="button">⟳ Restart</button>
+      </div>
+    </div>
+
+    <div id="overlay" class="hidden">
+      <div class="overlay-card">
+        <h2 id="overlayTitle">Level Clear!</h2>
+        <div id="starRow" class="stars">
+          <span class="star"></span><span class="star"></span><span class="star"></span>
+        </div>
+        <p id="overlayInfo"></p>
+        <p id="overlayRescue" class="rescue-note hidden"></p>
+        <div class="overlay-actions">
+          <button id="btnLevelsFromWin" class="ghost-btn">Journey</button>
+          <button id="btnShare" class="ghost-btn share-btn hidden" type="button">📤 Share</button>
+          <button id="btnNext">Next Level ▶</button>
+        </div>
+        <button id="overlayDaily" class="daily-chip hidden" type="button">🔥 Today&#39;s daily puzzle ▶</button>
+      </div>
+    </div>
+
+    <div id="adSlot" class="hidden">
+      <div class="ad-frame">
+        <div class="ad-head">
+          <span class="ad-tag">AD</span>
+          <button id="adClose" class="ad-close" disabled>5</button>
+        </div>
+        <div class="ad-body">
+          <p class="ad-title">Ad placeholder</p>
+          <p class="ad-sub">An interstitial ad will appear here once an ad network is connected.</p>
+        </div>
+      </div>
+    </div>
+
+    <div id="levelSelect" class="hidden">
+      <div class="ls-card">
+        <div class="ls-head">
+          <h2>Journey</h2>
+          <div id="journeyTotal" class="j-total"></div>
+          <button id="btnCloseLevels" class="hud-btn" title="Close" aria-label="Close">✕</button>
+        </div>
+        <div id="journey"></div>
+        <div class="ls-foot">
+          <div id="accountRow" class="acct hidden">
+            <button id="acctSignIn" class="acct-signin hidden" type="button">
+              <svg class="gicon" viewBox="0 0 18 18" width="18" height="18" aria-hidden="true"><path fill="#4285F4" d="M17.64 9.2c0-.64-.06-1.25-.16-1.84H9v3.48h4.84a4.14 4.14 0 0 1-1.8 2.72v2.26h2.92c1.7-1.57 2.68-3.88 2.68-6.62z"/><path fill="#34A853" d="M9 18c2.43 0 4.47-.8 5.96-2.18l-2.92-2.26c-.8.54-1.84.86-3.04.86-2.34 0-4.32-1.58-5.03-3.7H.96v2.33A9 9 0 0 0 9 18z"/><path fill="#FBBC05" d="M3.97 10.72A5.41 5.41 0 0 1 3.68 9c0-.6.1-1.18.28-1.72V4.95H.96A9 9 0 0 0 0 9c0 1.45.35 2.83.96 4.05l3.01-2.33z"/><path fill="#EA4335" d="M9 3.58c1.32 0 2.5.45 3.44 1.35l2.58-2.59A9 9 0 0 0 .96 4.95l3.01 2.33C4.68 5.16 6.66 3.58 9 3.58z"/></svg>
+              Sign in — save your progress
+            </button>
+            <div id="acctInfo" class="acct-info hidden">
+              <span id="acctEmail" class="acct-email"></span>
+              <button id="acctSignOut" class="acct-link" type="button">Sign out</button>
+              <button id="acctDelete" class="acct-link danger" type="button">Delete account</button>
+            </div>
+          </div>
+          <a class="privacy-link" href="https://hugoseong0721.github.io/amazon-affiliate-share/magnet-ball-sort/privacy.html" target="_blank" rel="noopener">Privacy</a>
+        </div>
+      </div>
+    </div>
+
+    <div id="dailyPanel" class="hidden">
+      <div class="ls-card dc-card">
+        <div class="ls-head">
+          <h2>Daily Challenge</h2>
+          <button id="btnCloseDaily" class="hud-btn" title="Close" aria-label="Close">✕</button>
+        </div>
+        <p class="dc-sub">One special puzzle a day — same for everyone. Keep the flame alive!</p>
+        <div id="dailyStreak" class="dc-streak"></div>
+        <div id="dailyMonth" class="dc-month"></div>
+        <div class="dc-dows" aria-hidden="true"><span>S</span><span>M</span><span>T</span><span>W</span><span>T</span><span>F</span><span>S</span></div>
+        <div id="dailyGrid" class="dc-grid"></div>
+        <button id="btnPlayDaily" class="dc-play" type="button">Play today&#39;s puzzle ▶</button>
+        <button id="btnShareDaily" class="dc-share hidden" type="button">📤 Share today&#39;s result</button>
+      </div>
+    </div>
+
+    <div id="authDialog" class="hidden">
+      <div class="auth-card">
+        <div class="auth-badge">☁️</div>
+        <h2>Keep your journey safe</h2>
+        <p class="auth-sub">First friend rescued! Sign in to save your progress — keep it even on a new phone.</p>
+        <button id="authGoogle" class="auth-google" type="button">
+          <svg class="gicon" viewBox="0 0 18 18" width="18" height="18" aria-hidden="true"><path fill="#4285F4" d="M17.64 9.2c0-.64-.06-1.25-.16-1.84H9v3.48h4.84a4.14 4.14 0 0 1-1.8 2.72v2.26h2.92c1.7-1.57 2.68-3.88 2.68-6.62z"/><path fill="#34A853" d="M9 18c2.43 0 4.47-.8 5.96-2.18l-2.92-2.26c-.8.54-1.84.86-3.04.86-2.34 0-4.32-1.58-5.03-3.7H.96v2.33A9 9 0 0 0 9 18z"/><path fill="#FBBC05" d="M3.97 10.72A5.41 5.41 0 0 1 3.68 9c0-.6.1-1.18.28-1.72V4.95H.96A9 9 0 0 0 0 9c0 1.45.35 2.83.96 4.05l3.01-2.33z"/><path fill="#EA4335" d="M9 3.58c1.32 0 2.5.45 3.44 1.35l2.58-2.59A9 9 0 0 0 .96 4.95l3.01 2.33C4.68 5.16 6.66 3.58 9 3.58z"/></svg>
+          Continue with Google
+        </button>
+        <button id="authLater" class="auth-later" type="button">Maybe later</button>
+        <p id="authError" class="auth-error hidden">Sign-in didn&#39;t work. You can try again anytime from the Journey screen.</p>
+      </div>
+    </div>
+
+    <div id="deleteConfirm" class="hidden">
+      <div class="auth-card">
+        <h2>Delete account?</h2>
+        <p class="auth-sub">Your account and cloud progress will be removed. Progress on this phone stays.</p>
+        <div class="de-actions">
+          <button id="delCancel" class="de-btn" type="button">Cancel</button>
+          <button id="delConfirm" class="de-btn danger" type="button">Delete</button>
+        </div>
+        <p id="delError" class="auth-error hidden">Couldn&#39;t delete — check your connection and try again.</p>
+      </div>
+    </div>
+  </div>
+  <script type="module" src="./main.js"></script>
+</body>
+</html>

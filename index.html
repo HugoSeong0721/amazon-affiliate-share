@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Amazon Link Maker</title>
+  <link rel="stylesheet" href="./styles.css">
+</head>
+<body>
+  <main class="friend-shell">
+    <section class="friend-card">
+      <p class="eyebrow">Amazon link maker</p>
+      <h1>Paste an Amazon product link.</h1>
+      <p class="hero-copy">
+        Add the Amazon item you want to buy. We will create a shopping link below it.
+      </p>
+
+      <form id="linkForm" class="friend-form">
+        <label>
+          Amazon product link
+          <input id="amazonUrl" type="text" inputmode="url" autocomplete="off" placeholder="Paste an Amazon link here" required>
+        </label>
+        <p class="status-message" id="statusMessage">Paste a full Amazon, a.co, or amzn.to link to generate your shopping link.</p>
+      </form>
+
+      <section class="friend-result" id="result" hidden aria-live="polite">
+        <div class="actions">
+          <a id="openAmazon" href="#" target="_blank" rel="noopener">Open Amazon with this link</a>
+        </div>
+      </section>
+
+      <p class="fine-print">
+        Use the button above to shop on Amazon with the generated link.
+      </p>
+    </section>
+  </main>
+
+  <script src="./app.js"></script>
+</body>
+</html>

@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="theme-color" content="#14152b">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎨</text></svg>">
+<title>페인트 믹스 — 색을 섞는 소트 퍼즐</title>
+<link rel="stylesheet" href="./style.css">
+</head>
+<body>
+  <div id="app">
+    <header id="topbar">
+      <div class="hud-left">
+        <div id="levelLabel">레벨 1</div>
+        <div id="moveLabel">0수</div>
+      </div>
+      <div class="hud-right">
+        <button id="btnLevels" class="hud-btn" title="레벨 목차" aria-label="레벨 목차">☰</button>
+        <button id="btnUndo" class="hud-btn" title="되돌리기" aria-label="되돌리기">↩︎</button>
+        <button id="btnRestart" class="hud-btn" title="다시하기" aria-label="다시하기">⟳</button>
+        <button id="btnMute" class="hud-btn" title="소리 켜기/끄기" aria-label="소리">🔊</button>
+      </div>
+    </header>
+
+    <div id="legend"></div>
+    <div id="hint" class="hidden"></div>
+
+    <canvas id="board"></canvas>
+
+    <button id="btnShake" class="hidden" type="button">흔들어 섞기 <span class="swatch"></span></button>
+
+    <div id="goalShelf">
+      <span id="goalCaption">만들 색</span>
+      <div id="goalSlots"></div>
+    </div>
+
+    <div id="banner" class="hidden"></div>
+
+    <div id="overlay" class="hidden">
+      <div class="overlay-card">
+        <h2 id="overlayTitle">레벨 클리어!</h2>
+        <p id="overlayInfo"></p>
+        <div class="overlay-actions">
+          <button id="btnLevelsFromWin" class="ghost-btn">목차</button>
+          <button id="btnNext">다음 레벨 ▶</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="levelSelect" class="hidden">
+      <div class="ls-card">
+        <div class="ls-head">
+          <h2>레벨 목차</h2>
+          <button id="btnCloseLevels" class="hud-btn" title="닫기" aria-label="닫기">✕</button>
+        </div>
+        <p class="ls-note">아래 점이 그 레벨에서 만들어야 할 색입니다.</p>
+
+        <div id="levelGrid"></div>
+      </div>
+    </div>
+  </div>
+  <script type="module" src="./main.js"></script>
+</body>
+</html>

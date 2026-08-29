@@ -1,0 +1,1158 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<title>Slang Crossword — Learn Modern English</title>
+<meta name="description" content="Learn modern slang and texting acronyms by solving crossword puzzles. 12 levels, gets harder as you go.">
+<meta name="theme-color" content="#f4506b">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Slang Crossword">
+<style>
+  :root {
+    --bg: #fdf8ef;
+    --card: #ffffff;
+    --ink: #262a35;
+    --muted: #7d7f8c;
+    --accent: #f4506b;
+    --accent-ink: #ffffff;
+    --highlight: #ffd447;
+    --success: #2fae82;
+    --success-bg: #d9f2e7;
+    --danger: #e5484d;
+    --danger-bg: #fdeaea;
+    --border: #262a35;
+    --soft: #f4eee1;
+    --shadow: #262a35;
+    --cell-sel: #ffe9a8;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #1a1c26;
+      --card: #252836;
+      --ink: #f0efe9;
+      --muted: #9698a8;
+      --accent: #ff7a93;
+      --accent-ink: #2a1017;
+      --highlight: #e8bd2e;
+      --success: #4ecca0;
+      --success-bg: #23473a;
+      --danger: #ff6b70;
+      --danger-bg: #43242a;
+      --border: #0f1017;
+      --soft: #20222f;
+      --shadow: #0f1017;
+      --cell-sel: #55491f;
+    }
+  }
+  :root[data-theme="light"] {
+    --bg: #fdf8ef;
+    --card: #ffffff;
+    --ink: #262a35;
+    --muted: #7d7f8c;
+    --accent: #f4506b;
+    --accent-ink: #ffffff;
+    --highlight: #ffd447;
+    --success: #2fae82;
+    --success-bg: #d9f2e7;
+    --danger: #e5484d;
+    --danger-bg: #fdeaea;
+    --border: #262a35;
+    --soft: #f4eee1;
+    --shadow: #262a35;
+    --cell-sel: #ffe9a8;
+  }
+  :root[data-theme="dark"] {
+    --bg: #1a1c26;
+    --card: #252836;
+    --ink: #f0efe9;
+    --muted: #9698a8;
+    --accent: #ff7a93;
+    --accent-ink: #2a1017;
+    --highlight: #e8bd2e;
+    --success: #4ecca0;
+    --success-bg: #23473a;
+    --danger: #ff6b70;
+    --danger-bg: #43242a;
+    --border: #0f1017;
+    --soft: #20222f;
+    --shadow: #0f1017;
+    --cell-sel: #55491f;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; touch-action: manipulation; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Apple SD Gothic Neo", "Noto Sans KR", sans-serif;
+    background: var(--bg);
+    color: var(--ink);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 16px 12px 30px;
+    user-select: none;
+    -webkit-user-select: none;
+  }
+  .app { width: 100%; max-width: 560px; display: flex; flex-direction: column; gap: 14px; }
+  .screen { display: none; flex-direction: column; gap: 14px; }
+  .screen.active { display: flex; }
+
+  .home-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; }
+  .bubble-title {
+    align-self: flex-start;
+    background: var(--accent);
+    color: var(--accent-ink);
+    font-size: 24px;
+    font-weight: 800;
+    letter-spacing: -0.5px;
+    padding: 12px 18px;
+    border: 2px solid var(--border);
+    border-radius: 20px 20px 20px 4px;
+    box-shadow: 4px 4px 0 var(--shadow);
+  }
+  .lang-btn, .back-btn {
+    background: var(--card);
+    border: 2px solid var(--border);
+    border-radius: 10px;
+    box-shadow: 2px 2px 0 var(--shadow);
+    font: inherit;
+    font-weight: 700;
+    font-size: 13px;
+    color: var(--ink);
+    padding: 8px 12px;
+    cursor: pointer;
+    flex-shrink: 0;
+  }
+  .subtitle { color: var(--muted); font-size: 14px; line-height: 1.6; }
+  .subtitle strong { color: var(--ink); }
+
+  .progress-pill {
+    display: flex; align-items: center; gap: 10px;
+    background: var(--card);
+    border: 2px solid var(--border);
+    border-radius: 14px;
+    padding: 11px 15px;
+    box-shadow: 3px 3px 0 var(--shadow);
+    font-size: 14px; font-weight: 700;
+  }
+  .progress-track { flex: 1; height: 10px; background: var(--soft); border-radius: 6px; overflow: hidden; border: 1px solid var(--border); }
+  .progress-fill { height: 100%; background: var(--success); width: 0%; transition: width 0.4s ease; }
+
+  .level-list { display: flex; flex-direction: column; gap: 11px; }
+  .level-card {
+    display: flex; align-items: center; gap: 13px;
+    background: var(--card);
+    border: 2px solid var(--border);
+    border-radius: 15px;
+    padding: 13px 15px;
+    box-shadow: 4px 4px 0 var(--shadow);
+    cursor: pointer; text-align: left; font: inherit; color: inherit;
+    transition: transform 0.08s ease;
+  }
+  .level-card:active { transform: translate(2px, 2px); box-shadow: 2px 2px 0 var(--shadow); }
+  .level-card.locked { opacity: 0.55; box-shadow: 2px 2px 0 var(--shadow); }
+  .level-card .num {
+    flex-shrink: 0; width: 42px; height: 42px;
+    display: flex; align-items: center; justify-content: center;
+    background: var(--highlight); color: #262a35;
+    font-weight: 800; font-size: 16px;
+    border: 2px solid var(--border); border-radius: 11px;
+  }
+  .level-card.cleared .num { background: var(--success); color: #fff; }
+  .level-card .info { flex: 1; min-width: 0; }
+  .level-card .name { display: block; font-weight: 800; font-size: 15px; }
+  .level-card .words-preview { display: block; font-size: 12px; color: var(--muted); margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .level-card .state { font-size: 19px; flex-shrink: 0; }
+  footer { margin-top: 14px; font-size: 12px; color: var(--muted); text-align: center; }
+  footer button { background: none; border: none; color: var(--muted); font-size: 12px; text-decoration: underline; cursor: pointer; }
+
+  .topbar { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+  .level-tag { font-weight: 800; font-size: 14px; flex: 1; text-align: center; }
+  .stat-chip {
+    background: var(--card); border: 2px solid var(--border); border-radius: 10px;
+    box-shadow: 2px 2px 0 var(--shadow);
+    font-size: 12px; font-weight: 700; padding: 8px 10px; flex-shrink: 0;
+  }
+
+  .board-wrap { display: flex; justify-content: center; }
+  #board { position: relative; display: grid; gap: 0; }
+  .cw-cell {
+    position: relative;
+    background: var(--card);
+    border: 1.5px solid var(--border);
+    display: flex; align-items: center; justify-content: center;
+    font-weight: 800; font-size: 0.62em;
+    cursor: pointer;
+    color: var(--ink);
+  }
+  .cw-cell .cnum {
+    position: absolute; top: 1px; left: 2px;
+    font-size: 0.32em; font-weight: 700; color: var(--muted); line-height: 1;
+  }
+  .cw-cell.hl { background: var(--cell-sel); }
+  .cw-cell.cur { background: var(--highlight); color: #262a35; }
+  .cw-cell.cur .cnum { color: #262a35; }
+  .cw-cell.solved { background: var(--success-bg); }
+  .cw-cell.flash-bad { animation: shake 0.3s ease; background: var(--danger-bg); }
+  @keyframes shake { 25% { transform: translateX(-2px); } 75% { transform: translateX(2px); } }
+  @media (prefers-reduced-motion: reduce) { .cw-cell.flash-bad { animation: none; } }
+
+  .clue-bar {
+    display: flex; align-items: stretch; gap: 8px;
+  }
+  .clue-nav {
+    background: var(--card); border: 2px solid var(--border); border-radius: 10px;
+    box-shadow: 2px 2px 0 var(--shadow);
+    font: inherit; font-weight: 800; font-size: 16px; color: var(--ink);
+    width: 44px; cursor: pointer; flex-shrink: 0;
+  }
+  .clue-text {
+    flex: 1;
+    background: var(--card); border: 2px solid var(--border); border-radius: 12px;
+    box-shadow: 2px 2px 0 var(--shadow);
+    padding: 9px 12px;
+    font-size: 13px; line-height: 1.45;
+    display: flex; flex-direction: column; justify-content: center;
+    min-height: 52px;
+  }
+  .clue-text .tag { font-weight: 800; color: var(--accent); font-size: 12px; }
+
+  .kb { display: flex; flex-direction: column; gap: 6px; }
+  .kb-row { display: flex; gap: 5px; justify-content: center; }
+  .kb button {
+    flex: 1; max-width: 44px;
+    padding: 12px 0;
+    background: var(--card); border: 2px solid var(--border); border-radius: 8px;
+    box-shadow: 2px 2px 0 var(--shadow);
+    font: inherit; font-weight: 800; font-size: 15px; color: var(--ink);
+    cursor: pointer;
+  }
+  .kb button:active { transform: translate(1px, 1px); box-shadow: 1px 1px 0 var(--shadow); }
+  .kb button.wide { max-width: 68px; }
+  .kb-actions { display: flex; gap: 8px; }
+  .action-btn {
+    flex: 1;
+    background: var(--card); border: 2px solid var(--border); border-radius: 12px;
+    box-shadow: 3px 3px 0 var(--shadow);
+    font: inherit; font-weight: 800; font-size: 13px; color: var(--ink);
+    padding: 11px 0; cursor: pointer;
+  }
+  .action-btn:active { transform: translate(2px, 2px); box-shadow: 1px 1px 0 var(--shadow); }
+  .action-btn:disabled { opacity: 0.4; pointer-events: none; }
+
+  .clue-lists { display: flex; flex-direction: column; gap: 10px; }
+  .clue-section {
+    background: var(--card); border: 2px solid var(--border); border-radius: 14px;
+    box-shadow: 3px 3px 0 var(--shadow);
+    padding: 12px 14px;
+  }
+  .clue-section h3 { font-size: 13px; font-weight: 800; color: var(--accent); margin-bottom: 6px; letter-spacing: 0.03em; }
+  .clue-item {
+    display: block; width: 100%; text-align: left;
+    background: none; border: none; font: inherit; color: var(--ink);
+    font-size: 13px; line-height: 1.5; padding: 4px 2px; cursor: pointer;
+    border-radius: 6px;
+  }
+  .clue-item b { color: var(--accent); }
+  .clue-item.on { background: var(--cell-sel); }
+  .clue-item.done { color: var(--muted); text-decoration: line-through; }
+
+  .overlay {
+    position: fixed; inset: 0;
+    background: rgba(20, 22, 40, 0.55);
+    display: flex; align-items: center; justify-content: center;
+    padding: 20px; z-index: 10; backdrop-filter: blur(3px);
+  }
+  .overlay.hidden { display: none; }
+  .modal {
+    background: var(--card); border: 2px solid var(--border); border-radius: 18px;
+    padding: 30px 26px; text-align: center; max-width: 340px; width: 100%;
+    box-shadow: 6px 6px 0 var(--shadow);
+    display: flex; flex-direction: column; gap: 10px;
+  }
+  .modal .emoji { font-size: 48px; }
+  .modal h2 { font-size: 22px; font-weight: 800; }
+  .modal p { font-size: 14px; color: var(--muted); line-height: 1.7; }
+  .modal p strong { color: var(--ink); }
+  .modal button {
+    background: var(--accent); color: var(--accent-ink);
+    border: 2px solid var(--border); border-radius: 12px;
+    box-shadow: 3px 3px 0 var(--shadow);
+    font: inherit; font-weight: 800; font-size: 15px;
+    padding: 13px 0; cursor: pointer;
+  }
+  .modal button.secondary { background: var(--card); color: var(--ink); }
+  .modal button.share { background: var(--highlight); color: #262a35; }
+  button:focus-visible { outline: 3px solid var(--highlight); outline-offset: 2px; }
+  .hidden { display: none !important; }
+</style>
+</head>
+<body>
+<div class="app">
+
+  <!-- Home -->
+  <section class="screen active" id="homeScreen">
+    <div class="home-top">
+      <div class="bubble-title" id="appTitle">Slang Crossword 🧩</div>
+      <button class="lang-btn" id="langBtn">🌐</button>
+    </div>
+    <p class="subtitle" id="appSubtitle"></p>
+    <div class="progress-pill">
+      <span id="homeProgressText"></span>
+      <div class="progress-track"><div class="progress-fill" id="homeProgressFill"></div></div>
+    </div>
+    <div class="level-list" id="levelList"></div>
+    <footer>
+      <div>📚 <span id="dataDate"></span></div>
+      <div style="margin-top:5px"><button id="resetBtn"></button> · <a id="privacyLink" href="privacy.html" style="color:inherit">Privacy</a></div>
+    </footer>
+  </section>
+
+  <!-- Puzzle -->
+  <section class="screen" id="gameScreen">
+    <div class="topbar">
+      <button class="back-btn" id="gameBackBtn">←</button>
+      <span class="level-tag" id="gameLevelTag"></span>
+      <span class="stat-chip" id="mistakeChip">❌ 0</span>
+      <button class="action-btn" id="hintBtn" style="flex:0 0 auto; padding:8px 12px;">💡 <span id="hintCount"></span></button>
+    </div>
+    <div class="board-wrap"><div id="board"></div></div>
+    <div class="clue-bar">
+      <button class="clue-nav" id="prevClueBtn">◀</button>
+      <div class="clue-text" id="clueText"></div>
+      <button class="clue-nav" id="nextClueBtn">▶</button>
+    </div>
+    <div class="kb" id="kb"></div>
+    <div class="clue-lists">
+      <div class="clue-section"><h3 id="acrossLabel"></h3><div id="acrossList"></div></div>
+      <div class="clue-section"><h3 id="downLabel"></h3><div id="downList"></div></div>
+    </div>
+  </section>
+
+</div>
+
+<div class="overlay hidden" id="overlay">
+  <div class="modal">
+    <div class="emoji" id="modalEmoji">🎉</div>
+    <h2 id="modalTitle"></h2>
+    <p id="modalText"></p>
+    <button class="share hidden" id="modalShareBtn"></button>
+    <button id="modalBtn"></button>
+    <button class="secondary" id="modalSecondaryBtn"></button>
+  </div>
+</div>
+
+<script>
+(() => {
+  'use strict';
+
+  // ---------- i18n ----------
+  const STR = {
+    en: {
+      title: 'Slang Crossword 🧩',
+      subtitle: 'Learn modern slang & texting acronyms by solving crosswords.<br><strong>Every answer is a word people actually use online.</strong> Clear a level to unlock the next — it gets harder.',
+      cleared: 'cleared',
+      reset: 'Reset progress',
+      resetConfirm: 'Reset your progress and start over from level 1?',
+      across: 'ACROSS →',
+      down: 'DOWN ↓',
+      acrossShort: 'A',
+      downShort: 'D',
+      letters: (n) => n + ' letters',
+      mistakes: 'wrong',
+      clearTitle: 'Puzzle solved!',
+      clearText: (m, h) => 'Wrong guesses: <strong>' + m + '</strong> · Hints used: <strong>' + h + '</strong>',
+      allClearText: 'You conquered every crossword. Certified fluent in internet! 🏆',
+      nextLevel: 'Next level →',
+      backHome: 'Back to home',
+      replay: 'Play again (new layout)',
+      quitConfirm: 'Leave this puzzle? Progress on this grid will be lost.',
+      langBtn: '🌐 한국어',
+      payTitle: 'Skip ahead? 💎',
+      payText: (price, from, to) => 'Levels unlock in order as you clear them — for free. In a hurry? Unlock ' + (from === to ? '<strong>level ' + from + '</strong>' : '<strong>levels ' + from + '–' + to + '</strong>') + ' right now for <strong>' + price + '</strong>.',
+      payBtn: (price, n) => (n > 1 ? 'Unlock ' + n + ' levels — ' : 'Unlock — ') + price,
+      payLater: "I'll earn it",
+      payThanksTitle: 'Unlocked! 💎',
+      payThanksText: (to) => 'Everything up to level ' + to + ' is yours. Have fun!',
+      payNotSet: 'Payments are not live yet — coming soon!',
+      payOk: "Let's go!",
+      dataDate: 'Slang data updated: Jul 2026 · refreshed every 6 months',
+      shareBtn: '\ud83d\udce4 Challenge a friend',
+      shareText: (l) => 'I just cleared Level ' + l + ' on Slang Crossword \ud83e\udde9 Think you know your slang?',
+      copied: 'Copied! Paste it anywhere to challenge a friend.',
+      privacy: 'Privacy Policy',
+    },
+    ko: {
+      title: '요즘 영어 크로스워드 🧩',
+      subtitle: '크로스워드를 풀면서 신조어·줄임말을 배워요.<br><strong>정답은 전부 실제로 쓰이는 요즘 영어.</strong> 레벨을 깰수록 어려워집니다.',
+      cleared: '클리어',
+      reset: '진행도 초기화',
+      resetConfirm: '진행도를 초기화하고 레벨 1부터 다시 시작할까요?',
+      across: '가로 →',
+      down: '세로 ↓',
+      acrossShort: '가로',
+      downShort: '세로',
+      letters: (n) => n + '글자',
+      mistakes: '오답',
+      clearTitle: '퍼즐 완성!',
+      clearText: (m, h) => '오답 <strong>' + m + '</strong>번 · 힌트 <strong>' + h + '</strong>번 사용',
+      allClearText: '모든 크로스워드를 정복했어요. 인터넷 영어 마스터 인증! 🏆',
+      nextLevel: '다음 레벨 →',
+      backHome: '홈으로',
+      replay: '다시 풀기 (새 배치)',
+      quitConfirm: '퍼즐을 나갈까요? 지금 판의 진행은 사라져요.',
+      langBtn: '🌐 English',
+      payTitle: '건너뛰고 바로 할래요? 💎',
+      payText: (price, from, to) => '레벨은 클리어하면 순서대로 무료로 열려요. 기다리기 싫다면 ' + (from === to ? '<strong>레벨 ' + from + '</strong>' : '<strong>레벨 ' + from + '~' + to + '</strong>') + '을 지금 바로 <strong>' + price + '</strong>에 열 수 있어요.',
+      payBtn: (price, n) => price + '에 ' + (n > 1 ? n + '개 레벨 열기' : '바로 열기'),
+      payLater: '그냥 깨서 갈게요',
+      payThanksTitle: '잠금 해제! 💎',
+      payThanksText: (to) => '레벨 ' + to + '까지 열렸어요. 즐겁게 플레이하세요!',
+      payNotSet: '결제 연결 준비 중이에요 — 곧 열립니다!',
+      payOk: '바로 시작!',
+      dataDate: '단어 데이터: 2026년 7월 기준 · 6개월마다 업데이트',
+      shareBtn: '\ud83d\udce4 친구에게 도전장 보내기',
+      shareText: (l) => '나 Slang Crossword 레벨 ' + l + ' 클리어! \ud83e\udde9 요즘 영어 얼마나 알아?',
+      copied: '복사 완료! 어디든 붙여넣어서 친구에게 보내세요.',
+      privacy: '개인정보처리방침',
+    },
+  };
+
+  // ---------- word data ----------
+  // a: answer (A-Z only) / c: clue per language
+  const LEVELS = [
+    { name: { en: 'Starter Pack', ko: '입문 팩' }, words: [
+      { a: 'LOL', c: { en: 'laughing out loud', ko: '크게 웃김 (ㅋㅋㅋ)' } },
+      { a: 'TEA', c: { en: 'gossip, the juicy news ("spill the tea")', ko: '가십, 뒷얘기' } },
+      { a: 'OMG', c: { en: '"oh my god" — surprise!', ko: '헐, 세상에 (놀람)' } },
+      { a: 'MOOD', c: { en: 'relatable — "that\'s such a mood"', ko: '완전 공감, 딱 내 기분' } },
+      { a: 'BTW', c: { en: 'by the way', ko: '그건 그렇고, 참고로' } },
+      { a: 'FIRE', c: { en: 'amazing, excellent ("this song is fire")', ko: '완전 멋진, 끝내주는' } },
+      { a: 'IDK', c: { en: "I don't know", ko: '잘 모르겠어' } },
+      { a: 'DEAD', c: { en: "so funny you can't breathe 💀", ko: '웃겨 죽는 중 💀' } },
+    ]},
+    { name: { en: 'Chat Basics', ko: '채팅 기본기' }, words: [
+      { a: 'TBH', c: { en: 'to be honest', ko: '솔직히 말하면' } },
+      { a: 'VIBE', c: { en: 'the mood or feeling of something', ko: '분위기, 느낌' } },
+      { a: 'BRB', c: { en: 'be right back', ko: '금방 돌아올게' } },
+      { a: 'SHOOK', c: { en: 'shocked, rattled', ko: '(충격에) 놀란, 얼얼한' } },
+      { a: 'NGL', c: { en: 'not gonna lie', ko: '거짓말 안 보태고' } },
+      { a: 'HYPE', c: { en: 'big excitement or buzz', ko: '한껏 달아오른 기대감' } },
+      { a: 'TMI', c: { en: 'too much information', ko: '굳이 몰라도 될 과한 정보' } },
+      { a: 'FLOP', c: { en: 'a total failure (opposite of a hit)', ko: '망작, 폭망' } },
+    ]},
+    { name: { en: 'Texting & Vibes', ko: '문자 & 바이브' }, words: [
+      { a: 'HMU', c: { en: 'hit me up — contact me', ko: '연락해, 콜 줘' } },
+      { a: 'SLAPS', c: { en: '(a song) is seriously good', ko: '(노래가) 미쳤다, 좋다' } },
+      { a: 'LMAO', c: { en: 'laughing really hard', ko: '빵 터짐 (LOL보다 강함)' } },
+      { a: 'BOP', c: { en: 'a catchy, great song', ko: '중독성 있는 좋은 노래' } },
+      { a: 'NVM', c: { en: 'never mind', ko: '아니다, 신경 쓰지 마' } },
+      { a: 'SNACK', c: { en: 'an attractive-looking person', ko: '훈훈한 매력덩어리 (사람)' } },
+      { a: 'LMK', c: { en: 'let me know', ko: '알게 되면 알려줘' } },
+      { a: 'IRL', c: { en: 'in real life', ko: '현실에서, 실제로' } },
+    ]},
+    { name: { en: 'Reactions & Icons', ko: '리액션 & 클래식' }, words: [
+      { a: 'FOMO', c: { en: 'fear of missing out', ko: '나만 놓치는 것 같은 불안감' } },
+      { a: 'ICONIC', c: { en: 'legendary, unforgettable', ko: '레전드급인, 상징적인' } },
+      { a: 'GOAT', c: { en: 'greatest of all time 🐐', ko: '역대 최고 🐐' } },
+      { a: 'BASIC', c: { en: 'unoriginal, following every trend', ko: '개성 없이 유행만 좇는' } },
+      { a: 'POV', c: { en: 'point of view', ko: '~의 시점 (밈 문법)' } },
+      { a: 'YOLO', c: { en: 'you only live once', ko: '인생 한 번뿐이니 저지르자' } },
+      { a: 'ISTG', c: { en: 'I swear to god', ko: '맹세컨대 (짜증·강조)' } },
+      { a: 'IYKYK', c: { en: 'if you know, you know', ko: '아는 사람만 아는' } },
+    ]},
+    { name: { en: 'Classic Slang', ko: '슬랭 클래식' }, words: [
+      { a: 'GHOST', c: { en: 'to cut off all contact suddenly', ko: '연락을 뚝 끊다, 잠수 타다' } },
+      { a: 'LOWKEY', c: { en: 'kind of, secretly', ko: '은근히, 티 안 나게' } },
+      { a: 'CRINGE', c: { en: 'embarrassing to watch', ko: '오글거리는' } },
+      { a: 'SALTY', c: { en: 'bitter or upset over something small', ko: '삐진, 꽁해 있는' } },
+      { a: 'SHADE', c: { en: 'a subtle insult ("throw shade")', ko: '은근한 디스' } },
+      { a: 'STAN', c: { en: 'a superfan', ko: '열성 팬' } },
+      { a: 'FLEX', c: { en: 'to show off', ko: '자랑하다, 과시하다' } },
+      { a: 'LIT', c: { en: 'amazing, exciting (a party)', ko: '분위기 최고인, 끝내주는' } },
+    ]},
+    { name: { en: 'Gen Z Slang Ⅰ', ko: 'Z세대 슬랭 Ⅰ' }, words: [
+      { a: 'BET', c: { en: 'okay, deal, sounds good', ko: '콜, 오케이 좋아' } },
+      { a: 'SUS', c: { en: 'suspicious', ko: '수상한, 의심스러운' } },
+      { a: 'SLAY', c: { en: 'to do something flawlessly', ko: '끝내주게 해내다' } },
+      { a: 'MID', c: { en: 'mediocre, nothing special', ko: '그저 그런, 평범 이하' } },
+      { a: 'BASED', c: { en: 'confidently yourself, unswayed by others', ko: '남 눈치 안 보고 소신 있는' } },
+      { a: 'SIMP', c: { en: 'someone who does way too much for a crush', ko: '상대에게 과하게 퍼주는 사람' } },
+      { a: 'KAREN', c: { en: 'an entitled, demanding person (meme)', ko: '진상 부리는 사람 (밈)' } },
+      { a: 'NOCAP', c: { en: 'no lie, for real (2 words)', ko: '진짜임, 거짓말 아님 (두 단어)' } },
+    ]},
+    { name: { en: 'Gen Z Slang Ⅱ', ko: 'Z세대 슬랭 Ⅱ' }, words: [
+      { a: 'RIZZ', c: { en: 'charm, flirting skill', ko: '이성을 사로잡는 매력' } },
+      { a: 'ICK', c: { en: 'a small turn-off that kills attraction', ko: '갑자기 정 떨어지는 포인트' } },
+      { a: 'DELULU', c: { en: 'delusional (in a hopeful, funny way)', ko: '행복회로, 근거 없는 망상' } },
+      { a: 'ATE', c: { en: 'nailed it completely', ko: '완벽하게 해치웠다' } },
+      { a: 'RATIO', c: { en: 'when a reply outperforms the original post', ko: '원글보다 반박이 더 흥한 것' } },
+      { a: 'NPC', c: { en: 'someone on autopilot, no original thoughts', ko: '생각 없이 휩쓸리는 사람' } },
+      { a: 'TOUCHGRASS', c: { en: 'go outside, log off (2 words)', ko: '밖에 나가 바람 좀 쐬라 (두 단어)' } },
+    ]},
+    { name: { en: 'Dating & Relationships', ko: '연애 & 관계' }, words: [
+      { a: 'SITUATIONSHIP', c: { en: 'more than friends, not quite dating', ko: '사귀는 듯 아닌 애매한 관계' } },
+      { a: 'REDFLAG', c: { en: 'a warning sign in a partner (2 words)', ko: '위험 신호 (두 단어)' } },
+      { a: 'GREENFLAG', c: { en: 'a sign someone is a keeper (2 words)', ko: '좋은 사람이라는 신호 (두 단어)' } },
+      { a: 'CATFISH', c: { en: 'someone faking an identity online', ko: '온라인에서 신분을 속이는 사람' } },
+      { a: 'FRIENDZONE', c: { en: 'when they only see you as a friend (2 words)', ko: '친구 이상은 안 되는 관계 (두 단어)' } },
+      { a: 'SOFTLAUNCH', c: { en: 'hinting at a new partner online (2 words)', ko: '연인을 은근슬쩍 공개하기 (두 단어)' } },
+      { a: 'LOVEBOMBING', c: { en: 'overwhelming affection early on (2 words)', ko: '초반의 과한 애정 공세 (두 단어)' } },
+      { a: 'BREADCRUMBING', c: { en: 'crumbs of attention to keep someone hooked', ko: '희망고문 (빵부스러기 흘리기)' } },
+    ]},
+    { name: { en: 'Meme Culture', ko: '밈 문화' }, words: [
+      { a: 'MEWING', c: { en: 'jawline-training tongue posture (meme)', ko: '턱선 만들기 (혀 운동) 밈' } },
+      { a: 'FANUMTAX', c: { en: "taking a bite of a friend's food (2 words)", ko: '친구 음식 한 입 뺏어먹기 (두 단어)' } },
+      { a: 'BRAINROT', c: { en: 'mindless meme content', ko: '뇌가 썩는 것 같은 밈 콘텐츠' } },
+      { a: 'SKIBIDI', c: { en: 'a meaningless viral catchword', ko: '뜻 없는 유행 감탄사 (밈)' } },
+      { a: 'GYAT', c: { en: 'exclamation at an impressive figure', ko: '몸매 감탄사' } },
+      { a: 'AURA', c: { en: 'coolness points, unbeatable presence', ko: '카리스마, 범접 못 할 포스' } },
+      { a: 'MOG', c: { en: 'to outshine someone by looks alone', ko: '외모로 압도하다' } },
+      { a: 'SIGMA', c: { en: 'a lone-wolf "top" male (ironic meme)', ko: '독고다이 상남자 (밈)' } },
+    ]},
+    { name: { en: 'Trending Now', ko: '최신 유행어' }, words: [
+      { a: 'COOKED', c: { en: 'doomed, in big trouble', ko: '망했다, 끝장났다' } },
+      { a: 'LOCKIN', c: { en: 'get hyper-focused (2 words)', ko: '초집중 모드 (두 단어)' } },
+      { a: 'CRASHOUT', c: { en: 'to snap, lose it completely (2 words)', ko: '이성을 잃고 폭발하다 (두 단어)' } },
+      { a: 'OPP', c: { en: 'an opponent, enemy', ko: '적, 나를 노리는 상대' } },
+      { a: 'YAP', c: { en: 'to talk on and on about nothing', ko: '쓸데없이 말을 쏟아내다' } },
+      { a: 'GLAZE', c: { en: 'to overpraise someone excessively', ko: '과하게 빨아주다' } },
+      { a: 'TUFF', c: { en: 'cool, hard (looks great)', ko: '간지 나는, 멋진' } },
+      { a: 'DEMURE', c: { en: 'modest and mindful (viral catchphrase)', ko: '얌전하고 단정한 (유행 밈)' } },
+    ]},
+    { name: { en: 'Bonus Slang Pack', ko: '보너스 슬랭' }, words: [
+      { a: 'YEET', c: { en: 'to throw something with full force', ko: '힘껏 던지다 (감탄사로도)' } },
+      { a: 'BUSSIN', c: { en: 'really, really delicious', ko: '(음식이) 미치게 맛있는' } },
+      { a: 'DRIP', c: { en: 'a stylish outfit, fashion sense', ko: '패션 간지, 스타일' } },
+      { a: 'CAP', c: { en: 'a lie ("that\'s cap!")', ko: '거짓말, 뻥' } },
+      { a: 'SNATCHED', c: { en: 'looking perfect, on point', ko: '(스타일이) 완벽한' } },
+      { a: 'FINSTA', c: { en: 'a fake/secret Instagram account', ko: '비밀 뒷계정 (인스타)' } },
+      { a: 'GASLIGHT', c: { en: "to manipulate someone into doubting reality", ko: '가스라이팅하다' } },
+      { a: 'DOOMSCROLL', c: { en: 'to endlessly scroll through bad news', ko: '나쁜 뉴스를 무한 스크롤하다' } },
+    ]},
+    { name: { en: 'Final Boss Memes', ko: '초고난도 최신 밈' }, words: [
+      { a: 'HUZZ', c: { en: 'girls, women (cheeky streamer slang)', ko: '여자들 (장난스러운 표현)' } },
+      { a: 'CHOPPED', c: { en: 'ugly, busted-looking', ko: '못생긴, 후줄근한' } },
+      { a: 'PMO', c: { en: 'piss me off', ko: '짜증 나게 하다' } },
+      { a: 'ICL', c: { en: "I can't lie", ko: '솔직히 말해서' } },
+      { a: 'AURAFARMING', c: { en: 'acting cool on purpose for aura points (2 words)', ko: '아우라 적립 행동 (두 단어)' } },
+      { a: 'LOOKSMAXXING', c: { en: 'maximizing your appearance', ko: '외모를 최대치로 끌어올리기' } },
+      { a: 'SIXSEVEN', c: { en: 'the meaningless "6 7" chant (spelled out)', ko: '뜻 없는 "6 7" 밈 (영어로 풀어서)' } },
+    ]},
+    { name: { en: '2026 Fresh Drops', ko: '2026 신상 슬랭' }, words: [
+      { a: 'SYBAU', c: { en: 'rudely telling someone to hush (viral acronym — spicy!)', ko: '조용히 좀 해!! (거친 비속어 줄임말)' } },
+      { a: 'GLOWUP', c: { en: 'a dramatic improvement in looks or life (2 words)', ko: '몰라보게 예뻐지고 발전함 (두 단어)' } },
+      { a: 'EXTRA', c: { en: 'over the top, way too dramatic', ko: '오버하는, 과한' } },
+      { a: 'SHEESH', c: { en: 'drawn-out exclamation when impressed', ko: '우와 대박~ (길게 빼는 감탄사)' } },
+      { a: 'CLUTCH', c: { en: 'coming through in a critical moment', ko: '결정적 순간에 해내는' } },
+      { a: 'SIDEQUEST', c: { en: 'a random detour from your main plans (2 words)', ko: '본업 제쳐두고 떠나는 딴짓 모험 (두 단어)' } },
+      { a: 'BRUH', c: { en: '"dude..." — disbelief in one word', ko: '헐, 야... (어이없을 때)' } },
+      { a: 'AFK', c: { en: 'away from keyboard', ko: '자리 비움 (게임/채팅)' } },
+    ]},
+  ];
+
+  const hintsForLevel = (i) => (i < 4 ? 3 : i < 9 ? 2 : 1);
+
+  // ---------- language ----------
+  const LANG_KEY = 'slang-crossword-lang';
+  let lang = 'en';
+  try {
+    const saved = localStorage.getItem(LANG_KEY);
+    if (saved === 'en' || saved === 'ko') lang = saved;
+    else if ((navigator.language || '').startsWith('ko')) lang = 'ko';
+  } catch (e) { /* default en */ }
+  const S = () => STR[lang];
+
+  // ---------- progress ----------
+  const STORAGE_KEY = 'slang-crossword-progress';
+  let clearedCount = 0;
+  let paidUp = 0; // 결제로 열어둔 최고 레벨 (1-based: 레벨 paidUp까지 플레이 가능)
+  try {
+    const saved = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}');
+    if (saved.cleared >= 0) clearedCount = Math.min(saved.cleared, LEVELS.length);
+    if (saved.paidUp >= 0) paidUp = Math.min(saved.paidUp, LEVELS.length);
+  } catch (e) { /* ignore */ }
+  function saveProgress() {
+    try { localStorage.setItem(STORAGE_KEY, JSON.stringify({ cleared: clearedCount, paidUp })); } catch (e) { /* private mode */ }
+  }
+
+  // ---------- paywall (skip-ahead, 3-level pack) ----------
+  const PAY = {
+    price: 'US$0.99',
+    pack: 3, // 결제 1회로 열리는 레벨 수
+    // 결제 서비스(Stripe Payment Link 등)의 링크를 붙여넣으세요.
+    // 결제 완료 후 이 게임 주소 + ?paid=1 로 리디렉션되도록 설정해야 합니다.
+    url: '',
+  };
+  const PENDING_KEY = 'slang-crossword-pending-unlock';
+  // 레벨 i(0-based) 플레이 가능 여부: 순차 진행 또는 결제로 해제
+  const isUnlocked = (i) => i <= clearedCount || i < paidUp;
+  // 아직 잠긴 첫 레벨의 0-based 인덱스
+  const firstLockedIdx = () => Math.max(clearedCount + 1, paidUp);
+  let justPaidOpen = 0; // 결제 직후 열어줄 레벨 (1-based)
+  try {
+    const qs = new URLSearchParams(location.search);
+    if (qs.get('paid') === '1') {
+      const target = parseInt(qs.get('lv') || localStorage.getItem(PENDING_KEY) || '0', 10);
+      if (target >= 1 && target <= LEVELS.length && target > paidUp) {
+        justPaidOpen = firstLockedIdx() + 1;
+        paidUp = target;
+        saveProgress();
+      }
+      localStorage.removeItem(PENDING_KEY);
+      history.replaceState(null, '', location.pathname);
+    }
+  } catch (e) { /* URL/storage 사용 불가 환경 */ }
+
+  function showPaywall() {
+    $('modalShareBtn').classList.add('hidden');
+    const from = firstLockedIdx() + 1; // 1-based
+    const to = Math.min(from + PAY.pack - 1, LEVELS.length);
+    $('modalEmoji').textContent = '💎';
+    $('modalTitle').textContent = S().payTitle;
+    $('modalText').innerHTML = S().payText(PAY.price, from, to);
+    const main = $('modalBtn'), sec = $('modalSecondaryBtn');
+    sec.classList.remove('hidden');
+    main.textContent = S().payBtn(PAY.price, to - from + 1);
+    main.onclick = () => {
+      if (PAY.url) {
+        try { localStorage.setItem(PENDING_KEY, String(to)); } catch (e) { /* 결제 후 lv 파라미터로도 복구 가능 */ }
+        location.href = PAY.url;
+      } else {
+        alert(S().payNotSet);
+      }
+    };
+    sec.textContent = S().payLater;
+    sec.onclick = () => $('overlay').classList.add('hidden');
+    $('overlay').classList.remove('hidden');
+  }
+
+  function showThanks(openLv) {
+    $('modalShareBtn').classList.add('hidden');
+    $('modalEmoji').textContent = '💎';
+    $('modalTitle').textContent = S().payThanksTitle;
+    $('modalText').textContent = S().payThanksText(paidUp);
+    const main = $('modalBtn'), sec = $('modalSecondaryBtn');
+    main.textContent = S().payOk;
+    main.onclick = () => { $('overlay').classList.add('hidden'); openLevel(openLv - 1); };
+    sec.textContent = S().backHome;
+    sec.classList.remove('hidden');
+    sec.onclick = () => { $('overlay').classList.add('hidden'); renderHome(); show('home'); };
+    $('overlay').classList.remove('hidden');
+  }
+
+  // ---------- generator (criss-cross, multi-cluster) ----------
+  const MAXW = 13;
+  const shuffle = (arr) => {
+    const a = arr.slice();
+    for (let i = a.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [a[i], a[j]] = [a[j], a[i]];
+    }
+    return a;
+  };
+
+  function greedyCluster(words) {
+    let best = null;
+    for (let t = 0; t < 150; t++) {
+      const order = shuffle(words);
+      const grid = new Map();
+      const placed = [];
+      const key = (r, c) => r + ',' + c;
+      const get = (r, c) => grid.get(key(r, c));
+      function fits(word, r0, c0, dr, dc) {
+        if (get(r0 - dr, c0 - dc) !== undefined) return false;
+        if (get(r0 + dr * word.length, c0 + dc * word.length) !== undefined) return false;
+        let cross = 0;
+        for (let i = 0; i < word.length; i++) {
+          const r = r0 + dr * i, c = c0 + dc * i, e = get(r, c);
+          if (e !== undefined) { if (e !== word[i]) return false; cross++; }
+          else if (get(r + dc, c + dr) !== undefined || get(r - dc, c - dr) !== undefined) return false;
+        }
+        if (!cross) return false;
+        let minR = r0, maxR = r0 + dr * (word.length - 1), minC = c0, maxC = c0 + dc * (word.length - 1);
+        for (const k of grid.keys()) {
+          const [r, c] = k.split(',').map(Number);
+          minR = Math.min(minR, r); maxR = Math.max(maxR, r);
+          minC = Math.min(minC, c); maxC = Math.max(maxC, c);
+        }
+        return (maxR - minR + 1 <= MAXW && maxC - minC + 1 <= MAXW);
+      }
+      function put(word, r0, c0, dr, dc) {
+        for (let i = 0; i < word.length; i++) grid.set(key(r0 + dr * i, c0 + dc * i), word[i]);
+        placed.push({ word, r0, c0, dr, dc });
+      }
+      put(order[0], 0, 0, 0, 1);
+      let pending = order.slice(1);
+      let progress = true;
+      while (progress && pending.length) {
+        progress = false;
+        const next = [];
+        for (const word of pending) {
+          const cands = [];
+          for (const [k, ch] of grid) {
+            const [r, c] = k.split(',').map(Number);
+            for (let i = 0; i < word.length; i++) {
+              if (word[i] !== ch) continue;
+              for (const [dr, dc] of [[1, 0], [0, 1]]) {
+                const r0 = r - dr * i, c0 = c - dc * i;
+                if (fits(word, r0, c0, dr, dc)) cands.push([r0, c0, dr, dc]);
+              }
+            }
+          }
+          if (cands.length) {
+            const [r0, c0, dr, dc] = cands[Math.floor(Math.random() * cands.length)];
+            put(word, r0, c0, dr, dc);
+            progress = true;
+          } else next.push(word);
+        }
+        pending = next;
+      }
+      if (!best || placed.length > best.length) best = placed;
+      if (placed.length === words.length) break;
+    }
+    return best;
+  }
+
+  function buildLayout(wordObjs) {
+    let remaining = wordObjs.map((w) => w.a);
+    const clusters = [];
+    while (remaining.length) {
+      if (remaining.length === 1) {
+        clusters.push([{ word: remaining[0], r0: 0, c0: 0, dr: 0, dc: 1 }]);
+        break;
+      }
+      const placed = greedyCluster(remaining);
+      clusters.push(placed);
+      const used = new Set(placed.map((p) => p.word));
+      remaining = remaining.filter((w) => !used.has(w));
+      if (placed.length <= 1 && remaining.length) {
+        remaining.forEach((w, i) => clusters.push([{ word: w, r0: 0, c0: 0, dr: 0, dc: 1 }]));
+        break;
+      }
+    }
+    // 클러스터 세로로 쌓기 (가운데 정렬, 1줄 간격)
+    const norm = clusters.map((placed) => {
+      let minR = Infinity, maxR = -Infinity, minC = Infinity, maxC = -Infinity;
+      for (const p of placed) {
+        const r2 = p.r0 + p.dr * (p.word.length - 1), c2 = p.c0 + p.dc * (p.word.length - 1);
+        minR = Math.min(minR, p.r0); maxR = Math.max(maxR, r2);
+        minC = Math.min(minC, p.c0); maxC = Math.max(maxC, c2);
+      }
+      return { placed, minR, minC, w: maxC - minC + 1, h: maxR - minR + 1 };
+    });
+    const W = Math.max(...norm.map((n) => n.w));
+    let top = 0;
+    const entries = [];
+    const cellMap = new Map();
+    for (const cl of norm) {
+      const offC = Math.floor((W - cl.w) / 2);
+      for (const p of cl.placed) {
+        const wordObj = wordObjs.find((w) => w.a === p.word);
+        const cells = [];
+        const er = top + (p.r0 - cl.minR), ec = offC + (p.c0 - cl.minC);
+        for (let i = 0; i < p.word.length; i++) {
+          const r = er + p.dr * i, c = ec + p.dc * i;
+          const k = r + ',' + c;
+          if (!cellMap.has(k)) cellMap.set(k, { r, c, sol: p.word[i] });
+          cells.push(k);
+        }
+        entries.push({ wordObj, dir: p.dr ? 'D' : 'A', cells, r: er, c: ec, solved: false });
+      }
+      top += cl.h + 1;
+    }
+    // 번호 매기기 (같은 시작 칸은 번호 공유)
+    const sorted = entries.slice().sort((a, b) => a.r - b.r || a.c - b.c || (a.dir === 'A' ? -1 : 1));
+    const startNums = new Map();
+    let num = 0;
+    for (const e of sorted) {
+      const k = e.r + ',' + e.c;
+      if (!startNums.has(k)) startNums.set(k, ++num);
+      e.num = startNums.get(k);
+    }
+    return { entries, cellMap, W, H: top - 1 };
+  }
+
+  // ---------- state ----------
+  let currentLevel = 0;
+  let layout = null;
+  let cellEls = new Map();   // key -> element
+  let cellVals = new Map();  // key -> letter
+  let lockedCells = new Set();
+  let revealedCells = new Set();
+  let curEntry = 0;          // index into layout.entries
+  let curCell = 0;           // index within entry cells
+  let mistakes = 0, hintsLeft = 0, hintsUsed = 0;
+
+  const $ = (id) => document.getElementById(id);
+  const screens = { home: $('homeScreen'), game: $('gameScreen') };
+  function show(name) {
+    Object.values(screens).forEach((s) => s.classList.remove('active'));
+    screens[name].classList.add('active');
+    window.scrollTo(0, 0);
+  }
+
+  // ---------- static labels ----------
+  function applyLang() {
+    document.documentElement.lang = lang;
+    $('appTitle').textContent = S().title;
+    $('appSubtitle').innerHTML = S().subtitle;
+    $('langBtn').textContent = S().langBtn;
+    $('resetBtn').textContent = S().reset;
+    $('privacyLink').textContent = S().privacy;
+    $('dataDate').textContent = S().dataDate;
+    $('acrossLabel').textContent = S().across;
+    $('downLabel').textContent = S().down;
+  }
+
+  // ---------- home ----------
+  function renderHome() {
+    $('homeProgressText').textContent = clearedCount + '/' + LEVELS.length + ' ' + S().cleared;
+    $('homeProgressFill').style.width = (clearedCount / LEVELS.length * 100) + '%';
+    const list = $('levelList');
+    list.innerHTML = '';
+    LEVELS.forEach((lv, i) => {
+      const btn = document.createElement('button');
+      btn.className = 'level-card';
+      const cleared = i < clearedCount;
+      const unlocked = isUnlocked(i);
+      if (cleared) btn.classList.add('cleared');
+      if (!unlocked) btn.classList.add('locked');
+      const preview = lv.words.slice(0, 4).map((w) => w.a).join(' · ');
+      btn.innerHTML =
+        '<span class="num">' + (i + 1) + '</span>' +
+        '<span class="info"><span class="name">' + lv.name[lang] + '</span>' +
+        '<span class="words-preview">' + (unlocked ? preview + ' …' : '🔒 ' + PAY.price) + '</span></span>' +
+        '<span class="state">' + (cleared ? '✅' : unlocked ? '▶️' : '💎') + '</span>';
+      btn.addEventListener('click', () => { if (unlocked) openLevel(i); else showPaywall(); });
+      list.appendChild(btn);
+    });
+  }
+
+  // ---------- puzzle ----------
+  function openLevel(levelIdx) {
+    if (!isUnlocked(levelIdx)) { showPaywall(); return; }
+    currentLevel = levelIdx;
+    layout = buildLayout(LEVELS[levelIdx].words);
+    cellVals = new Map();
+    lockedCells = new Set();
+    revealedCells = new Set();
+    mistakes = 0;
+    hintsUsed = 0;
+    hintsLeft = hintsForLevel(levelIdx);
+    curEntry = layout.entries.indexOf(layout.entries.slice().sort((a, b) => a.num - b.num || (a.dir === 'A' ? -1 : 1))[0]);
+    curCell = 0;
+    $('gameLevelTag').textContent = 'Lv.' + (levelIdx + 1) + ' · ' + LEVELS[levelIdx].name[lang];
+    renderBoard();
+    renderClueLists();
+    updateHud();
+    updateSelection();
+    show('game');
+    fitBoard();
+  }
+
+  function renderBoard() {
+    const board = $('board');
+    board.innerHTML = '';
+    board.style.gridTemplateColumns = 'repeat(' + layout.W + ', 1fr)';
+    board.style.gridTemplateRows = 'repeat(' + layout.H + ', 1fr)';
+    cellEls = new Map();
+    // 시작 칸 번호
+    const numAt = new Map();
+    for (const e of layout.entries) {
+      const k = e.r + ',' + e.c;
+      if (!numAt.has(k)) numAt.set(k, e.num);
+    }
+    for (const [k, cell] of layout.cellMap) {
+      const el = document.createElement('div');
+      el.className = 'cw-cell';
+      el.style.gridRow = (cell.r + 1);
+      el.style.gridColumn = (cell.c + 1);
+      if (numAt.has(k)) el.innerHTML = '<span class="cnum">' + numAt.get(k) + '</span><span class="ltr"></span>';
+      else el.innerHTML = '<span class="ltr"></span>';
+      el.addEventListener('click', () => tapCell(k));
+      board.appendChild(el);
+      cellEls.set(k, el);
+    }
+  }
+
+  function fitBoard() {
+    const board = $('board');
+    if (!layout) return;
+    const wrapW = board.parentElement.clientWidth;
+    const maxH = Math.max(220, window.innerHeight * 0.42);
+    const px = Math.min(wrapW / layout.W, maxH / layout.H, 46);
+    board.style.width = (px * layout.W) + 'px';
+    board.style.height = (px * layout.H) + 'px';
+    board.style.fontSize = (px) + 'px';
+  }
+  window.addEventListener('resize', fitBoard);
+
+  const entriesAtCell = (k) => layout.entries.map((e, i) => ({ e, i })).filter(({ e }) => e.cells.includes(k));
+
+  function tapCell(k) {
+    const here = entriesAtCell(k);
+    if (!here.length) return;
+    const cur = layout.entries[curEntry];
+    const onSameCell = cur.cells[curCell] === k;
+    let pick;
+    if (onSameCell && here.length > 1) {
+      pick = here.find(({ i }) => i !== curEntry) || here[0];
+    } else {
+      pick = here.find(({ i }) => i === curEntry) || here.find(({ e }) => e.dir === 'A') || here[0];
+    }
+    curEntry = pick.i;
+    curCell = pick.e.cells.indexOf(k);
+    updateSelection();
+  }
+
+  function updateSelection() {
+    const cur = layout.entries[curEntry];
+    for (const [k, el] of cellEls) {
+      el.classList.remove('hl', 'cur');
+      const cell = layout.cellMap.get(k);
+      const inSolved = entriesAtCell(k).some(({ e }) => e.solved);
+      el.classList.toggle('solved', inSolved);
+      el.querySelector('.ltr').textContent = cellVals.get(k) || '';
+    }
+    cur.cells.forEach((k) => cellEls.get(k).classList.add('hl'));
+    cellEls.get(cur.cells[curCell]).classList.add('cur');
+    // 힌트 바
+    const dirLabel = cur.dir === 'A' ? S().acrossShort : S().downShort;
+    $('clueText').innerHTML =
+      '<span class="tag">' + cur.num + ' ' + dirLabel + ' · ' + S().letters(cur.wordObj.a.length) + '</span>' +
+      '<span>' + cur.wordObj.c[lang] + '</span>';
+    renderClueLists();
+  }
+
+  function renderClueLists() {
+    const across = layout.entries.map((e, i) => ({ e, i })).filter(({ e }) => e.dir === 'A').sort((a, b) => a.e.num - b.e.num);
+    const down = layout.entries.map((e, i) => ({ e, i })).filter(({ e }) => e.dir === 'D').sort((a, b) => a.e.num - b.e.num);
+    const fill = (listEl, items) => {
+      listEl.innerHTML = '';
+      for (const { e, i } of items) {
+        const btn = document.createElement('button');
+        btn.className = 'clue-item' + (i === curEntry ? ' on' : '') + (e.solved ? ' done' : '');
+        btn.innerHTML = '<b>' + e.num + '.</b> ' + e.wordObj.c[lang] + ' (' + e.wordObj.a.length + ')';
+        btn.addEventListener('click', () => { curEntry = i; curCell = firstEditable(e); updateSelection(); });
+        listEl.appendChild(btn);
+      }
+    };
+    fill($('acrossList'), across);
+    fill($('downList'), down);
+  }
+
+  const firstEditable = (e) => {
+    const idx = e.cells.findIndex((k) => !lockedCells.has(k));
+    return idx === -1 ? 0 : idx;
+  };
+
+  function updateHud() {
+    $('mistakeChip').textContent = '❌ ' + mistakes;
+    $('hintCount').textContent = hintsLeft;
+    $('hintBtn').disabled = hintsLeft <= 0;
+  }
+
+  function typeLetter(ch) {
+    const cur = layout.entries[curEntry];
+    if (cur.solved) { advanceEntry(1); return; }
+    let k = cur.cells[curCell];
+    // 잠긴 칸이면 다음 편집 가능한 칸으로
+    if (lockedCells.has(k)) {
+      const next = cur.cells.findIndex((kk, i) => i > curCell && !lockedCells.has(kk));
+      if (next === -1) return;
+      curCell = next;
+      k = cur.cells[curCell];
+    }
+    cellVals.set(k, ch);
+    // 다음 칸으로 이동
+    const next = cur.cells.findIndex((kk, i) => i > curCell && !lockedCells.has(kk));
+    if (next !== -1) curCell = next;
+    updateSelection();
+    checkEntry(curEntry);
+  }
+
+  function backspace() {
+    const cur = layout.entries[curEntry];
+    if (cur.solved) return;
+    let k = cur.cells[curCell];
+    if (cellVals.get(k) && !lockedCells.has(k)) {
+      cellVals.delete(k);
+    } else {
+      // 이전 편집 가능한 칸으로
+      for (let i = curCell - 1; i >= 0; i--) {
+        if (!lockedCells.has(cur.cells[i])) { curCell = i; cellVals.delete(cur.cells[i]); break; }
+      }
+    }
+    updateSelection();
+  }
+
+  function checkEntry(ei) {
+    const e = layout.entries[ei];
+    if (e.solved) return;
+    if (!e.cells.every((k) => cellVals.get(k))) return;
+    const ok = e.cells.every((k) => cellVals.get(k) === layout.cellMap.get(k).sol);
+    if (ok) {
+      e.solved = true;
+      e.cells.forEach((k) => lockedCells.add(k));
+      updateSelection();
+      if (layout.entries.every((x) => x.solved)) { win(); return; }
+      // 다음 미해결 항목으로
+      advanceEntry(1);
+    } else {
+      mistakes++;
+      updateHud();
+      e.cells.forEach((k) => {
+        const el = cellEls.get(k);
+        el.classList.add('flash-bad');
+        setTimeout(() => el.classList.remove('flash-bad'), 350);
+      });
+    }
+  }
+
+  function advanceEntry(dirStep) {
+    const n = layout.entries.length;
+    const ordered = layout.entries.map((e, i) => ({ e, i }))
+      .sort((a, b) => (a.e.dir === b.e.dir ? a.e.num - b.e.num : a.e.dir === 'A' ? -1 : 1));
+    const pos = ordered.findIndex(({ i }) => i === curEntry);
+    for (let step = 1; step <= n; step++) {
+      const cand = ordered[(pos + dirStep * step % n + n) % n];
+      if (!cand.e.solved || step === n) {
+        curEntry = cand.i;
+        curCell = firstEditable(cand.e);
+        updateSelection();
+        return;
+      }
+    }
+  }
+
+  function useHint() {
+    if (hintsLeft <= 0) return;
+    const cur = layout.entries[curEntry];
+    if (cur.solved) return;
+    const k = cur.cells[curCell];
+    if (lockedCells.has(k)) return;
+    hintsLeft--;
+    hintsUsed++;
+    cellVals.set(k, layout.cellMap.get(k).sol);
+    revealedCells.add(k);
+    const next = cur.cells.findIndex((kk, i) => i > curCell && !lockedCells.has(kk));
+    if (next !== -1) curCell = next;
+    updateHud();
+    updateSelection();
+    checkEntry(curEntry);
+  }
+
+  // ---------- share ----------
+  const GAME_URL = 'https://hugoseong0721.github.io/amazon-affiliate-share/crossword/';
+  function shareResult() {
+    const msg = S().shareText(currentLevel + 1) + '\n' + GAME_URL;
+    if (navigator.share) {
+      navigator.share({ text: msg }).catch(() => { /* 사용자가 취소 */ });
+    } else if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(msg)
+        .then(() => alert(S().copied))
+        .catch(() => window.prompt('Copy:', msg));
+    } else {
+      window.prompt('Copy:', msg);
+    }
+  }
+
+  function win() {
+    if (currentLevel === clearedCount) {
+      clearedCount++;
+      saveProgress();
+    }
+    const allDone = clearedCount >= LEVELS.length;
+    $('modalEmoji').textContent = '🎉';
+    $('modalTitle').textContent = S().clearTitle;
+    $('modalText').innerHTML = S().clearText(mistakes, hintsUsed) + (allDone ? '<br><br>' + S().allClearText : '');
+    const main = $('modalBtn');
+    const sec = $('modalSecondaryBtn');
+    sec.classList.remove('hidden');
+    const shareBtn = $('modalShareBtn');
+    shareBtn.textContent = S().shareBtn;
+    shareBtn.classList.remove('hidden');
+    shareBtn.onclick = shareResult;
+    const nextIdx = currentLevel + 1;
+    if (!allDone && nextIdx < LEVELS.length && isUnlocked(nextIdx)) {
+      main.textContent = S().nextLevel;
+      main.onclick = () => { $('overlay').classList.add('hidden'); openLevel(nextIdx); };
+    } else if (nextIdx < LEVELS.length && !isUnlocked(nextIdx)) {
+      main.textContent = S().nextLevel + ' 💎';
+      main.onclick = () => { showPaywall(); };
+    } else {
+      main.textContent = S().replay;
+      main.onclick = () => { $('overlay').classList.add('hidden'); openLevel(currentLevel); };
+    }
+    sec.textContent = S().backHome;
+    sec.onclick = () => { $('overlay').classList.add('hidden'); renderHome(); show('home'); };
+    $('overlay').classList.remove('hidden');
+  }
+
+  // ---------- keyboard ----------
+  const kb = $('kb');
+  ['QWERTYUIOP', 'ASDFGHJKL', 'ZXCVBNM⌫'].forEach((row) => {
+    const div = document.createElement('div');
+    div.className = 'kb-row';
+    for (const ch of row) {
+      const btn = document.createElement('button');
+      btn.textContent = ch;
+      if (ch === '⌫') { btn.classList.add('wide'); btn.addEventListener('click', backspace); }
+      else btn.addEventListener('click', () => typeLetter(ch));
+      div.appendChild(btn);
+    }
+    kb.appendChild(div);
+  });
+
+  document.addEventListener('keydown', (e) => {
+    if (!screens.game.classList.contains('active')) return;
+    if (!$('overlay').classList.contains('hidden')) return;
+    const ch = e.key.toUpperCase();
+    if (ch.length === 1 && ch >= 'A' && ch <= 'Z') { typeLetter(ch); e.preventDefault(); }
+    else if (e.key === 'Backspace') { backspace(); e.preventDefault(); }
+    else if (e.key === 'Tab' || e.key === 'ArrowRight' || e.key === 'ArrowDown') { advanceEntry(1); e.preventDefault(); }
+    else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') { advanceEntry(-1); e.preventDefault(); }
+  });
+
+  // ---------- bindings ----------
+  $('prevClueBtn').addEventListener('click', () => advanceEntry(-1));
+  $('nextClueBtn').addEventListener('click', () => advanceEntry(1));
+  $('hintBtn').addEventListener('click', useHint);
+  $('gameBackBtn').addEventListener('click', () => {
+    if (layout.entries.some((e) => e.solved) && !layout.entries.every((e) => e.solved)) {
+      if (!confirm(S().quitConfirm)) return;
+    }
+    renderHome();
+    show('home');
+  });
+  $('resetBtn').addEventListener('click', () => {
+    if (confirm(S().resetConfirm)) {
+      clearedCount = 0;
+      saveProgress();
+      renderHome();
+    }
+  });
+  $('langBtn').addEventListener('click', () => {
+    lang = lang === 'en' ? 'ko' : 'en';
+    try { localStorage.setItem(LANG_KEY, lang); } catch (e) { /* private mode */ }
+    applyLang();
+    renderHome();
+  });
+
+  applyLang();
+  renderHome();
+  if (justPaidOpen) showThanks(justPaidOpen);
+
+  // ---------- PWA ----------
+  if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost')) {
+    navigator.serviceWorker.register('sw.js').catch(() => { /* 미지원 환경 무시 */ });
+  }
+})();
+</script>
+</body>
+</html>

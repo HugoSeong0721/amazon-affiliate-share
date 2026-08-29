@@ -1,0 +1,652 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>스도쿠 챌린지</title>
+<style>
+  :root {
+    --bg: #f4f5fb;
+    --board-bg: #ffffff;
+    --line: #c7cbe0;
+    --line-strong: #3a3f5c;
+    --text: #24283b;
+    --muted: #8a8fa8;
+    --accent: #4f5dd4;
+    --accent-soft: #e4e7fb;
+    --accent-softer: #f0f2fd;
+    --given: #24283b;
+    --entry: #4f5dd4;
+    --wrong: #d64550;
+    --wrong-bg: #fdeaec;
+    --same-bg: #d8dcf7;
+    --note: #7b81a3;
+    --success: #2fa06a;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; touch-action: manipulation; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Apple SD Gothic Neo", "Noto Sans KR", sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 16px 12px 32px;
+    user-select: none;
+    -webkit-user-select: none;
+  }
+  header {
+    width: 100%;
+    max-width: 480px;
+    text-align: center;
+    margin-bottom: 12px;
+  }
+  h1 { font-size: 22px; letter-spacing: -0.5px; }
+  h1 span { color: var(--accent); }
+  .status-bar {
+    width: 100%;
+    max-width: 480px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+    font-size: 14px;
+    color: var(--muted);
+  }
+  .status-bar .level-badge {
+    background: var(--accent);
+    color: #fff;
+    font-weight: 700;
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-size: 14px;
+  }
+  .status-bar .difficulty { font-weight: 600; color: var(--accent); }
+  .hearts { letter-spacing: 2px; font-size: 15px; }
+  #board {
+    display: grid;
+    grid-template-columns: repeat(9, 1fr);
+    width: 100%;
+    max-width: 480px;
+    aspect-ratio: 1;
+    background: var(--board-bg);
+    border: 2px solid var(--line-strong);
+    border-radius: 8px;
+    overflow: hidden;
+    touch-action: manipulation;
+  }
+  .cell {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: clamp(16px, 4.5vw, 26px);
+    font-weight: 600;
+    border-right: 1px solid var(--line);
+    border-bottom: 1px solid var(--line);
+    cursor: pointer;
+    position: relative;
+    color: var(--entry);
+    background: var(--board-bg);
+  }
+  .cell:nth-child(9n) { border-right: none; }
+  .cell:nth-child(n+73) { border-bottom: none; }
+  .cell.box-right { border-right: 2px solid var(--line-strong); }
+  .cell.box-bottom { border-bottom: 2px solid var(--line-strong); }
+  .cell.given { color: var(--given); }
+  .cell.peer { background: var(--accent-softer); }
+  .cell.same { background: var(--same-bg); }
+  .cell.selected { background: var(--accent-soft); box-shadow: inset 0 0 0 2px var(--accent); }
+  .cell.wrong { color: var(--wrong); background: var(--wrong-bg); }
+  .cell.pop { animation: pop 0.18s ease; }
+  @keyframes pop { 50% { transform: scale(1.25); } }
+  .notes {
+    position: absolute;
+    inset: 0;
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    grid-template-rows: repeat(3, 1fr);
+    pointer-events: none;
+  }
+  .notes div {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: clamp(7px, 1.8vw, 11px);
+    font-weight: 500;
+    color: var(--note);
+  }
+  .controls {
+    width: 100%;
+    max-width: 480px;
+    margin-top: 14px;
+  }
+  .numpad {
+    display: grid;
+    grid-template-columns: repeat(9, 1fr);
+    gap: 6px;
+  }
+  .numpad button {
+    aspect-ratio: 1 / 1.15;
+    font-size: clamp(16px, 4.5vw, 24px);
+    font-weight: 700;
+    border: none;
+    border-radius: 10px;
+    background: var(--board-bg);
+    color: var(--accent);
+    cursor: pointer;
+    box-shadow: 0 1px 3px rgba(30, 34, 70, 0.12);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 1px;
+  }
+  .numpad button small { font-size: 10px; font-weight: 500; color: var(--muted); }
+  .numpad button:active { background: var(--accent-soft); }
+  .numpad button.depleted { opacity: 0.25; pointer-events: none; }
+  .tools {
+    display: flex;
+    gap: 8px;
+    margin-top: 10px;
+  }
+  .tools button {
+    flex: 1;
+    padding: 12px 0;
+    font-size: 14px;
+    font-weight: 600;
+    border: none;
+    border-radius: 10px;
+    background: var(--board-bg);
+    color: var(--text);
+    cursor: pointer;
+    box-shadow: 0 1px 3px rgba(30, 34, 70, 0.12);
+  }
+  .tools button:active { background: var(--accent-soft); }
+  .tools button.on { background: var(--accent); color: #fff; }
+  .tools button:disabled { opacity: 0.35; pointer-events: none; }
+  footer {
+    margin-top: 18px;
+    font-size: 12px;
+    color: var(--muted);
+    display: flex;
+    gap: 14px;
+    align-items: center;
+  }
+  footer button {
+    background: none;
+    border: none;
+    color: var(--muted);
+    font-size: 12px;
+    text-decoration: underline;
+    cursor: pointer;
+  }
+  .overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(20, 22, 40, 0.55);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    z-index: 10;
+    backdrop-filter: blur(3px);
+  }
+  .overlay.hidden { display: none; }
+  .modal {
+    background: var(--board-bg);
+    border-radius: 18px;
+    padding: 32px 28px;
+    text-align: center;
+    max-width: 340px;
+    width: 100%;
+    box-shadow: 0 12px 40px rgba(20, 22, 40, 0.3);
+  }
+  .modal .emoji { font-size: 48px; margin-bottom: 8px; }
+  .modal h2 { font-size: 22px; margin-bottom: 8px; }
+  .modal p { font-size: 14px; color: var(--muted); line-height: 1.6; margin-bottom: 20px; }
+  .modal p strong { color: var(--text); }
+  .modal button {
+    width: 100%;
+    padding: 14px 0;
+    font-size: 16px;
+    font-weight: 700;
+    border: none;
+    border-radius: 12px;
+    background: var(--accent);
+    color: #fff;
+    cursor: pointer;
+  }
+  .modal button:active { opacity: 0.85; }
+  .modal button.secondary {
+    background: none;
+    color: var(--muted);
+    font-weight: 500;
+    font-size: 13px;
+    padding: 10px 0 0;
+  }
+</style>
+</head>
+<body>
+<header><h1>🧩 스도쿠 <span>챌린지</span></h1></header>
+
+<div class="status-bar">
+  <span class="level-badge" id="levelBadge">레벨 1</span>
+  <span class="difficulty" id="difficultyLabel"></span>
+  <span id="timer">00:00</span>
+  <span class="hearts" id="hearts">❤️❤️❤️</span>
+</div>
+
+<div id="board"></div>
+
+<div class="controls">
+  <div class="numpad" id="numpad"></div>
+  <div class="tools">
+    <button id="noteBtn">✏️ 메모</button>
+    <button id="eraseBtn">⌫ 지우기</button>
+    <button id="hintBtn">💡 힌트 <span id="hintCount"></span></button>
+  </div>
+</div>
+
+<footer>
+  <span id="bestLabel"></span>
+  <button id="resetBtn">진행도 초기화</button>
+</footer>
+
+<div class="overlay hidden" id="overlay">
+  <div class="modal">
+    <div class="emoji" id="modalEmoji">🎉</div>
+    <h2 id="modalTitle"></h2>
+    <p id="modalText"></p>
+    <button id="modalBtn"></button>
+    <button class="secondary hidden" id="modalSecondaryBtn"></button>
+  </div>
+</div>
+
+<script>
+(() => {
+  'use strict';
+
+  // ---------- 난이도 설계 ----------
+  // 레벨이 오를수록 시작 힌트 칸(clue) 수가 줄고, 사용 가능한 힌트도 줄어든다.
+  function levelConfig(level) {
+    const clues = Math.max(24, 50 - (level - 1) * 2);
+    const hints = level <= 4 ? 3 : level <= 9 ? 2 : 1;
+    let name;
+    if (level <= 3) name = '입문';
+    else if (level <= 6) name = '초급';
+    else if (level <= 9) name = '중급';
+    else if (level <= 12) name = '고급';
+    else name = '마스터';
+    return { clues, hints, name };
+  }
+
+  // ---------- 퍼즐 생성 ----------
+  const shuffle = (arr) => {
+    for (let i = arr.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [arr[i], arr[j]] = [arr[j], arr[i]];
+    }
+    return arr;
+  };
+
+  function isValid(grid, r, c, n) {
+    for (let i = 0; i < 9; i++) {
+      if (grid[r][i] === n || grid[i][c] === n) return false;
+    }
+    const br = r - (r % 3), bc = c - (c % 3);
+    for (let i = 0; i < 3; i++)
+      for (let j = 0; j < 3; j++)
+        if (grid[br + i][bc + j] === n) return false;
+    return true;
+  }
+
+  function fillGrid(grid, pos) {
+    if (pos === 81) return true;
+    const r = (pos / 9) | 0, c = pos % 9;
+    for (const n of shuffle([1, 2, 3, 4, 5, 6, 7, 8, 9])) {
+      if (isValid(grid, r, c, n)) {
+        grid[r][c] = n;
+        if (fillGrid(grid, pos + 1)) return true;
+        grid[r][c] = 0;
+      }
+    }
+    return false;
+  }
+
+  // 해가 2개 이상인지 조기 종료하며 세는 솔버 (유일해 검증용)
+  function countSolutions(grid, limit) {
+    let count = 0;
+    function solve() {
+      let br = -1, bc = -1, bestLen = 10, bestCands = null;
+      for (let r = 0; r < 9; r++) {
+        for (let c = 0; c < 9; c++) {
+          if (grid[r][c] !== 0) continue;
+          const cands = [];
+          for (let n = 1; n <= 9; n++) if (isValid(grid, r, c, n)) cands.push(n);
+          if (cands.length === 0) return;
+          if (cands.length < bestLen) { bestLen = cands.length; br = r; bc = c; bestCands = cands; }
+        }
+      }
+      if (br === -1) { count++; return; }
+      for (const n of bestCands) {
+        grid[br][bc] = n;
+        solve();
+        grid[br][bc] = 0;
+        if (count >= limit) return;
+      }
+    }
+    solve();
+    return count;
+  }
+
+  function generatePuzzle(clueTarget) {
+    const solution = Array.from({ length: 9 }, () => Array(9).fill(0));
+    fillGrid(solution, 0);
+    const puzzle = solution.map((row) => row.slice());
+
+    let clues = 81;
+    const positions = shuffle(Array.from({ length: 81 }, (_, i) => i));
+    for (const pos of positions) {
+      if (clues <= clueTarget) break;
+      const r = (pos / 9) | 0, c = pos % 9;
+      const backup = puzzle[r][c];
+      puzzle[r][c] = 0;
+      if (countSolutions(puzzle.map((row) => row.slice()), 2) !== 1) {
+        puzzle[r][c] = backup;
+      } else {
+        clues--;
+      }
+    }
+    return { puzzle, solution };
+  }
+
+  // ---------- 상태 ----------
+  const STORAGE_KEY = 'sudoku-challenge-progress';
+  let level = 1, bestLevel = 1;
+  try {
+    const saved = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}');
+    if (saved.level >= 1) level = saved.level;
+    if (saved.bestLevel >= 1) bestLevel = saved.bestLevel;
+  } catch (e) { /* 저장 데이터가 깨졌으면 처음부터 */ }
+
+  function saveProgress() {
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify({ level, bestLevel }));
+    } catch (e) { /* 시크릿 모드 등에서는 저장 생략 */ }
+  }
+
+  let puzzle, solution, board, notes;
+  let selected = -1;
+  let mistakes = 0, hintsLeft = 0;
+  let noteMode = false;
+  let startTime = 0, timerId = null, finished = false;
+
+  const MAX_MISTAKES = 3;
+
+  // ---------- DOM ----------
+  const boardEl = document.getElementById('board');
+  const numpadEl = document.getElementById('numpad');
+  const levelBadge = document.getElementById('levelBadge');
+  const difficultyLabel = document.getElementById('difficultyLabel');
+  const timerEl = document.getElementById('timer');
+  const heartsEl = document.getElementById('hearts');
+  const hintCountEl = document.getElementById('hintCount');
+  const bestLabel = document.getElementById('bestLabel');
+  const noteBtn = document.getElementById('noteBtn');
+  const hintBtn = document.getElementById('hintBtn');
+  const overlay = document.getElementById('overlay');
+  const modalEmoji = document.getElementById('modalEmoji');
+  const modalTitle = document.getElementById('modalTitle');
+  const modalText = document.getElementById('modalText');
+  const modalBtn = document.getElementById('modalBtn');
+  const modalSecondaryBtn = document.getElementById('modalSecondaryBtn');
+
+  const cells = [];
+  for (let i = 0; i < 81; i++) {
+    const cell = document.createElement('div');
+    cell.className = 'cell';
+    const r = (i / 9) | 0, c = i % 9;
+    if (c === 2 || c === 5) cell.classList.add('box-right');
+    if (r === 2 || r === 5) cell.classList.add('box-bottom');
+    cell.addEventListener('click', () => selectCell(i));
+    boardEl.appendChild(cell);
+    cells.push(cell);
+  }
+
+  const numBtns = [];
+  for (let n = 1; n <= 9; n++) {
+    const btn = document.createElement('button');
+    btn.innerHTML = n + '<small></small>';
+    btn.addEventListener('click', () => inputNumber(n));
+    numpadEl.appendChild(btn);
+    numBtns.push(btn);
+  }
+
+  // ---------- 렌더링 ----------
+  function formatTime(ms) {
+    const s = (ms / 1000) | 0;
+    return String((s / 60) | 0).padStart(2, '0') + ':' + String(s % 60).padStart(2, '0');
+  }
+
+  function render() {
+    const selR = (selected / 9) | 0, selC = selected % 9;
+    const selVal = selected >= 0 ? board[selected] : 0;
+    for (let i = 0; i < 81; i++) {
+      const r = (i / 9) | 0, c = i % 9;
+      const cell = cells[i];
+      const val = board[i];
+      cell.classList.remove('selected', 'peer', 'same', 'wrong', 'given');
+      if (puzzle[r][c] !== 0) cell.classList.add('given');
+      if (val !== 0) {
+        cell.textContent = val;
+        if (val !== solution[r][c]) cell.classList.add('wrong');
+      } else if (notes[i].size > 0) {
+        cell.innerHTML = '<div class="notes">' +
+          [1,2,3,4,5,6,7,8,9].map((n) => '<div>' + (notes[i].has(n) ? n : '') + '</div>').join('') +
+          '</div>';
+      } else {
+        cell.textContent = '';
+      }
+      if (i === selected) cell.classList.add('selected');
+      else if (selected >= 0) {
+        const sameBox = ((r / 3) | 0) === ((selR / 3) | 0) && ((c / 3) | 0) === ((selC / 3) | 0);
+        if (r === selR || c === selC || sameBox) cell.classList.add('peer');
+        if (selVal !== 0 && val === selVal) cell.classList.add('same');
+      }
+    }
+    // 숫자별 남은 개수 표시, 9개 다 채우면 비활성화
+    const counts = Array(10).fill(0);
+    for (let i = 0; i < 81; i++) {
+      const r = (i / 9) | 0, c = i % 9;
+      if (board[i] !== 0 && board[i] === solution[r][c]) counts[board[i]]++;
+    }
+    for (let n = 1; n <= 9; n++) {
+      const remaining = 9 - counts[n];
+      numBtns[n - 1].querySelector('small').textContent = remaining;
+      numBtns[n - 1].classList.toggle('depleted', remaining <= 0);
+    }
+    heartsEl.textContent = '❤️'.repeat(MAX_MISTAKES - mistakes) + '🖤'.repeat(mistakes);
+    hintCountEl.textContent = '(' + hintsLeft + ')';
+    hintBtn.disabled = hintsLeft <= 0;
+    bestLabel.textContent = '최고 기록: 레벨 ' + bestLevel;
+  }
+
+  // ---------- 게임 로직 ----------
+  function selectCell(i) {
+    selected = i;
+    render();
+  }
+
+  function clearPeerNotes(idx, n) {
+    const r = (idx / 9) | 0, c = idx % 9;
+    for (let i = 0; i < 81; i++) {
+      const rr = (i / 9) | 0, cc = i % 9;
+      const sameBox = ((rr / 3) | 0) === ((r / 3) | 0) && ((cc / 3) | 0) === ((c / 3) | 0);
+      if (rr === r || cc === c || sameBox) notes[i].delete(n);
+    }
+  }
+
+  function inputNumber(n) {
+    if (finished || selected < 0) return;
+    const r = (selected / 9) | 0, c = selected % 9;
+    if (puzzle[r][c] !== 0) return;
+    if (board[selected] === solution[r][c]) return; // 이미 맞힌 칸은 고정
+
+    if (noteMode) {
+      if (notes[selected].has(n)) notes[selected].delete(n);
+      else notes[selected].add(n);
+      board[selected] = 0;
+      render();
+      return;
+    }
+
+    board[selected] = n;
+    notes[selected].clear();
+    if (n === solution[r][c]) {
+      clearPeerNotes(selected, n);
+      cells[selected].classList.add('pop');
+      setTimeout(() => cells[selected].classList.remove('pop'), 200);
+      render();
+      checkWin();
+    } else {
+      mistakes++;
+      render();
+      if (mistakes >= MAX_MISTAKES) gameOver();
+    }
+  }
+
+  function erase() {
+    if (finished || selected < 0) return;
+    const r = (selected / 9) | 0, c = selected % 9;
+    if (puzzle[r][c] !== 0) return;
+    if (board[selected] === solution[r][c] && board[selected] !== 0) return;
+    board[selected] = 0;
+    notes[selected].clear();
+    render();
+  }
+
+  function useHint() {
+    if (finished || hintsLeft <= 0) return;
+    // 선택한 빈 칸이 있으면 그 칸, 아니면 무작위 빈 칸
+    let target = -1;
+    if (selected >= 0) {
+      const r = (selected / 9) | 0, c = selected % 9;
+      if (puzzle[r][c] === 0 && board[selected] !== solution[r][c]) target = selected;
+    }
+    if (target === -1) {
+      const empties = [];
+      for (let i = 0; i < 81; i++) {
+        const r = (i / 9) | 0, c = i % 9;
+        if (board[i] !== solution[r][c]) empties.push(i);
+      }
+      if (empties.length === 0) return;
+      target = empties[Math.floor(Math.random() * empties.length)];
+    }
+    hintsLeft--;
+    const r = (target / 9) | 0, c = target % 9;
+    board[target] = solution[r][c];
+    notes[target].clear();
+    clearPeerNotes(target, board[target]);
+    selected = target;
+    cells[target].classList.add('pop');
+    setTimeout(() => cells[target].classList.remove('pop'), 200);
+    render();
+    checkWin();
+  }
+
+  function checkWin() {
+    for (let i = 0; i < 81; i++) {
+      const r = (i / 9) | 0, c = i % 9;
+      if (board[i] !== solution[r][c]) return;
+    }
+    finished = true;
+    clearInterval(timerId);
+    const elapsed = formatTime(Date.now() - startTime);
+    level++;
+    if (level > bestLevel) bestLevel = level;
+    saveProgress();
+    const next = levelConfig(level);
+    showModal('🎉', '레벨 클리어!', '클리어 시간 <strong>' + elapsed + '</strong><br>' +
+      '다음은 레벨 ' + level + ' (' + next.name + ') — 시작 숫자가 더 적어져요!',
+      '다음 레벨 도전', () => startLevel());
+  }
+
+  function gameOver() {
+    finished = true;
+    clearInterval(timerId);
+    showModal('💔', '게임 오버', '실수 3번! 같은 레벨의 새 퍼즐로 다시 도전해 보세요.',
+      '다시 도전', () => startLevel());
+  }
+
+  function showModal(emoji, title, html, btnText, onBtn, secondaryText, onSecondary) {
+    modalEmoji.textContent = emoji;
+    modalTitle.textContent = title;
+    modalText.innerHTML = html;
+    modalBtn.textContent = btnText;
+    modalBtn.onclick = () => { overlay.classList.add('hidden'); onBtn(); };
+    if (secondaryText) {
+      modalSecondaryBtn.textContent = secondaryText;
+      modalSecondaryBtn.classList.remove('hidden');
+      modalSecondaryBtn.onclick = () => { overlay.classList.add('hidden'); onSecondary(); };
+    } else {
+      modalSecondaryBtn.classList.add('hidden');
+    }
+    overlay.classList.remove('hidden');
+  }
+
+  function startLevel() {
+    const cfg = levelConfig(level);
+    const gen = generatePuzzle(cfg.clues);
+    puzzle = gen.puzzle;
+    solution = gen.solution;
+    board = puzzle.flat();
+    notes = Array.from({ length: 81 }, () => new Set());
+    selected = -1;
+    mistakes = 0;
+    hintsLeft = cfg.hints;
+    noteMode = false;
+    noteBtn.classList.remove('on');
+    finished = false;
+    levelBadge.textContent = '레벨 ' + level;
+    difficultyLabel.textContent = cfg.name;
+    startTime = Date.now();
+    clearInterval(timerId);
+    timerEl.textContent = '00:00';
+    timerId = setInterval(() => {
+      if (!finished) timerEl.textContent = formatTime(Date.now() - startTime);
+    }, 1000);
+    render();
+  }
+
+  // ---------- 입력 바인딩 ----------
+  noteBtn.addEventListener('click', () => {
+    noteMode = !noteMode;
+    noteBtn.classList.toggle('on', noteMode);
+  });
+  document.getElementById('eraseBtn').addEventListener('click', erase);
+  hintBtn.addEventListener('click', useHint);
+  document.getElementById('resetBtn').addEventListener('click', () => {
+    showModal('🔄', '진행도 초기화', '레벨 1부터 다시 시작할까요? 최고 기록도 함께 초기화됩니다.',
+      '초기화하고 처음부터', () => { level = 1; bestLevel = 1; saveProgress(); startLevel(); },
+      '취소', () => {});
+  });
+
+  document.addEventListener('keydown', (e) => {
+    if (!overlay.classList.contains('hidden')) return;
+    if (e.key >= '1' && e.key <= '9') { inputNumber(Number(e.key)); return; }
+    if (e.key === 'Backspace' || e.key === 'Delete' || e.key === '0') { erase(); return; }
+    if (e.key === 'n' || e.key === 'N') { noteBtn.click(); return; }
+    if (selected < 0) return;
+    const r = (selected / 9) | 0, c = selected % 9;
+    if (e.key === 'ArrowUp' && r > 0) selectCell(selected - 9);
+    else if (e.key === 'ArrowDown' && r < 8) selectCell(selected + 9);
+    else if (e.key === 'ArrowLeft' && c > 0) selectCell(selected - 1);
+    else if (e.key === 'ArrowRight' && c < 8) selectCell(selected + 1);
+  });
+
+  startLevel();
+})();
+</script>
+</body>
+</html>

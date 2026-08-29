@@ -1,0 +1,637 @@
+:root {
+  --board-bg: radial-gradient(125% 100% at 50% 0%, #1c2542 0%, #101728 55%, #090d19 100%);
+  --panel: #1c2846;
+  --panel-line: rgba(255, 255, 255, 0.09);
+  --text: #eaf0ff;
+  --muted: #8794b8;
+  --accent: #ffce3a;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+/* iOS 사파리의 고무줄 스크롤(당겨서 새로고침 포함)이 드래그를 가로채지 않게.
+   overflow: hidden 만으로는 사파리가 바운스를 계속 허용한다 —
+   overscroll-behavior + 아래 position: fixed + main.js 의 touchmove 차단까지 세 겹이다. */
+html, body { height: 100%; overscroll-behavior: none; }
+
+body {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Apple SD Gothic Neo", "Noto Sans KR", sans-serif;
+  background: var(--board-bg);
+  color: var(--text);
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+#app {
+  position: relative;
+  height: 100dvh;
+  width: 100%;
+  max-width: 540px;
+  display: flex;
+  flex-direction: column;
+  padding: calc(6px + env(safe-area-inset-top)) 12px calc(10px + env(safe-area-inset-bottom));
+  background: var(--board-bg);
+}
+
+/* 넓은 화면에서는 여백에 흩어지지 않도록 기기 형태의 프레임 안에 담는다 */
+@media (min-width: 600px) and (min-height: 700px) {
+  body {
+    background: radial-gradient(120% 85% at 50% -10%, #151d38 0%, #080c18 62%, #05070f 100%);
+    padding: 24px;
+  }
+  #app {
+    height: min(calc(100dvh - 48px), 900px);
+    border-radius: 30px;
+    border: 1px solid rgba(255, 255, 255, 0.09);
+    box-shadow: 0 34px 90px rgba(0, 0, 0, 0.62);
+    overflow: hidden;
+    padding-top: 16px;
+    padding-bottom: 16px;
+  }
+}
+
+#topbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 6px 2px;
+}
+
+#levelLabel { font-weight: 800; font-size: 19px; letter-spacing: -0.2px; }
+#moveLabel {
+  color: var(--muted);
+  font-size: 13px;
+  margin-top: 1px;
+  font-variant-numeric: tabular-nums;
+}
+
+.hud-right { display: flex; gap: 7px; }
+
+.hud-btn {
+  width: 40px;
+  height: 40px;
+  border-radius: 13px;
+  border: 1px solid var(--panel-line);
+  background: var(--panel);
+  color: var(--text);
+  font-size: 18px;
+  line-height: 1;
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+  transition: transform 0.08s, opacity 0.15s;
+}
+.hud-btn:active { transform: scale(0.92); }
+.hud-btn:disabled { opacity: 0.35; }
+
+/* 드래그 게임이라 브라우저 팬/스크롤 제스처를 완전히 끈다 —
+   manipulation 만으로는 터치 이동이 스크롤로 새서 pointercancel 이 난다 */
+#board { flex: 1; width: 100%; display: block; min-height: 0; touch-action: none; }
+
+/* 헤맬 때 먼저 손을 내미는 패널 — 버튼(힌트/처음부터)이 패널 안에 직접 들어 있어
+   아이콘을 찾아 헤맬 필요가 없다. 보드를 만지면 조용히 사라진다. */
+#helper {
+  position: absolute;
+  left: 50%;
+  bottom: calc(22px + env(safe-area-inset-bottom));
+  transform: translateX(-50%);
+  width: min(92%, 360px);
+  background: #23305a;
+  border: 1px solid #3d5088;
+  padding: 14px 16px 12px;
+  border-radius: 18px;
+  text-align: center;
+  box-shadow: 0 12px 34px rgba(0, 0, 0, 0.5);
+  z-index: 20;
+  /* pop 키프레임은 transform을 통째로 바꿔서 translateX(-50%) 센터링이 풀린다 —
+     떠오르는 동안 오른쪽으로 쏠리지 않게 전용 키프레임을 쓴다 */
+  animation: hpop 0.3s cubic-bezier(0.2, 1.4, 0.4, 1);
+}
+@keyframes hpop {
+  from { transform: translateX(-50%) scale(0.72); opacity: 0; }
+  to { transform: translateX(-50%) scale(1); opacity: 1; }
+}
+
+.hp-title { font-size: 15px; font-weight: 800; }
+
+.hp-sub {
+  color: var(--muted);
+  font-size: 12px;
+  margin: 3px 0 11px;
+  line-height: 1.45;
+}
+
+.hp-actions { display: flex; gap: 8px; }
+
+.hp-btn {
+  flex: 1;
+  padding: 11px 0;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  background: rgba(255, 255, 255, 0.07);
+  color: var(--text);
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 800;
+  cursor: pointer;
+  transition: transform 0.08s;
+}
+.hp-btn:active { transform: scale(0.95); }
+
+.hp-btn.primary {
+  background: linear-gradient(180deg, #ffdf6b, #ffb524);
+  border: 0;
+  color: #241c05;
+  box-shadow: 0 5px 14px rgba(255, 181, 36, 0.35);
+}
+
+#overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(6, 10, 22, 0.68);
+  backdrop-filter: blur(5px);
+  -webkit-backdrop-filter: blur(5px);
+  display: grid;
+  place-items: center;
+  z-index: 30;
+}
+
+.overlay-card {
+  background: var(--panel);
+  padding: 30px 34px;
+  border-radius: 22px;
+  text-align: center;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 0 24px 70px rgba(0, 0, 0, 0.55);
+  animation: pop 0.32s cubic-bezier(0.2, 1.4, 0.4, 1);
+}
+@keyframes pop {
+  from { transform: scale(0.72); opacity: 0; }
+  to { transform: scale(1); opacity: 1; }
+}
+.overlay-card h2 { font-size: 25px; margin-bottom: 8px; letter-spacing: -0.3px; }
+#overlayInfo { color: var(--muted); font-size: 14px; margin-bottom: 20px; }
+
+.overlay-actions { display: flex; gap: 10px; justify-content: center; }
+
+.ghost-btn {
+  background: rgba(255, 255, 255, 0.07);
+  color: var(--text);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  font-size: 15px;
+  font-weight: 700;
+  font-family: inherit;
+  padding: 13px 20px;
+  border-radius: 15px;
+  cursor: pointer;
+  transition: transform 0.08s;
+}
+.ghost-btn:active { transform: scale(0.95); }
+
+/* 주 버튼은 택시색 — 이 게임의 주인공 색이 곧 행동 색이다 */
+#btnNext {
+  background: linear-gradient(180deg, #ffdf6b, #ffb524);
+  color: #241c05;
+  border: 0;
+  font-size: 16px;
+  font-weight: 800;
+  font-family: inherit;
+  padding: 13px 28px;
+  border-radius: 15px;
+  cursor: pointer;
+  box-shadow: 0 6px 18px rgba(255, 181, 36, 0.38);
+  transition: transform 0.08s;
+}
+#btnNext:active { transform: scale(0.95); }
+
+/* 레벨 목차 */
+#levelSelect {
+  position: absolute;
+  inset: 0;
+  z-index: 40;
+  background: rgba(6, 10, 22, 0.74);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  /* grid + place-items 로는 카드의 max-height 가 안 먹어서 화면을 넘친다.
+     flex 컨테이너에서는 자식의 max-height 가 확실히 적용된다. */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 18px;
+  overflow: hidden;
+}
+
+.ls-card {
+  width: 100%;
+  max-height: 100%;
+  min-height: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  background: var(--panel);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 22px;
+  padding: 18px;
+  box-shadow: 0 24px 70px rgba(0, 0, 0, 0.55);
+  animation: pop 0.26s cubic-bezier(0.2, 1.4, 0.4, 1);
+}
+
+.ls-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.ls-head h2 { font-size: 19px; letter-spacing: -0.2px; }
+
+/* 별 — 이모지는 기기마다 렌더링이 제각각이라 도형으로 그린다 */
+.stars { display: flex; gap: 7px; justify-content: center; margin-bottom: 10px; }
+
+.star {
+  width: 28px;
+  height: 28px;
+  background: rgba(255, 255, 255, 0.13);
+  clip-path: polygon(50% 0%, 61% 35%, 98% 35%, 68% 57%, 79% 91%, 50% 70%, 21% 91%, 32% 57%, 2% 35%, 39% 35%);
+}
+.star.on {
+  background: linear-gradient(180deg, #ffe27a, #ffb524);
+  animation: starPop 0.42s cubic-bezier(0.2, 1.6, 0.4, 1) backwards;
+}
+.star.on:nth-child(2) { animation-delay: 0.13s; }
+.star.on:nth-child(3) { animation-delay: 0.26s; }
+
+@keyframes starPop {
+  0% { transform: scale(0.2) rotate(-40deg); opacity: 0; }
+  100% { transform: scale(1) rotate(0); opacity: 1; }
+}
+
+/* 승객 진행 — 챕터의 남은 판을 점으로, 끝에 이번 승객을 놓는다.
+   "왜 깨는지"가 매 판 클리어 카드에서 눈에 보인다. */
+.ride-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  margin: -4px 0 10px;
+}
+.ride-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.14);
+}
+.ride-dot.on { background: linear-gradient(180deg, #ffe27a, #ffb524); }
+.ride-arrow { color: var(--muted); font-size: 15px; font-weight: 800; margin: 0 -1px; }
+
+.ride-face {
+  position: relative;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 32% 30%, rgba(255, 255, 255, 0.5), var(--c) 42%, rgba(0, 0, 0, 0.35));
+  filter: saturate(0.25) brightness(0.6);
+}
+.ride-face.home {
+  filter: none;
+  box-shadow: 0 0 12px -1px var(--c);
+}
+.ride-face .eye {
+  position: absolute;
+  top: 11px;
+  width: 3.5px;
+  height: 4px;
+  border-radius: 50%;
+  background: rgba(28, 26, 48, 0.85);
+}
+.ride-face .eye.l { left: 9px; }
+.ride-face .eye.r { right: 9px; }
+.ride-face:not(.home) .eye { height: 1.5px; top: 13px; }
+.ride-face .mouth {
+  position: absolute;
+  top: 16px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 9px;
+  height: 5px;
+  border: 1.5px solid rgba(28, 26, 48, 0.8);
+  border-top: 0;
+  border-radius: 0 0 9px 9px;
+}
+.ride-face:not(.home) .mouth { width: 5px; height: 3px; }
+
+/* 여정의 끝 — 집. 도착 전엔 어둡고, 도착하면 불이 켜진다. */
+.ride-home {
+  font-size: 21px;
+  line-height: 1;
+  filter: saturate(0.2) brightness(0.55);
+}
+.ride-home.lit {
+  filter: none;
+  text-shadow: 0 0 10px rgba(255, 206, 58, 0.7);
+}
+
+.rescue-note {
+  color: #ffd98a;
+  font-size: 14px;
+  font-weight: 700;
+  margin: -8px 0 18px;
+}
+
+/* 가입 초대 — 문이 아니라 초대. 건너뛰기가 항상 보인다. */
+#signup {
+  position: absolute;
+  inset: 0;
+  z-index: 45;
+  background: rgba(6, 10, 22, 0.74);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 18px;
+}
+
+.su-card {
+  width: min(100%, 340px);
+  background: var(--panel);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 22px;
+  padding: 26px 24px 18px;
+  text-align: center;
+  box-shadow: 0 24px 70px rgba(0, 0, 0, 0.55);
+  animation: pop 0.32s cubic-bezier(0.2, 1.4, 0.4, 1);
+}
+
+.su-emoji { font-size: 40px; margin-bottom: 6px; }
+.su-card h2 { font-size: 21px; letter-spacing: -0.3px; margin-bottom: 6px; }
+.su-sub { color: var(--muted); font-size: 13px; line-height: 1.5; margin-bottom: 18px; }
+
+.su-google {
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 10px;
+}
+.su-google.su-placeholder {
+  color: var(--muted);
+  font-size: 12px;
+  border: 1px dashed rgba(255, 255, 255, 0.2);
+  border-radius: 22px;
+  padding: 12px;
+}
+
+.su-skip {
+  background: none;
+  border: 0;
+  color: var(--muted);
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  padding: 10px 16px;
+  cursor: pointer;
+}
+.su-skip:active { opacity: 0.7; }
+
+/* 전면 광고 자리 */
+#adSlot {
+  position: absolute;
+  inset: 0;
+  z-index: 50;
+  background: rgba(4, 6, 14, 0.9);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 18px;
+}
+
+.ad-frame {
+  width: 100%;
+  max-width: 420px;
+  max-height: 100%;
+  display: flex;
+  flex-direction: column;
+  border-radius: 18px;
+  border: 1px dashed rgba(255, 255, 255, 0.22);
+  background: #131b30;
+  overflow: hidden;
+}
+
+.ad-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 9px 10px 9px 12px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.ad-tag {
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  color: var(--muted);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 5px;
+  padding: 2px 6px;
+}
+
+.ad-close {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  background: rgba(255, 255, 255, 0.07);
+  color: var(--text);
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+}
+.ad-close:disabled { cursor: default; color: var(--muted); }
+
+.ad-body {
+  flex: 1;
+  min-height: 190px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  padding: 28px 22px;
+  text-align: center;
+}
+.ad-title { font-size: 17px; font-weight: 800; color: var(--muted); }
+.ad-sub { font-size: 12px; color: var(--muted); opacity: 0.8; line-height: 1.5; max-width: 30ch; }
+
+/* 여정 지도 */
+.j-total {
+  margin-left: auto;
+  margin-right: 4px;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+.j-total .star { width: 15px; height: 15px; }
+
+#journey {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  overflow-y: auto;
+  padding: 10px 0 14px;
+  /* 세로 플렉스 안에서 스크롤되려면 min-height: 0 이 있어야 한다.
+     없으면 내용 높이만큼 늘어나 카드가 화면을 넘치고 헤더가 밀려난다. */
+  flex: 1;
+  min-height: 0;
+}
+
+/* 길 — 노드 뒤로 흐르는 중앙선. 택시 게임이니 도로의 점선이다. */
+#journey::before {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 4px;
+  bottom: 4px;
+  width: 3px;
+  margin-left: -1.5px;
+  background: repeating-linear-gradient(
+    180deg,
+    rgba(255, 206, 58, 0.35) 0 6px,
+    transparent 6px 14px
+  );
+}
+
+.jn {
+  position: relative;
+  /* 세로 플렉스 안에서 눌려 타원이 되지 않게 축소를 막는다 */
+  flex: 0 0 auto;
+  width: 54px;
+  height: 54px;
+  border-radius: 50%;
+  border: 2px solid rgba(255, 255, 255, 0.14);
+  background: #22304f;
+  color: var(--text);
+  font-family: inherit;
+  font-size: 17px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  transition: transform 0.08s;
+}
+.jn:active { transform: scale(0.92); }
+
+/* 길을 따라 좌우로 흔들리게 */
+#journey > .jn:nth-of-type(4n + 1) { transform: translateX(-56px); }
+#journey > .jn:nth-of-type(4n + 3) { transform: translateX(56px); }
+#journey > .jn:nth-of-type(4n + 1):active { transform: translateX(-56px) scale(0.92); }
+#journey > .jn:nth-of-type(4n + 3):active { transform: translateX(56px) scale(0.92); }
+
+.jn .jstars {
+  position: absolute;
+  bottom: -9px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 2px;
+}
+.jn .jstars .star { width: 11px; height: 11px; }
+
+.jn.cleared {
+  background: linear-gradient(180deg, #bb8b1e, #8a6210);
+  border-color: rgba(255, 214, 110, 0.55);
+}
+.jn.current {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(255, 206, 58, 0.32), 0 0 18px rgba(255, 206, 58, 0.45);
+}
+
+/* 여정의 승객 — 아직 타고 있으면 졸고, 집에 오면 웃는다 */
+.jf {
+  position: relative;
+  flex: 0 0 auto;
+  width: 66px;
+  height: 66px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: radial-gradient(circle at 32% 30%, rgba(255, 255, 255, 0.5), var(--c) 42%, rgba(0, 0, 0, 0.35));
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.4);
+  filter: saturate(0.15) brightness(0.5);
+  transition: filter 0.4s;
+}
+.jf.freed {
+  filter: none;
+  box-shadow: 0 0 22px -2px var(--c), 0 6px 20px rgba(0, 0, 0, 0.4);
+}
+
+/* 얼굴 — 타고 있을 땐 졸고, 도착하면 웃는다 */
+.jf .eye {
+  position: absolute;
+  top: 26px;
+  width: 7px;
+  height: 8px;
+  border-radius: 50%;
+  background: rgba(28, 26, 48, 0.85);
+}
+.jf .eye.l { left: 20px; }
+.jf .eye.r { right: 20px; }
+.jf:not(.freed) .eye { height: 2px; border-radius: 2px; top: 30px; }
+
+.jf .mouth {
+  position: absolute;
+  top: 38px;
+  width: 20px;
+  height: 11px;
+  border: 2px solid rgba(28, 26, 48, 0.8);
+  border-top: 0;
+  border-radius: 0 0 20px 20px;
+}
+.jf:not(.freed) .mouth { width: 10px; height: 6px; }
+
+/* 마지막 승객은 왕관을 쓴다 */
+.jf .crown {
+  position: absolute;
+  top: -13px;
+  width: 30px;
+  height: 15px;
+  background: linear-gradient(180deg, #ffe27a, #ffb524);
+  clip-path: polygon(0 100%, 100% 100%, 100% 28%, 78% 58%, 50% 0, 22% 58%, 0 28%);
+}
+.jf:not(.freed) .crown { filter: grayscale(1) brightness(0.6); }
+
+/* 길(점선)이 글자를 관통하지 않게 배경을 깐다 */
+.jf-label {
+  position: relative;
+  flex: 0 0 auto;
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 700;
+  margin-top: -4px;
+  padding: 2px 9px;
+  border-radius: 8px;
+  background: var(--panel);
+}
+
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+.hidden { display: none !important; }
